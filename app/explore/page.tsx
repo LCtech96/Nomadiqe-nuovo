@@ -61,6 +61,10 @@ export default function ExplorePage() {
     p.country.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const handlePropertySelect = (property: Property) => {
+    setSelectedProperty(property)
+  }
+
   return (
     <div className="min-h-screen">
       <div className="container mx-auto p-4">
@@ -79,7 +83,7 @@ export default function ExplorePage() {
             <div className="h-[600px] rounded-lg overflow-hidden mb-6">
               <MapComponent
                 properties={filteredProperties}
-                onPropertySelect={setSelectedProperty}
+                onPropertySelect={handlePropertySelect}
               />
             </div>
           </div>
