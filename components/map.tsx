@@ -16,11 +16,17 @@ L.Icon.Default.mergeOptions({
 interface Property {
   id: string
   name: string
+  description?: string
+  property_type?: string
+  city: string
+  country: string
   latitude: number
   longitude: number
   price_per_night: number
-  city: string
-  country: string
+  max_guests?: number
+  images?: string[]
+  rating?: number
+  review_count?: number
 }
 
 interface MapComponentProps {
