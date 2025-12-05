@@ -43,53 +43,47 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      // Use signInWithOtp to send OTP code directly (this creates user if doesn't exist)
-      // After verification, we'll set the password
-      const { error: otpError } = await supabase.auth.signInWithOtp({
+      // First, create the user with signUp (this sets the password)
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/auth/verify-email`,
-          data: {
-            password: password, // Store password temporarily to set it after verification
-          },
         },
       })
 
-      if (otpError) {
-        // Fallback: try signUp if OTP fails
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/verify-email`,
-          },
-        })
-
-        if (signUpError) {
-          toast({
-            title: "Errore",
-            description: signUpError.message,
-            variant: "destructive",
-          })
-          setLoading(false)
-          return
-        }
-
+      if (signUpError) {
         toast({
-          title: "Attenzione",
-          description: "Account creato. Controlla la tua email per il link di verifica.",
+          title: "Errore",
+          description: signUpError.message,
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // After signup, send OTP code for verification using resend
+      // This will use the "Magic link" template which should show the OTP code
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+        },
+      })
+
+      if (resendError) {
+        console.error("Resend OTP error:", resendError)
+        // If resend fails, the user will receive the initial signup email
+        toast({
+          title: "Successo",
+          description: "Account creato. Controlla la tua email per il codice di verifica.",
         })
       } else {
         toast({
           title: "Successo",
           description: "Controlla la tua email per il codice di verifica a 6 cifre",
         })
-      }
-
-      // Store password in sessionStorage to set it after verification
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('pending_password', password)
       }
 
       router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`)

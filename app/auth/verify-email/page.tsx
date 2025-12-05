@@ -42,18 +42,8 @@ function VerifyEmailContent() {
           variant: "destructive",
         })
       } else {
-        // If password was stored during signup, set it now
-        const pendingPassword = typeof window !== 'undefined' ? sessionStorage.getItem('pending_password') : null
-        if (pendingPassword) {
-          const { error: updateError } = await supabase.auth.updateUser({
-            password: pendingPassword,
-          })
-          if (updateError) {
-            console.error("Error setting password:", updateError)
-          }
-          sessionStorage.removeItem('pending_password')
-        }
-
+        // User is already authenticated and has password from signUp
+        // No need to set password again
         toast({
           title: "Successo",
           description: "Email verificata con successo!",
@@ -89,18 +79,8 @@ function VerifyEmailContent() {
           variant: "destructive",
         })
       } else {
-        // If password was stored during signup, set it now
-        const pendingPassword = typeof window !== 'undefined' ? sessionStorage.getItem('pending_password') : null
-        if (pendingPassword) {
-          const { error: updateError } = await supabase.auth.updateUser({
-            password: pendingPassword,
-          })
-          if (updateError) {
-            console.error("Error setting password:", updateError)
-          }
-          sessionStorage.removeItem('pending_password')
-        }
-
+        // User is already authenticated and has password from signUp
+        // No need to set password again
         toast({
           title: "Successo",
           description: "Email verificata con successo!",
