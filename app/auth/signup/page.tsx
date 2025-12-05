@@ -43,62 +43,53 @@ export default function SignUpPage() {
     setLoading(true)
 
     try {
-      // First, create the user with signUp
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      // Use signInWithOtp to send OTP code directly (this creates user if doesn't exist)
+      // After verification, we'll set the password
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+          data: {
+            password: password, // Store password temporarily to set it after verification
+          },
         },
       })
 
-      if (signUpError) {
-        toast({
-          title: "Errore",
-          description: signUpError.message,
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      // After signup, resend OTP code for verification
-      // This will send a 6-digit code instead of a link
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email: email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/verify-email`,
-        },
-      })
-
-      if (resendError) {
-        console.error("Resend OTP error:", resendError)
-        // If resend fails, try signInWithOtp as fallback
-        const { error: otpError } = await supabase.auth.signInWithOtp({
+      if (otpError) {
+        // Fallback: try signUp if OTP fails
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
+          password,
           options: {
-            shouldCreateUser: false,
             emailRedirectTo: `${window.location.origin}/auth/verify-email`,
           },
         })
 
-        if (otpError) {
+        if (signUpError) {
           toast({
-            title: "Attenzione",
-            description: "Account creato. Controlla la tua email per il link di verifica.",
+            title: "Errore",
+            description: signUpError.message,
+            variant: "destructive",
           })
-        } else {
-          toast({
-            title: "Successo",
-            description: "Controlla la tua email per il codice di verifica a 6 cifre",
-          })
+          setLoading(false)
+          return
         }
+
+        toast({
+          title: "Attenzione",
+          description: "Account creato. Controlla la tua email per il link di verifica.",
+        })
       } else {
         toast({
           title: "Successo",
           description: "Controlla la tua email per il codice di verifica a 6 cifre",
         })
+      }
+
+      // Store password in sessionStorage to set it after verification
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('pending_password', password)
       }
 
       router.push(`/auth/verify-email?email=${encodeURIComponent(email)}`)
