@@ -14,7 +14,8 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
-    const newValue = Math.max(0, (data[column_name] || 0) - 1)
+    const currentValue = Number(data[column_name] || 0)
+    const newValue = Math.max(0, currentValue - 1)
 
     const { error: updateError } = await supabase
       .from(table_name)
