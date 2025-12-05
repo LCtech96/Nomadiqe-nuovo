@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole } from "@/types/user"
+import HostOnboarding from "@/components/onboarding/host-onboarding"
 
 type OnboardingStep = "profile" | "role" | "role-specific"
 
@@ -242,7 +243,18 @@ export default function OnboardingPage() {
     )
   }
 
-  // Role-specific onboarding will be handled in separate components
+  // Role-specific onboarding
+  if (step === "role-specific" && selectedRole === "host") {
+    return (
+      <HostOnboarding
+        onComplete={() => {
+          router.push("/dashboard")
+        }}
+      />
+    )
+  }
+
+  // For other roles, show completion message
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
