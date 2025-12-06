@@ -12,7 +12,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole, Profile } from "@/types/user"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
 
-type OnboardingStep = "profile" | "role" | "role-specific"
+type OnboardingStep = "role" | "role-specific"
 
 const getDashboardUrl = (role: UserRole | null): string => {
   switch (role) {
@@ -33,15 +33,10 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
-  const [step, setStep] = useState<OnboardingStep>("profile")
+  const [step, setStep] = useState<OnboardingStep>("role")
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
-  
-  // Profile data
-  const [fullName, setFullName] = useState("")
-  const [username, setUsername] = useState("")
-  const [avatarUrl, setAvatarUrl] = useState("")
   
   // Role selection
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
@@ -82,36 +77,27 @@ export default function OnboardingPage() {
             return
           }
 
-          // If user already has a role selected but missing profile data
+          // If user already has a role selected
           if (data.role) {
             setSelectedRole(data.role)
-            // If profile data is missing, go to profile step to complete it
-            if (!data.full_name || !data.username) {
-              setStep("profile")
-              setFullName(data.full_name || "")
-              setUsername(data.username || "")
-              setAvatarUrl(data.avatar_url || "")
+            // If role is host and onboarding not completed, go to host onboarding
+            if (data.role === "host" && !data.onboarding_completed) {
+              setStep("role-specific")
               setCheckingOnboarding(false)
               return
             }
-            // If profile data exists, skip directly to role-specific onboarding
-            setStep("role-specific")
-            setFullName(data.full_name || "")
-            setUsername(data.username || "")
-            setAvatarUrl(data.avatar_url || "")
-            setCheckingOnboarding(false)
-            return
+            // If profile data exists and onboarding completed, redirect to home
+            if (data.full_name && data.username && data.onboarding_completed) {
+              router.push("/home")
+              return
+            }
           }
 
-          // Set initial step based on onboarding progress
-          if (data.onboarding_step === 0) {
-            setStep("profile")
-          } else if (data.onboarding_step === 1) {
+          // If no role selected, start with role selection
+          if (!data.role) {
             setStep("role")
-            setFullName(data.full_name || "")
-            setUsername(data.username || "")
-            setAvatarUrl(data.avatar_url || "")
-          } else if (data.onboarding_step >= 2) {
+          } else if (data.role === "host") {
+            // Go directly to host onboarding if role is host
             setStep("role-specific")
           }
         }
@@ -125,35 +111,6 @@ export default function OnboardingPage() {
     checkOnboardingStatus()
   }, [status, session, router, supabase])
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!session?.user?.id) return
-
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: fullName,
-          username: username,
-          avatar_url: avatarUrl,
-          onboarding_step: 1,
-        })
-        .eq("id", session.user.id)
-
-      if (error) throw error
-
-      setStep("role")
-    } catch (error: any) {
-      toast({
-        title: "Errore",
-        description: error.message,
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role)
@@ -187,11 +144,12 @@ export default function OnboardingPage() {
         .update({ points: 175 }) // 100 sign up + 75 onboarding
         .eq("id", session.user.id)
 
-      // If role is host, go to host-specific onboarding
+      // If role is host, go to host-specific onboarding (which includes profile setup)
       if (selectedRole === "host") {
         setStep("role-specific")
       } else {
-        // For other roles, complete onboarding immediately and redirect
+        // For other roles, they still need basic profile info, but we'll handle it in their specific onboarding
+        // For now, redirect to dashboard (they can complete profile later)
         const { error: completeError } = await supabase
           .from("profiles")
           .update({
@@ -219,43 +177,6 @@ export default function OnboardingPage() {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
-  if (step === "profile") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Completa il tuo profilo</CardTitle>
-            <CardDescription>Passo 1 di 3</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo</Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Salvataggio..." : "Continua"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   if (step === "role") {
     return (
@@ -263,7 +184,7 @@ export default function OnboardingPage() {
         <Card className="w-full max-w-2xl">
           <CardHeader>
             <CardTitle>Scegli il tuo ruolo</CardTitle>
-            <CardDescription>Passo 2 di 3 - Seleziona come vuoi utilizzare Nomadiqe</CardDescription>
+            <CardDescription>Passo 1 - Seleziona come vuoi utilizzare Nomadiqe</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -357,7 +278,7 @@ export default function OnboardingPage() {
     return (
       <HostOnboarding
         onComplete={() => {
-          router.push("/dashboard/host")
+          router.push("/home")
         }}
       />
     )

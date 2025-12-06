@@ -75,9 +75,9 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   })
   const [currentNiche, setCurrentNiche] = useState("")
 
-  // Check username availability
+  // Check username availability (only if username is provided)
   useEffect(() => {
-    if (profileData.username.length < 3) {
+    if (!profileData.username || profileData.username.trim().length === 0) {
       setUsernameAvailable(null)
       return
     }
@@ -85,15 +85,17 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     const checkUsername = async () => {
       setCheckingUsername(true)
       try {
+        // Check if username is already taken by another user
         const { data, error } = await supabase
           .from("profiles")
           .select("username")
-          .eq("username", profileData.username.toLowerCase())
+          .eq("username", profileData.username.toLowerCase().trim())
+          .neq("id", session?.user?.id || "") // Exclude current user if editing
           .maybeSingle()
 
         if (error && error.code !== "PGRST116") throw error
 
-        setUsernameAvailable(!data)
+        setUsernameAvailable(!data) // Available if no data found
       } catch (error) {
         console.error("Error checking username:", error)
         setUsernameAvailable(null)
@@ -104,7 +106,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
     const timeoutId = setTimeout(checkUsername, 500)
     return () => clearTimeout(timeoutId)
-  }, [profileData.username, supabase])
+  }, [profileData.username, supabase, session?.user?.id])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -129,13 +131,23 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     e.preventDefault()
     if (!session?.user?.id) return
 
-    if (!usernameAvailable) {
-      toast({
-        title: "Errore",
-        description: "Username non disponibile o troppo corto (minimo 3 caratteri)",
-        variant: "destructive",
-      })
-      return
+    // Check username only if provided
+    if (profileData.username && profileData.username.trim().length > 0) {
+      if (usernameAvailable === false) {
+        toast({
+          title: "Errore",
+          description: "Username non disponibile. Scegline un altro.",
+          variant: "destructive",
+        })
+        return
+      }
+      if (usernameAvailable === null && checkingUsername) {
+        toast({
+          title: "Attendere",
+          description: "Verifica username in corso...",
+        })
+        return
+      }
     }
 
     setLoading(true)
@@ -145,19 +157,43 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       // Upload avatar if provided
       if (profileData.avatarFile) {
         try {
+          // Check if Blob token is configured
+          if (!process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN && typeof window === "undefined") {
+            // Server-side check
+            const blobToken = process.env.BLOB_READ_WRITE_TOKEN
+            if (!blobToken) {
+              throw new Error("BLOB_READ_WRITE_TOKEN non configurato. Controlla le variabili d'ambiente.")
+            }
+          }
+
           const fileExtension = profileData.avatarFile.name.split(".").pop()
           const fileName = `${session.user.id}/avatar.${fileExtension}`
+          
+          // Use token from environment variable
+          const blobToken = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+          
           const blob = await put(fileName, profileData.avatarFile, {
             access: "public",
             contentType: profileData.avatarFile.type,
+            token: blobToken, // Explicitly pass token
           })
           avatarUrl = blob.url
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error("Avatar upload error:", uploadError)
-          toast({
-            title: "Attenzione",
-            description: "Errore nel caricamento dell'avatar. Il profilo verrà salvato senza foto.",
-          })
+          const errorMessage = uploadError?.message || "Errore sconosciuto"
+          
+          if (errorMessage.includes("token") || errorMessage.includes("Token")) {
+            toast({
+              title: "Errore di configurazione",
+              description: "Token Vercel Blob non configurato. Controlla le variabili d'ambiente. Il profilo verrà salvato senza foto.",
+              variant: "destructive",
+            })
+          } else {
+            toast({
+              title: "Attenzione",
+              description: "Errore nel caricamento dell'avatar. Il profilo verrà salvato senza foto.",
+            })
+          }
         }
       }
 
@@ -166,7 +202,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         .from("profiles")
         .update({
           full_name: profileData.fullName,
-          username: profileData.username.toLowerCase(),
+          username: profileData.username ? profileData.username.toLowerCase().trim() : null,
           avatar_url: avatarUrl || null,
           onboarding_step: 3,
         })
@@ -253,6 +289,18 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
       // Upload images
       const imageUrls: string[] = []
+      const blobToken = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+      
+      if (!blobToken && propertyData.images.length > 0) {
+        toast({
+          title: "Errore di configurazione",
+          description: "Token Vercel Blob non configurato. Configura BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
       for (const image of propertyData.images) {
         try {
           const fileExtension = image.name.split(".").pop()
@@ -260,15 +308,28 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           const blob = await put(fileName, image, {
             access: "public",
             contentType: image.type,
+            token: blobToken, // Explicitly pass token
           })
           imageUrls.push(blob.url)
-        } catch (uploadError) {
+        } catch (uploadError: any) {
           console.error("Image upload error:", uploadError)
-          toast({
-            title: "Attenzione",
-            description: `Errore nel caricamento dell'immagine ${image.name}. Continuo con le altre.`,
-            variant: "destructive",
-          })
+          const errorMessage = uploadError?.message || "Errore sconosciuto"
+          
+          if (errorMessage.includes("token") || errorMessage.includes("Token")) {
+            toast({
+              title: "Errore di configurazione",
+              description: "Token Vercel Blob non configurato. Configura BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
+              variant: "destructive",
+            })
+            setLoading(false)
+            return
+          } else {
+            toast({
+              title: "Attenzione",
+              description: `Errore nel caricamento dell'immagine ${image.name}. Continuo con le altre.`,
+              variant: "destructive",
+            })
+          }
         }
       }
 
@@ -276,7 +337,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { data: property, error: propertyError } = await supabase
         .from("properties")
         .insert({
-          host_id: session.user.id,
+          owner_id: session.user.id,
           name: propertyData.name,
           description: propertyData.description,
           property_type: propertyData.property_type,
@@ -376,7 +437,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { data: property, error: propertyFetchError } = await supabase
         .from("properties")
         .select("id")
-        .eq("host_id", session.user.id)
+        .eq("owner_id", session.user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .single()
@@ -498,26 +559,27 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   id="username"
                   value={profileData.username}
                   onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-                  required
                   placeholder="mariorossi"
-                  minLength={3}
-                  pattern="[a-zA-Z0-9_]+"
                 />
-                {checkingUsername && (
+                {checkingUsername && profileData.username && (
                   <p className="text-xs text-muted-foreground">Verifica in corso...</p>
                 )}
-                {usernameAvailable === false && (
-                  <p className="text-xs text-destructive">Username non disponibile</p>
+                {usernameAvailable === false && profileData.username && (
+                  <p className="text-xs text-destructive">✗ Username non disponibile</p>
                 )}
-                {usernameAvailable === true && (
+                {usernameAvailable === true && profileData.username && (
                   <p className="text-xs text-green-600">✓ Username disponibile</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Minimo 3 caratteri, solo lettere, numeri e underscore
+                  Lo username deve essere univoco. Se lasciato vuoto, verrà generato automaticamente.
                 </p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading || !usernameAvailable}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading || (profileData.username && usernameAvailable === false) || checkingUsername}
+              >
                 {loading ? "Salvataggio..." : "Continua"}
               </Button>
             </form>
