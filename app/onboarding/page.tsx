@@ -54,7 +54,7 @@ export default function OnboardingPage() {
         return
       }
 
-      if (status === "loading" || !session?.user?.id) {
+      if (status !== "authenticated" || !session?.user?.id) {
         return
       }
 
@@ -193,7 +193,7 @@ export default function OnboardingPage() {
     }
   }
 
-  if (status === "loading") {
+  if (!session) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
@@ -326,7 +326,7 @@ export default function OnboardingPage() {
     )
   }
 
-  if (checkingOnboarding || status === "loading") {
+  if (checkingOnboarding || !session) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
