@@ -104,27 +104,9 @@ export default function SignInPage() {
           description: "Benvenuto su Nomadiqe!",
         })
         
-        // Check profile by email to determine redirect
-        try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("onboarding_completed, role, full_name, username, avatar_url")
-            .eq("email", email)
-            .single()
-
-          if (profile) {
-            // If user has completed onboarding OR has role + profile data, go to home
-            if ((profile.onboarding_completed && profile.role) || 
-                (profile.role && profile.full_name && profile.username)) {
-              router.push("/home")
-              return
-            }
-          }
-        } catch (error) {
-          console.error("Error checking profile after login:", error)
-        }
-        
-        // Default: redirect will be handled by useEffect when session updates
+        // Force session refresh and redirect to home
+        // The home page will handle redirecting to onboarding if needed
+        window.location.href = "/home"
       }
     } catch (error: any) {
       console.error("Sign in error:", error)
@@ -140,7 +122,7 @@ export default function SignInPage() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
-    await signIn("google", { callbackUrl: "/onboarding" })
+    await signIn("google", { callbackUrl: "/home" })
   }
 
   // Show loading only while session is being checked initially
