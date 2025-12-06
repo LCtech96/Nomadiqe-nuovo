@@ -9,10 +9,24 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
-import { UserRole } from "@/types/user"
+import { UserRole, Profile } from "@/types/user"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
 
 type OnboardingStep = "profile" | "role" | "role-specific"
+
+const getDashboardUrl = (role: UserRole | null): string => {
+  switch (role) {
+    case "host":
+      return "/dashboard/host"
+    case "creator":
+      return "/dashboard/creator"
+    case "manager":
+      return "/dashboard/manager"
+    case "traveler":
+    default:
+      return "/dashboard/traveler"
+  }
+}
 
 export default function OnboardingPage() {
   const { data: session, status } = useSession()
@@ -21,6 +35,8 @@ export default function OnboardingPage() {
   const supabase = createSupabaseClient()
   const [step, setStep] = useState<OnboardingStep>("profile")
   const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   
   // Profile data
   const [fullName, setFullName] = useState("")
@@ -30,11 +46,62 @@ export default function OnboardingPage() {
   // Role selection
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
 
+  // Check if user has already completed onboarding
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
+    const checkOnboardingStatus = async () => {
+      if (status === "unauthenticated") {
+        router.push("/auth/signin")
+        return
+      }
+
+      if (status === "loading" || !session?.user?.id) {
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single()
+
+        if (error) throw error
+
+        if (data) {
+          setProfile(data)
+          
+          // If onboarding is completed, redirect to role-specific dashboard
+          if (data.onboarding_completed && data.role) {
+            router.push(getDashboardUrl(data.role))
+            return
+          }
+
+          // If user already has a role selected, load their data
+          if (data.role) {
+            setSelectedRole(data.role)
+          }
+
+          // Set initial step based on onboarding progress
+          if (data.onboarding_step === 0) {
+            setStep("profile")
+          } else if (data.onboarding_step === 1) {
+            setStep("role")
+            setFullName(data.full_name || "")
+            setUsername(data.username || "")
+            setAvatarUrl(data.avatar_url || "")
+          } else if (data.onboarding_step >= 2) {
+            setStep("role-specific")
+          }
+        }
+      } catch (error) {
+        console.error("Error checking onboarding status:", error)
+      } finally {
+        setCheckingOnboarding(false)
+      }
     }
-  }, [status, router])
+
+    checkOnboardingStatus()
+  }, [status, session, router, supabase])
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,7 +165,23 @@ export default function OnboardingPage() {
         .update({ points: 175 }) // 100 sign up + 75 onboarding
         .eq("id", session.user.id)
 
-      setStep("role-specific")
+      // If role is host, go to host-specific onboarding
+      if (selectedRole === "host") {
+        setStep("role-specific")
+      } else {
+        // For other roles, complete onboarding immediately and redirect
+        const { error: completeError } = await supabase
+          .from("profiles")
+          .update({
+            onboarding_completed: true,
+            onboarding_step: 3,
+          })
+          .eq("id", session.user.id)
+
+        if (completeError) throw completeError
+
+        router.push(getDashboardUrl(selectedRole))
+      }
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -243,32 +326,30 @@ export default function OnboardingPage() {
     )
   }
 
+  if (checkingOnboarding || status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+  }
+
   // Role-specific onboarding
   if (step === "role-specific" && selectedRole === "host") {
     return (
       <HostOnboarding
         onComplete={() => {
-          router.push("/dashboard")
+          router.push("/dashboard/host")
         }}
       />
     )
   }
 
-  // For other roles, show completion message
+  // Default fallback (should not reach here in normal flow)
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Onboarding completato!</CardTitle>
+          <CardTitle>Caricamento...</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">Ora puoi iniziare a utilizzare Nomadiqe.</p>
-          <Button
-            onClick={() => router.push("/dashboard")}
-            className="w-full"
-          >
-            Vai alla Dashboard
-          </Button>
+          <p>Stiamo preparando la tua dashboard...</p>
         </CardContent>
       </Card>
     </div>
