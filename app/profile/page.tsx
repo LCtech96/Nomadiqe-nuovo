@@ -30,19 +30,17 @@ import Link from "next/link"
 
 interface Post {
   id: string
-  images: string[]
-  content: string
-  like_count: number
-  comment_count: number
+  media_url: string | null
+  content: string | null
+  likes_count: number
   created_at: string
 }
 
 interface Property {
   id: string
-  name: string
-  images: string[]
-  city: string
-  country: string
+  title: string
+  images: string[] | null
+  location_data: any
 }
 
 interface Collaboration {
@@ -50,7 +48,6 @@ interface Collaboration {
   property_id: string
   property: Property
   status: string
-  collaboration_type: string
 }
 
 type TabType = "posts" | "vetrina" | "collab" | "notifications"
@@ -150,7 +147,7 @@ export default function ProfilePage() {
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select("*")
-        .eq("author_id", session.user.id)
+        .eq("creator_id", session.user.id)
         .order("created_at", { ascending: false })
 
       if (postsError) {
@@ -163,9 +160,8 @@ export default function ProfilePage() {
       // Load properties (don't fail if error, just set empty array)
       const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
-        .select("id, name, images, city, country")
+        .select("id, title, images, location_data")
         .eq("owner_id", session.user.id)
-        .eq("is_active", true)
 
       if (propertiesError) {
         console.error("Properties error:", propertiesError)
@@ -174,18 +170,17 @@ export default function ProfilePage() {
         setProperties(propertiesData || [])
       }
 
-      // Load collaborations (accepted/completed where host sponsors)
+      // Load collaborations (approved/completed where host sponsors)
       const { data: collabsData, error: collabsError } = await supabase
         .from("collaborations")
         .select(`
           id,
           property_id,
           status,
-          collaboration_type,
-          property:properties(id, name, images, city, country)
+          property:properties(id, title, images, location_data)
         `)
-        .eq("owner_id", session.user.id)
-        .in("status", ["accepted", "completed"])
+        .eq("host_id", session.user.id)
+        .in("status", ["approved", "completed"])
 
       if (collabsError) {
         console.error("Collaborations error:", collabsError)
@@ -200,13 +195,11 @@ export default function ProfilePage() {
               id: c.id,
               property_id: c.property_id,
               status: c.status,
-              collaboration_type: c.collaboration_type,
               property: {
                 id: property.id,
-                name: property.name,
+                title: property.title,
                 images: property.images || [],
-                city: property.city,
-                country: property.country,
+                location_data: property.location_data || {},
               },
             }
           })
@@ -269,14 +262,13 @@ export default function ProfilePage() {
       const { count: postsCount } = await supabase
         .from("posts")
         .select("*", { count: "exact", head: true })
-        .eq("author_id", session.user.id)
+        .eq("creator_id", session.user.id)
 
       // Properties count
       const { count: propertiesCount } = await supabase
         .from("properties")
         .select("*", { count: "exact", head: true })
         .eq("owner_id", session.user.id)
-        .eq("is_active", true)
 
       setStats({
         followers: followersCount || 0,
@@ -788,10 +780,10 @@ export default function ProfilePage() {
                       href={`/posts/${post.id}`}
                       className="relative aspect-square group cursor-pointer"
                     >
-                      {post.images && post.images.length > 0 ? (
+                      {post.media_url ? (
                         <>
                           <Image
-                            src={post.images[0]}
+                            src={post.media_url}
                             alt="Post"
                             fill
                             className="object-cover"
@@ -799,11 +791,7 @@ export default function ProfilePage() {
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
                             <div className="flex items-center gap-1 text-white">
                               <Heart className="w-5 h-5 fill-white" />
-                              <span className="font-semibold">{post.like_count || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-white">
-                              <MessageCircle className="w-5 h-5" />
-                              <span className="font-semibold">{post.comment_count || 0}</span>
+                              <span className="font-semibold">{post.likes_count || 0}</span>
                             </div>
                           </div>
                         </>
@@ -844,7 +832,7 @@ export default function ProfilePage() {
                           <Link href={`/properties/${property.id}`}>
                             <Image
                               src={property.images[0]}
-                              alt={property.name}
+                              alt={property.title}
                               fill
                               className="object-cover"
                             />
@@ -874,7 +862,7 @@ export default function ProfilePage() {
                         <Link href={`/properties/${property.id}`}>
                           <div className="w-full h-full bg-muted flex flex-col items-center justify-center p-4">
                             <span className="text-muted-foreground text-sm text-center">
-                              {property.name}
+                              {property.title}
                             </span>
                           </div>
                         </Link>
@@ -909,20 +897,20 @@ export default function ProfilePage() {
                         <>
                           <Image
                             src={collab.property.images[0]}
-                            alt={collab.property.name}
+                            alt={collab.property.title}
                             fill
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                             <span className="text-white text-sm font-semibold">
-                              {collab.property.name}
+                              {collab.property.title}
                             </span>
                           </div>
                         </>
                       ) : (
                         <div className="w-full h-full bg-muted flex items-center justify-center">
                           <span className="text-muted-foreground text-sm text-center p-4">
-                            {collab.property.name}
+                            {collab.property.title}
                           </span>
                         </div>
                       )}
