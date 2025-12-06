@@ -104,9 +104,42 @@ export default function SignInPage() {
           description: "Benvenuto su Nomadiqe!",
         })
         
-        // Force session refresh and redirect to home
-        // The home page will handle redirecting to onboarding if needed
-        window.location.href = "/home"
+        // Wait a moment for session to update, then check profile by email and redirect
+        setTimeout(async () => {
+          try {
+            // Get user from auth to find email, then check profile
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user?.email) {
+              window.location.href = "/home"
+              return
+            }
+
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role, onboarding_completed, full_name, username, avatar_url")
+              .eq("id", user.id)
+              .single()
+
+            if (profile) {
+              // If user has role AND profile data, go directly to home
+              if (profile.role && profile.full_name && profile.username) {
+                window.location.href = "/home"
+                return
+              }
+              // If onboarding is completed, go to home
+              if (profile.onboarding_completed && profile.role) {
+                window.location.href = "/home"
+                return
+              }
+            }
+            // Default: go to home, which will redirect to onboarding if needed
+            window.location.href = "/home"
+          } catch (error) {
+            console.error("Error checking profile:", error)
+            // On error, still redirect to home
+            window.location.href = "/home"
+          }
+        }, 500)
       }
     } catch (error: any) {
       console.error("Sign in error:", error)

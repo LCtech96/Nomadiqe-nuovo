@@ -82,14 +82,24 @@ export default function OnboardingPage() {
             return
           }
 
-          // If user already has a role selected but missing profile data, skip role selection step
+          // If user already has a role selected but missing profile data
           if (data.role) {
             setSelectedRole(data.role)
-            // Skip directly to role-specific onboarding if role is already set
+            // If profile data is missing, go to profile step to complete it
+            if (!data.full_name || !data.username) {
+              setStep("profile")
+              setFullName(data.full_name || "")
+              setUsername(data.username || "")
+              setAvatarUrl(data.avatar_url || "")
+              setCheckingOnboarding(false)
+              return
+            }
+            // If profile data exists, skip directly to role-specific onboarding
             setStep("role-specific")
             setFullName(data.full_name || "")
             setUsername(data.username || "")
             setAvatarUrl(data.avatar_url || "")
+            setCheckingOnboarding(false)
             return
           }
 
