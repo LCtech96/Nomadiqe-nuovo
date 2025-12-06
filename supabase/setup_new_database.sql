@@ -308,7 +308,8 @@ CREATE POLICY "Properties are viewable by everyone" ON public.properties
   FOR SELECT USING (is_active = TRUE);
 
 CREATE POLICY "Hosts can manage own properties" ON public.properties
-  FOR ALL USING (auth.uid() = host_id);
+  FOR ALL USING (auth.uid() = host_id)
+  WITH CHECK (auth.uid() = host_id);
 
 CREATE POLICY "Bookings are viewable by traveler and host" ON public.bookings
   FOR SELECT USING (auth.uid() = traveler_id OR auth.uid() IN (SELECT host_id FROM public.properties WHERE id = property_id));
