@@ -140,7 +140,29 @@ export default function ProfilePage() {
         .in("status", ["accepted", "completed"])
 
       if (collabsError) throw collabsError
-      setCollaborations((collabsData || []).filter((c: any) => c.property))
+      
+      // Map collaborations to correct type structure
+      const mappedCollaborations: Collaboration[] = (collabsData || [])
+        .filter((c: any) => c.property)
+        .map((c: any) => {
+          const property = Array.isArray(c.property) ? c.property[0] : c.property
+          return {
+            id: c.id,
+            property_id: c.property_id,
+            status: c.status,
+            collaboration_type: c.collaboration_type,
+            property: {
+              id: property.id,
+              name: property.name,
+              images: property.images || [],
+              city: property.city,
+              country: property.country,
+            },
+          }
+        })
+        .filter((c: Collaboration) => c.property && c.property.id)
+      
+      setCollaborations(mappedCollaborations)
 
       // Load statistics
       await loadStatistics()
