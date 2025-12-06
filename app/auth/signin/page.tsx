@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
+import { useState, useEffect } from "react"
+import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,13 +9,60 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
+import { createSupabaseClient } from "@/lib/supabase/client"
+
+const getDashboardUrl = (role: string | null): string => {
+  switch (role) {
+    case "host":
+      return "/dashboard/host"
+    case "creator":
+      return "/dashboard/creator"
+    case "manager":
+      return "/dashboard/manager"
+    case "traveler":
+    default:
+      return "/dashboard/traveler"
+  }
+}
 
 export default function SignInPage() {
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const supabase = createSupabaseClient()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    const checkAuthAndRedirect = async () => {
+      if (status === "authenticated" && session?.user?.id) {
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role, onboarding_completed")
+            .eq("id", session.user.id)
+            .single()
+
+          if (profile) {
+            if (profile.onboarding_completed && profile.role) {
+              // Redirect to home page instead of dashboard
+              router.push("/home")
+            } else if (profile.role) {
+              router.push("/onboarding")
+            } else {
+              router.push("/onboarding")
+            }
+          }
+        } catch (error) {
+          console.error("Error checking profile:", error)
+        }
+      }
+    }
+
+    checkAuthAndRedirect()
+  }, [status, session, router, supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,6 +117,15 @@ export default function SignInPage() {
   const handleGoogleSignIn = async () => {
     setLoading(true)
     await signIn("google", { callbackUrl: "/onboarding" })
+  }
+
+  // Show loading while checking authentication
+  if (status === "loading" || (status === "authenticated" && session)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Caricamento...</div>
+      </div>
+    )
   }
 
   return (

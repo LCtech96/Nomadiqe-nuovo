@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/toaster";
 import Navbar from "@/components/navbar";
+import BottomNav from "@/components/bottom-nav";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,7 +31,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Navbar />
-          {children}
+          <main className="pb-16 md:pb-0">{children}</main>
+          <BottomNav />
           <Toaster />
         </Providers>
       </body>

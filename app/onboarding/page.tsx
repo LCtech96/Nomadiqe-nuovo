@@ -70,15 +70,25 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If onboarding is completed, redirect to role-specific dashboard
+          // If onboarding is completed, redirect to home
           if (data.onboarding_completed && data.role) {
-            router.push(getDashboardUrl(data.role))
+            router.push("/home")
             return
           }
 
-          // If user already has a role selected, load their data
+          // If user already has a role selected, skip role selection
           if (data.role) {
             setSelectedRole(data.role)
+            // Skip directly to role-specific onboarding if role is already set
+            if (data.onboarding_step < 2) {
+              setStep("role-specific")
+            } else {
+              setStep("role-specific")
+            }
+            setFullName(data.full_name || "")
+            setUsername(data.username || "")
+            setAvatarUrl(data.avatar_url || "")
+            return
           }
 
           // Set initial step based on onboarding progress
