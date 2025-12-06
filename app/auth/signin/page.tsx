@@ -47,11 +47,11 @@ export default function SignInPage() {
 
           if (profile) {
             if (profile.onboarding_completed && profile.role) {
-              // Redirect to explore page as requested
-              router.push("/explore")
+              // Redirect to home page (feed) as requested
+              router.push("/home")
             } else if (profile.role && profile.full_name && profile.username) {
-              // User has role and profile data, skip to explore
-              router.push("/explore")
+              // User has role and profile data, skip to home
+              router.push("/home")
             } else if (profile.role) {
               router.push("/onboarding")
             } else {
@@ -113,10 +113,10 @@ export default function SignInPage() {
             .single()
 
           if (profile) {
-            // If user has completed onboarding OR has role + profile data, go to explore
+            // If user has completed onboarding OR has role + profile data, go to home
             if ((profile.onboarding_completed && profile.role) || 
                 (profile.role && profile.full_name && profile.username)) {
-              router.push("/explore")
+              router.push("/home")
               return
             }
           }

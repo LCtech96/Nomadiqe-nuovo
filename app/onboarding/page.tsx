@@ -70,15 +70,15 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If onboarding is completed, redirect to explore
+          // If onboarding is completed, redirect to home
           if (data.onboarding_completed && data.role) {
-            router.push("/explore")
+            router.push("/home")
             return
           }
 
           // If user has role AND profile data (name, username, avatar), skip onboarding completely
           if (data.role && data.full_name && data.username) {
-            router.push("/explore")
+            router.push("/home")
             return
           }
 

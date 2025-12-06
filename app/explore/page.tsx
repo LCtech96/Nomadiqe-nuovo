@@ -88,7 +88,7 @@ export default function ExplorePage() {
   // Map View - Full Screen
   if (viewMode === "map") {
     return (
-      <div className="relative h-[calc(100vh-4rem)] md:h-[calc(100vh-4rem)]">
+      <div className="relative h-[calc(100vh-4rem-4rem)] md:h-[calc(100vh-4rem)] pb-16 md:pb-0">
         {/* Search Bar - Fixed at top */}
         <div className="absolute top-4 left-4 right-4 z-10 md:left-auto md:right-auto md:w-96 md:mx-auto">
           <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2">

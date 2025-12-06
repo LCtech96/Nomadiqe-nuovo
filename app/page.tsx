@@ -13,11 +13,14 @@ export default function HomePage() {
           <p className="text-xl text-muted-foreground mb-8">
             Soggiorni Più Equi, Connessioni Più Profonde
           </p>
-          <div className="flex gap-4 justify-center">
-            <Button asChild size="lg">
-              <Link href="/auth/signin">Inizia Ora</Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link href="/auth/signin">Accedi</Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+              <Link href="/auth/signup">Registrati</Link>
+            </Button>
+            <Button asChild variant="ghost" size="lg" className="w-full sm:w-auto">
               <Link href="/explore">Esplora</Link>
             </Button>
           </div>
