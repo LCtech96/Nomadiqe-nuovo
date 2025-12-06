@@ -157,20 +157,11 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       // Upload avatar if provided
       if (profileData.avatarFile) {
         try {
-          // Check if Blob token is configured
-          if (!process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN && typeof window === "undefined") {
-            // Server-side check
-            const blobToken = process.env.BLOB_READ_WRITE_TOKEN
-            if (!blobToken) {
-              throw new Error("BLOB_READ_WRITE_TOKEN non configurato. Controlla le variabili d'ambiente.")
-            }
-          }
-
           const fileExtension = profileData.avatarFile.name.split(".").pop()
           const fileName = `${session.user.id}/avatar.${fileExtension}`
           
-          // Use token from environment variable
-          const blobToken = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+          // Use token from environment variable (NEW_BLOB_READ_WRITE_TOKEN o BLOB_READ_WRITE_TOKEN per retrocompatibilità)
+          const blobToken = process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
           
           const blob = await put(fileName, profileData.avatarFile, {
             access: "public",
@@ -185,7 +176,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           if (errorMessage.includes("token") || errorMessage.includes("Token")) {
             toast({
               title: "Errore di configurazione",
-              description: "Token Vercel Blob non configurato. Controlla le variabili d'ambiente. Il profilo verrà salvato senza foto.",
+              description: "Token Vercel Blob non configurato. Configura NEW_BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente. Il profilo verrà salvato senza foto.",
               variant: "destructive",
             })
           } else {
@@ -289,12 +280,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
       // Upload images
       const imageUrls: string[] = []
-      const blobToken = process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+      // Use token from environment variable (NEW_BLOB_READ_WRITE_TOKEN o BLOB_READ_WRITE_TOKEN per retrocompatibilità)
+      const blobToken = process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
       
       if (!blobToken && propertyData.images.length > 0) {
         toast({
           title: "Errore di configurazione",
-          description: "Token Vercel Blob non configurato. Configura BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
+          description: "Token Vercel Blob non configurato. Configura NEW_BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
           variant: "destructive",
         })
         setLoading(false)
@@ -318,7 +310,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           if (errorMessage.includes("token") || errorMessage.includes("Token")) {
             toast({
               title: "Errore di configurazione",
-              description: "Token Vercel Blob non configurato. Configura BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
+              description: "Token Vercel Blob non configurato. Configura NEW_BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
               variant: "destructive",
             })
             setLoading(false)
