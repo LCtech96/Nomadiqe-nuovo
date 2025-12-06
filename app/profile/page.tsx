@@ -81,16 +81,27 @@ export default function ProfilePage() {
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
 
   useEffect(() => {
+    if (status === "loading") {
+      return // Wait for session to load
+    }
+    
     if (status === "unauthenticated") {
       router.push("/auth/signin")
-    } else if (status === "authenticated" && session?.user?.id) {
+      return
+    }
+    
+    if (status === "authenticated" && session?.user?.id) {
       loadData()
     }
   }, [status, session, router])
 
   const loadData = async () => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id) {
+      setLoading(false)
+      return
+    }
 
+    setLoading(true)
     try {
       // Load profile
       const { data: profileData, error: profileError } = await supabase
@@ -99,32 +110,55 @@ export default function ProfilePage() {
         .eq("id", session.user.id)
         .single()
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error("Profile error:", profileError)
+        // If profile not found, redirect to onboarding
+        if (profileError.code === "PGRST116") {
+          router.push("/onboarding")
+          return
+        }
+        throw profileError
+      }
+
+      if (!profileData) {
+        console.error("Profile not found for user:", session.user.id)
+        router.push("/onboarding")
+        return
+      }
+
       setProfile(profileData)
       setFullName(profileData.full_name || "")
       setUsername(profileData.username || "")
       setBio(profileData.bio || "")
       setAvatarUrl(profileData.avatar_url || "")
 
-      // Load posts
+      // Load posts (don't fail if error, just set empty array)
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select("*")
         .eq("author_id", session.user.id)
         .order("created_at", { ascending: false })
 
-      if (postsError) throw postsError
-      setPosts(postsData || [])
+      if (postsError) {
+        console.error("Posts error:", postsError)
+        setPosts([])
+      } else {
+        setPosts(postsData || [])
+      }
 
-      // Load properties
+      // Load properties (don't fail if error, just set empty array)
       const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
         .select("id, name, images, city, country")
         .eq("host_id", session.user.id)
         .eq("is_active", true)
 
-      if (propertiesError) throw propertiesError
-      setProperties(propertiesData || [])
+      if (propertiesError) {
+        console.error("Properties error:", propertiesError)
+        setProperties([])
+      } else {
+        setProperties(propertiesData || [])
+      }
 
       // Load collaborations (accepted/completed where host sponsors)
       const { data: collabsData, error: collabsError } = await supabase
@@ -139,38 +173,45 @@ export default function ProfilePage() {
         .eq("host_id", session.user.id)
         .in("status", ["accepted", "completed"])
 
-      if (collabsError) throw collabsError
-      
-      // Map collaborations to correct type structure
-      const mappedCollaborations: Collaboration[] = (collabsData || [])
-        .filter((c: any) => c.property)
-        .map((c: any) => {
-          const property = Array.isArray(c.property) ? c.property[0] : c.property
-          return {
-            id: c.id,
-            property_id: c.property_id,
-            status: c.status,
-            collaboration_type: c.collaboration_type,
-            property: {
-              id: property.id,
-              name: property.name,
-              images: property.images || [],
-              city: property.city,
-              country: property.country,
-            },
-          }
-        })
-        .filter((c: Collaboration) => c.property && c.property.id)
-      
-      setCollaborations(mappedCollaborations)
+      if (collabsError) {
+        console.error("Collaborations error:", collabsError)
+        setCollaborations([])
+      } else {
+        // Map collaborations to correct type structure
+        const mappedCollaborations: Collaboration[] = (collabsData || [])
+          .filter((c: any) => c.property)
+          .map((c: any) => {
+            const property = Array.isArray(c.property) ? c.property[0] : c.property
+            return {
+              id: c.id,
+              property_id: c.property_id,
+              status: c.status,
+              collaboration_type: c.collaboration_type,
+              property: {
+                id: property.id,
+                name: property.name,
+                images: property.images || [],
+                city: property.city,
+                country: property.country,
+              },
+            }
+          })
+          .filter((c: Collaboration) => c.property && c.property.id)
+        
+        setCollaborations(mappedCollaborations)
+      }
 
-      // Load statistics
-      await loadStatistics()
+      // Load statistics (don't fail if error)
+      try {
+        await loadStatistics()
+      } catch (statsError) {
+        console.error("Statistics error:", statsError)
+      }
     } catch (error: any) {
       console.error("Error loading data:", error)
       toast({
         title: "Errore",
-        description: "Impossibile caricare il profilo",
+        description: error?.message || "Impossibile caricare il profilo",
         variant: "destructive",
       })
     } finally {
