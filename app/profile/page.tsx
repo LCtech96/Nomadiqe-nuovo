@@ -21,7 +21,10 @@ import {
   MessageCircle,
   Link2,
   Copy,
-  Check
+  Check,
+  Bell,
+  Upload,
+  ImageIcon
 } from "lucide-react"
 import Link from "next/link"
 
@@ -50,7 +53,7 @@ interface Collaboration {
   collaboration_type: string
 }
 
-type TabType = "posts" | "vetrina" | "collab"
+type TabType = "posts" | "vetrina" | "collab" | "notifications"
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
@@ -78,7 +81,18 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("")
   const [bio, setBio] = useState("")
   const [avatarUrl, setAvatarUrl] = useState("")
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState("")
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
+  
+  // Notifications
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  
+  // Username change tracking
+  const [usernameLastChanged, setUsernameLastChanged] = useState<Date | null>(null)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [checkingUsername, setCheckingUsername] = useState(false)
 
   useEffect(() => {
     if (status === "loading") {
@@ -150,7 +164,7 @@ export default function ProfilePage() {
       const { data: propertiesData, error: propertiesError } = await supabase
         .from("properties")
         .select("id, name, images, city, country")
-        .eq("host_id", session.user.id)
+        .eq("owner_id", session.user.id)
         .eq("is_active", true)
 
       if (propertiesError) {
@@ -170,7 +184,7 @@ export default function ProfilePage() {
           collaboration_type,
           property:properties(id, name, images, city, country)
         `)
-        .eq("host_id", session.user.id)
+        .eq("owner_id", session.user.id)
         .in("status", ["accepted", "completed"])
 
       if (collabsError) {
@@ -206,6 +220,22 @@ export default function ProfilePage() {
         await loadStatistics()
       } catch (statsError) {
         console.error("Statistics error:", statsError)
+      }
+
+      // Load notifications (don't fail if error)
+      try {
+        await loadNotifications()
+      } catch (notifError) {
+        console.error("Notifications error:", notifError)
+      }
+
+      // Load username change date (if column exists, otherwise use updated_at as fallback)
+      if (profileData.username_changed_at) {
+        setUsernameLastChanged(new Date(profileData.username_changed_at))
+      } else if (profileData.updated_at && profileData.username) {
+        // Fallback: use updated_at if username_changed_at doesn't exist
+        // This is not perfect but works as a temporary solution
+        setUsernameLastChanged(new Date(profileData.updated_at))
       }
     } catch (error: any) {
       console.error("Error loading data:", error)
@@ -245,7 +275,7 @@ export default function ProfilePage() {
       const { count: propertiesCount } = await supabase
         .from("properties")
         .select("*", { count: "exact", head: true })
-        .eq("host_id", session.user.id)
+        .eq("owner_id", session.user.id)
         .eq("is_active", true)
 
       setStats({
@@ -259,19 +289,173 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSave = async () => {
+  const loadNotifications = async () => {
     if (!session?.user?.id) return
 
     try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(50)
+
+      if (error) throw error
+
+      setNotifications(data || [])
+      const unread = (data || []).filter((n) => !n.read).length
+      setUnreadCount(unread)
+    } catch (error) {
+      console.error("Error loading notifications:", error)
+    }
+  }
+
+  const canChangeUsername = (): boolean => {
+    if (!usernameLastChanged) return true
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    return usernameLastChanged <= oneWeekAgo
+  }
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Errore",
+          description: "L'immagine deve essere inferiore a 5MB",
+          variant: "destructive",
+        })
+        return
+      }
+      setAvatarFile(file)
+      setAvatarPreview(URL.createObjectURL(file))
+    }
+  }
+
+  // Check username availability
+  useEffect(() => {
+    if (!username || username.trim().length === 0 || username === profile?.username) {
+      setUsernameAvailable(null)
+      return
+    }
+
+    const checkUsername = async () => {
+      setCheckingUsername(true)
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("username", username.toLowerCase().trim())
+          .neq("id", session?.user?.id || "")
+          .maybeSingle()
+
+        if (error && error.code !== "PGRST116") throw error
+
+        setUsernameAvailable(!data)
+      } catch (error) {
+        console.error("Error checking username:", error)
+        setUsernameAvailable(null)
+      } finally {
+        setCheckingUsername(false)
+      }
+    }
+
+    const timeoutId = setTimeout(checkUsername, 500)
+    return () => clearTimeout(timeoutId)
+  }, [username, profile?.username, session?.user?.id, supabase])
+
+  const handleSave = async () => {
+    if (!session?.user?.id) return
+
+    // Check username change limit
+    if (username && username !== profile?.username && !canChangeUsername()) {
+      toast({
+        title: "Errore",
+        description: "Puoi cambiare lo username solo una volta a settimana. Riprova tra qualche giorno.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check username availability if changed
+    if (username && username !== profile?.username) {
+      if (usernameAvailable === false) {
+        toast({
+          title: "Errore",
+          description: "Username non disponibile. Scegline un altro.",
+          variant: "destructive",
+        })
+        return
+      }
+      if (checkingUsername || usernameAvailable === null) {
+        toast({
+          title: "Attendere",
+          description: "Verifica username in corso...",
+        })
+        return
+      }
+    }
+
+    try {
+      let finalAvatarUrl = avatarUrl
+
+      // Upload avatar if file is provided
+      if (avatarFile) {
+        const blobToken = process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+        
+        if (!blobToken) {
+          toast({
+            title: "Errore",
+            description: "Token Vercel Blob non configurato. Configura NEW_BLOB_READ_WRITE_TOKEN nelle variabili d'ambiente.",
+            variant: "destructive",
+          })
+          return
+        }
+
+        try {
+          const { put } = await import("@vercel/blob")
+          const fileExtension = avatarFile.name.split(".").pop()
+          const fileName = `${session.user.id}/avatar.${fileExtension}`
+          const blob = await put(fileName, avatarFile, {
+            access: "public",
+            contentType: avatarFile.type,
+            token: blobToken,
+          })
+          finalAvatarUrl = blob.url
+        } catch (uploadError: any) {
+          console.error("Avatar upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: "Errore nel caricamento dell'avatar. Riprova.",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {
+        full_name: fullName.trim() || null,
+        bio: bio.trim() || null,
+        avatar_url: finalAvatarUrl || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Only update username if changed and available
+      if (username && username !== profile?.username && usernameAvailable) {
+        updateData.username = username.toLowerCase().trim()
+        // Try to set username_changed_at, but don't fail if column doesn't exist
+        try {
+          updateData.username_changed_at = new Date().toISOString()
+        } catch (e) {
+          // Column might not exist, ignore
+        }
+      }
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          full_name: fullName,
-          username: username,
-          bio: bio,
-          avatar_url: avatarUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq("id", session.user.id)
 
       if (error) throw error
@@ -282,6 +466,8 @@ export default function ProfilePage() {
       })
 
       setIsEditing(false)
+      setAvatarFile(null)
+      setAvatarPreview("")
       loadData()
     } catch (error: any) {
       toast({
@@ -355,9 +541,9 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="flex justify-center md:justify-start">
               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-foreground">
-                {avatarUrl ? (
+                {(avatarPreview || avatarUrl) ? (
                   <Image
-                    src={avatarUrl}
+                    src={avatarPreview || avatarUrl}
                     alt={username || "Profile"}
                     fill
                     className="object-cover"
@@ -438,7 +624,22 @@ export default function ProfilePage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="mt-1"
+                        disabled={!canChangeUsername() && username !== profile?.username}
                       />
+                      {!canChangeUsername() && username !== profile?.username && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Puoi cambiare lo username solo una volta a settimana
+                        </p>
+                      )}
+                      {checkingUsername && username && username !== profile?.username && (
+                        <p className="text-xs text-muted-foreground mt-1">Verifica in corso...</p>
+                      )}
+                      {usernameAvailable === false && username && username !== profile?.username && (
+                        <p className="text-xs text-destructive mt-1">✗ Username non disponibile</p>
+                      )}
+                      {usernameAvailable === true && username && username !== profile?.username && (
+                        <p className="text-xs text-green-600 mt-1">✓ Username disponibile</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="bio">Bio</Label>
@@ -452,14 +653,28 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="avatar">Avatar URL</Label>
-                      <Input
-                        id="avatar"
-                        value={avatarUrl}
-                        onChange={(e) => setAvatarUrl(e.target.value)}
-                        className="mt-1"
-                        placeholder="https://..."
-                      />
+                      <Label htmlFor="avatar">Foto profilo</Label>
+                      <div className="flex items-center gap-4 mt-2">
+                        {(avatarPreview || avatarUrl) ? (
+                          <img
+                            src={avatarPreview || avatarUrl}
+                            alt="Preview"
+                            className="w-20 h-20 rounded-full object-cover border-2"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+                            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <Input
+                          id="avatar"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                          className="flex-1"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Max 5MB, formato JPG/PNG</p>
                     </div>
                     <Button onClick={handleSave} className="w-full">
                       Salva modifiche
@@ -534,6 +749,24 @@ export default function ProfilePage() {
               <div className="flex items-center justify-center gap-2">
                 <Heart className="w-4 h-4" />
                 Collab
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors relative ${
+                activeTab === "notifications"
+                  ? "border-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Bell className="w-4 h-4" />
+                Messaggi
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </div>
             </button>
           </div>
@@ -694,6 +927,72 @@ export default function ProfilePage() {
                         </div>
                       )}
                     </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "notifications" && (
+            <div className="py-4">
+              {notifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessuna notifica</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notifications.map((notification) => (
+                    <Card
+                      key={notification.id}
+                      className={`cursor-pointer transition-colors ${
+                        !notification.read ? "bg-primary/5 border-primary/20" : ""
+                      }`}
+                      onClick={async () => {
+                        if (!notification.read) {
+                          await supabase
+                            .from("notifications")
+                            .update({ read: true })
+                            .eq("id", notification.id)
+                          loadNotifications()
+                        }
+                        
+                        // Navigate based on notification type
+                        if (notification.related_id) {
+                          if (notification.type.includes("post")) {
+                            router.push(`/posts/${notification.related_id}`)
+                          } else if (notification.type.includes("property")) {
+                            router.push(`/properties/${notification.related_id}`)
+                          } else if (notification.type.includes("profile")) {
+                            router.push(`/profile/${notification.related_id}`)
+                          }
+                        }
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            !notification.read ? "bg-primary" : "bg-transparent"
+                          }`} />
+                          <div className="flex-1">
+                            <p className="font-semibold text-sm">{notification.title}</p>
+                            {notification.message && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {notification.message}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(notification.created_at).toLocaleDateString("it-IT", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               )}
