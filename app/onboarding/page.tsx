@@ -70,21 +70,23 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If onboarding is completed, redirect to home
+          // If onboarding is completed, redirect to explore
           if (data.onboarding_completed && data.role) {
-            router.push("/home")
+            router.push("/explore")
             return
           }
 
-          // If user already has a role selected, skip role selection
+          // If user has role AND profile data (name, username, avatar), skip onboarding completely
+          if (data.role && data.full_name && data.username) {
+            router.push("/explore")
+            return
+          }
+
+          // If user already has a role selected but missing profile data, skip role selection step
           if (data.role) {
             setSelectedRole(data.role)
             // Skip directly to role-specific onboarding if role is already set
-            if (data.onboarding_step < 2) {
-              setStep("role-specific")
-            } else {
-              setStep("role-specific")
-            }
+            setStep("role-specific")
             setFullName(data.full_name || "")
             setUsername(data.username || "")
             setAvatarUrl(data.avatar_url || "")

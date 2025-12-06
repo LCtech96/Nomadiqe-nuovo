@@ -41,14 +41,17 @@ export default function SignInPage() {
         try {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("role, onboarding_completed")
+            .select("role, onboarding_completed, full_name, username, avatar_url")
             .eq("id", session.user.id)
             .single()
 
           if (profile) {
             if (profile.onboarding_completed && profile.role) {
-              // Redirect to home page instead of dashboard
-              router.push("/home")
+              // Redirect to explore page as requested
+              router.push("/explore")
+            } else if (profile.role && profile.full_name && profile.username) {
+              // User has role and profile data, skip to explore
+              router.push("/explore")
             } else if (profile.role) {
               router.push("/onboarding")
             } else {
@@ -100,7 +103,28 @@ export default function SignInPage() {
           title: "Accesso riuscito",
           description: "Benvenuto su Nomadiqe!",
         })
-        router.push("/onboarding")
+        
+        // Check profile by email to determine redirect
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("onboarding_completed, role, full_name, username, avatar_url")
+            .eq("email", email)
+            .single()
+
+          if (profile) {
+            // If user has completed onboarding OR has role + profile data, go to explore
+            if ((profile.onboarding_completed && profile.role) || 
+                (profile.role && profile.full_name && profile.username)) {
+              router.push("/explore")
+              return
+            }
+          }
+        } catch (error) {
+          console.error("Error checking profile after login:", error)
+        }
+        
+        // Default: redirect will be handled by useEffect when session updates
       }
     } catch (error: any) {
       console.error("Sign in error:", error)
@@ -119,8 +143,8 @@ export default function SignInPage() {
     await signIn("google", { callbackUrl: "/onboarding" })
   }
 
-  // Show loading while checking authentication
-  if (status === "loading" || (status === "authenticated" && session)) {
+  // Show loading only while session is being checked initially
+  if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div>Caricamento...</div>
