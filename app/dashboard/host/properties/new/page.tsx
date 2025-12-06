@@ -66,24 +66,27 @@ export default function NewPropertyPage() {
         })
       }
 
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from("properties")
         .insert({
           owner_id: session.user.id,
-          name: formData.name,
+          title: formData.name,
           description: formData.description,
-          property_type: formData.property_type,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-          latitude: geocodeResult?.lat || null,
-          longitude: geocodeResult?.lon || null,
-          price_per_night: parseFloat(formData.price_per_night),
-          max_guests: parseInt(formData.max_guests),
-          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+          location_data: {
+            property_type: formData.property_type,
+            address: formData.address,
+            city: formData.city,
+            country: formData.country,
+            latitude: geocodeResult?.lat || null,
+            longitude: geocodeResult?.lon || null,
+            price_per_night: parseFloat(formData.price_per_night),
+            max_guests: parseInt(formData.max_guests),
+            bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+            bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+          },
           amenities: formData.amenities,
           images: [],
+          available_for_collab: true,
         })
         .select()
         .single()
