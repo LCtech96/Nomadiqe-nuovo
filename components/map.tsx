@@ -67,6 +67,40 @@ function ZoomHandler({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
+// Component to fix iOS Safari touch gestures
+function IOSMapFix() {
+  const map = useMap()
+  
+  useEffect(() => {
+    // Force enable touch gestures on iOS
+    map.touchZoom.enable()
+    map.dragging.enable()
+    map.doubleClickZoom.enable()
+    
+    // Fix iOS Safari specific issues
+    const container = map.getContainer()
+    if (container) {
+      // Allow touch gestures
+      container.style.touchAction = 'pan-x pan-y pinch-zoom'
+      ;(container.style as any).webkitTouchCallout = 'none'
+      
+      // Force reflow to apply styles
+      void container.offsetHeight
+    }
+    
+    // Re-initialize touch handlers after a delay
+    const timer = setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
+    
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [map])
+  
+  return null
+}
+
 // Create custom icon with property image and price
 function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
   // Get the first image URL - same logic as feed view
@@ -263,48 +297,69 @@ export default function MapComponent({ properties, onPropertySelect, center: pro
     onPropertySelect(property)
   }
 
-  // Prevent page scroll when interacting with map
+  // Fix iOS Safari touch gestures after map initialization
   useEffect(() => {
     const container = mapContainerRef.current
     if (!container) return
 
-    const handleWheel = (e: WheelEvent) => {
-      // Only prevent default if we're actually over the map
-      const target = e.target as HTMLElement
-      if (target.closest('.leaflet-container') || target.closest('.leaflet-pane')) {
-        e.stopPropagation()
-      }
-    }
+    // Wait for map DOM to be ready
+    const timer = setTimeout(() => {
+      const leafletContainer = container.querySelector('.leaflet-container') as HTMLElement
+      if (leafletContainer) {
+        // Apply touch-friendly styles
+        leafletContainer.style.touchAction = 'pan-x pan-y pinch-zoom'
+        ;(leafletContainer.style as any).webkitTouchCallout = 'none'
+        
+        // Fix all panes
+        const panes = container.querySelectorAll('.leaflet-pane')
+        panes.forEach((pane) => {
+          const el = pane as HTMLElement
+          el.style.touchAction = 'pan-x pan-y pinch-zoom'
+          el.style.pointerEvents = 'auto'
+        })
 
-    const handleTouchMove = (e: TouchEvent) => {
-      // Allow touch events for map interaction
-      const target = e.target as HTMLElement
-      if (target.closest('.leaflet-container') || target.closest('.leaflet-pane')) {
-        e.stopPropagation()
+        // Force iOS to recognize touch events
+        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+          leafletContainer.addEventListener('touchstart', (e) => {
+            e.stopPropagation()
+          }, { passive: true })
+          
+          leafletContainer.addEventListener('touchmove', (e) => {
+            e.stopPropagation()
+          }, { passive: true })
+        }
       }
-    }
-
-    container.addEventListener('wheel', handleWheel, { passive: false })
-    container.addEventListener('touchmove', handleTouchMove, { passive: false })
+    }, 300)
 
     return () => {
-      container.removeEventListener('wheel', handleWheel)
-      container.removeEventListener('touchmove', handleTouchMove)
+      clearTimeout(timer)
     }
-  }, [])
+  }, [center]) // Re-run when center changes
 
   return (
-    <div ref={mapContainerRef} style={{ height: "100%", width: "100%", position: "relative" }}>
+    <div 
+      ref={mapContainerRef} 
+      className="leaflet-map-container"
+      style={{ 
+        height: "100%", 
+        width: "100%", 
+        position: "relative"
+      }}
+    >
       <MapContainer
         center={center}
         zoom={6}
-        style={{ height: "100%", width: "100%" }}
+        style={{ 
+          height: "100%", 
+          width: "100%"
+        }}
         scrollWheelZoom={true}
         zoomControl={true}
         dragging={true}
         touchZoom={true}
         doubleClickZoom={true}
         boxZoom={true}
+        keyboard={true}
         preferCanvas={false}
         attributionControl={true}
         zoomSnap={0.5}
@@ -316,6 +371,7 @@ export default function MapComponent({ properties, onPropertySelect, center: pro
       />
       <MapController center={center} shouldFlyTo={!!propCenter} />
       <ZoomHandler onZoomChange={setZoomLevel} />
+      <IOSMapFix />
       <MarkersLayer 
         properties={validProperties}
         zoomLevel={zoomLevel}

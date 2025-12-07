@@ -58,5 +58,33 @@
   }
 }
 
+/* Fix iOS Safari Leaflet Map Touch Gestures */
+.leaflet-container {
+  touch-action: pan-x pan-y pinch-zoom !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.leaflet-container .leaflet-pane,
+.leaflet-container .leaflet-tile-pane,
+.leaflet-container .leaflet-overlay-pane,
+.leaflet-container .leaflet-shadow-pane,
+.leaflet-container .leaflet-marker-pane,
+.leaflet-container .leaflet-tooltip-pane,
+.leaflet-container .leaflet-popup-pane {
+  touch-action: pan-x pan-y pinch-zoom !important;
+  pointer-events: auto !important;
+}
+
+.leaflet-container .leaflet-control-container {
+  touch-action: auto !important;
+}
+
+/* Ensure map container allows touch */
+.leaflet-map-container {
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+
 
 
