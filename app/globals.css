@@ -59,11 +59,12 @@
 }
 
 /* Fix iOS Safari Leaflet Map Touch Gestures */
+/* CRITICAL: Use 'none' for touchAction and let Leaflet handle everything */
 .leaflet-container {
-  touch-action: pan-x pan-y pinch-zoom !important;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
+  touch-action: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
 .leaflet-container .leaflet-pane,
@@ -73,7 +74,7 @@
 .leaflet-container .leaflet-marker-pane,
 .leaflet-container .leaflet-tooltip-pane,
 .leaflet-container .leaflet-popup-pane {
-  touch-action: pan-x pan-y pinch-zoom !important;
+  touch-action: none !important;
   pointer-events: auto !important;
 }
 
@@ -81,9 +82,9 @@
   touch-action: auto !important;
 }
 
-/* Ensure map container allows touch */
+/* Ensure map container allows Leaflet to handle touch */
 .leaflet-map-container {
-  touch-action: pan-x pan-y pinch-zoom !important;
+  touch-action: none !important;
 }
 
 

@@ -161,7 +161,7 @@ export default function ExplorePage() {
           className="absolute inset-0 w-full h-full z-0"
           style={{ 
             overscrollBehavior: 'none',
-            touchAction: 'pan-x pan-y pinch-zoom',
+            touchAction: 'none',
             WebkitOverflowScrolling: 'touch'
           }}
         >

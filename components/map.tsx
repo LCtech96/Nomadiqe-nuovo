@@ -72,29 +72,44 @@ function IOSMapFix() {
   const map = useMap()
   
   useEffect(() => {
-    // Force enable touch gestures on iOS
-    map.touchZoom.enable()
-    map.dragging.enable()
-    map.doubleClickZoom.enable()
+    // Force enable touch gestures on iOS - this is critical
+    if (map.dragging) map.dragging.enable()
+    if (map.touchZoom) map.touchZoom.enable()
+    if (map.doubleClickZoom) map.doubleClickZoom.enable()
     
     // Fix iOS Safari specific issues
     const container = map.getContainer()
     if (container) {
-      // Allow touch gestures
-      container.style.touchAction = 'pan-x pan-y pinch-zoom'
+      // CRITICAL: Use 'none' and let Leaflet handle all touch events
+      // This is the key to making pan work on iOS
+      container.style.touchAction = 'none'
       ;(container.style as any).webkitTouchCallout = 'none'
+      container.style.webkitUserSelect = 'none'
+      container.style.userSelect = 'none'
       
       // Force reflow to apply styles
       void container.offsetHeight
     }
     
-    // Re-initialize touch handlers after a delay
-    const timer = setTimeout(() => {
+    // Ensure dragging is enabled - this is essential for pan
+    const ensureDragging = () => {
+      if (map && map.dragging && !map.dragging.enabled()) {
+        map.dragging.enable()
+      }
+    }
+    
+    // Re-check and enable dragging multiple times to ensure it sticks
+    const timer1 = setTimeout(ensureDragging, 100)
+    const timer2 = setTimeout(ensureDragging, 500)
+    const timer3 = setTimeout(() => {
+      ensureDragging()
       map.invalidateSize()
-    }, 100)
+    }, 1000)
     
     return () => {
-      clearTimeout(timer)
+      clearTimeout(timer1)
+      clearTimeout(timer2)
+      clearTimeout(timer3)
     }
   }, [map])
   
@@ -306,28 +321,22 @@ export default function MapComponent({ properties, onPropertySelect, center: pro
     const timer = setTimeout(() => {
       const leafletContainer = container.querySelector('.leaflet-container') as HTMLElement
       if (leafletContainer) {
-        // Apply touch-friendly styles
-        leafletContainer.style.touchAction = 'pan-x pan-y pinch-zoom'
+        // Disable callout menu on iOS
         ;(leafletContainer.style as any).webkitTouchCallout = 'none'
         
-        // Fix all panes
+        // CRITICAL: Use 'none' for touchAction and let Leaflet handle everything
+        // This is required for iOS Safari to properly handle pan and zoom
+        leafletContainer.style.touchAction = 'none'
+        leafletContainer.style.webkitUserSelect = 'none'
+        leafletContainer.style.userSelect = 'none'
+        
+        // Fix all panes - they need pointer events enabled
         const panes = container.querySelectorAll('.leaflet-pane')
         panes.forEach((pane) => {
           const el = pane as HTMLElement
-          el.style.touchAction = 'pan-x pan-y pinch-zoom'
+          el.style.touchAction = 'none'
           el.style.pointerEvents = 'auto'
         })
-
-        // Force iOS to recognize touch events
-        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-          leafletContainer.addEventListener('touchstart', (e) => {
-            e.stopPropagation()
-          }, { passive: true })
-          
-          leafletContainer.addEventListener('touchmove', (e) => {
-            e.stopPropagation()
-          }, { passive: true })
-        }
       }
     }, 300)
 
