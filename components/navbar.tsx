@@ -43,6 +43,7 @@ export default function Navbar() {
   const [profileError, setProfileError] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const supabase = createSupabaseClient()
 
   useEffect(() => {
@@ -343,64 +344,34 @@ export default function Navbar() {
                 </div>
                 <div className="border-t pt-4 space-y-2">
                   <Link 
-                    href="/explore" 
-                    className="block py-2 text-base"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Esplora
-                  </Link>
-                  <Link 
-                    href="/home" 
-                    className="block py-2 text-base"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Home
-                  </Link>
-                  <Link 
-                    href="/kol-bed" 
-                    className="block py-2 text-base"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    KOL&BED
-                  </Link>
-                  <Link 
                     href="/dashboard" 
                     className="block py-2 text-base"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
-                  <Link 
-                    href="/profile" 
-                    className="block py-2 text-base"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Profilo
-                  </Link>
-                </div>
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-base">Tema</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                      className="gap-2"
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setSettingsOpen(!settingsOpen)}
+                      className="w-full flex items-center justify-between py-2 text-base"
                     >
-                      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-                      {theme === "dark" ? "Scuro" : "Chiaro"}
-                    </Button>
+                      <span>Impostazioni</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {settingsOpen && (
+                      <div className="pl-4 border-l border-border">
+                        <button
+                          onClick={() => {
+                            setMobileMenuOpen(false)
+                            setShowDeleteDialog(true)
+                          }}
+                          className="block w-full text-left py-2 text-sm text-destructive"
+                        >
+                          Elimina profilo
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false)
-                      setShowDeleteDialog(true)
-                    }}
-                    className="w-full text-left py-2 text-base text-destructive"
-                  >
-                    Elimina profilo
-                  </button>
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false)
