@@ -119,13 +119,14 @@ export default function CreatePostDialog({
         return
       }
 
-      // Create post
+      // Create post - usando le colonne corrette del database
+      // Il database usa creator_id (non author_id) e media_url (non images array)
       const { data, error } = await supabase
         .from("posts")
         .insert({
-          author_id: session.user.id,
+          creator_id: session.user.id,
           content: content.trim() || null,
-          images: imageUrls.length > 0 ? imageUrls : null,
+          media_url: imageUrls.length > 0 ? imageUrls[0] : "", // media_url è TEXT, prendiamo la prima immagine
           location: location.trim() || null,
         })
         .select()

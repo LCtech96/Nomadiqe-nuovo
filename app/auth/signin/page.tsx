@@ -36,36 +36,11 @@ export default function SignInPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      if (status === "authenticated" && session?.user?.id) {
-        try {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role, onboarding_completed, full_name, username, avatar_url")
-            .eq("id", session.user.id)
-            .single()
-
-          if (profile) {
-            if (profile.onboarding_completed && profile.role) {
-              // Redirect to home page (feed) as requested
-              router.push("/home")
-            } else if (profile.role && profile.full_name && profile.username) {
-              // User has role and profile data, skip to home
-              router.push("/home")
-            } else if (profile.role) {
-              router.push("/onboarding")
-            } else {
-              router.push("/onboarding")
-            }
-          }
-        } catch (error) {
-          console.error("Error checking profile:", error)
-        }
-      }
+    if (status === "authenticated" && session?.user?.id) {
+      // User is already registered and authenticated - redirect to homepage
+      router.push("/home")
     }
-
-    checkAuthAndRedirect()
-  }, [status, session, router, supabase])
+  }, [status, session, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,42 +79,8 @@ export default function SignInPage() {
           description: "Benvenuto su Nomadiqe!",
         })
         
-        // Wait a moment for session to update, then check profile by email and redirect
-        setTimeout(async () => {
-          try {
-            // Get user from auth to find email, then check profile
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user?.email) {
-              window.location.href = "/home"
-              return
-            }
-
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("role, onboarding_completed, full_name, username, avatar_url")
-              .eq("id", user.id)
-              .single()
-
-            if (profile) {
-              // If user has role AND profile data, go directly to home
-              if (profile.role && profile.full_name && profile.username) {
-                window.location.href = "/home"
-                return
-              }
-              // If onboarding is completed, go to home
-              if (profile.onboarding_completed && profile.role) {
-                window.location.href = "/home"
-                return
-              }
-            }
-            // Default: go to home, which will redirect to onboarding if needed
-            window.location.href = "/home"
-          } catch (error) {
-            console.error("Error checking profile:", error)
-            // On error, still redirect to home
-            window.location.href = "/home"
-          }
-        }, 500)
+        // Redirect to homepage - user is already registered and has profile/role saved
+        window.location.href = "/home"
       }
     } catch (error: any) {
       console.error("Sign in error:", error)

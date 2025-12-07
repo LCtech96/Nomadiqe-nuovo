@@ -58,36 +58,64 @@ export default function OnboardingPage() {
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single()
+          .maybeSingle()
 
-        if (error) throw error
+        // Handle profile not found - this is OK, we'll create it during onboarding
+        if (error && error.code !== "PGRST116" && error.code !== "PGRST301") {
+          console.error("Error checking profile:", error)
+        }
 
         if (data) {
           setProfile(data)
           
-          // If onboarding is completed, redirect to home
-          if (data.onboarding_completed && data.role) {
-            router.push("/home")
-            return
-          }
-
-          // If user has role AND profile data (name, username, avatar), skip onboarding completely
+          // If user is already registered, they should have role and profile data - redirect to home
           if (data.role && data.full_name && data.username) {
             router.push("/home")
             return
           }
+          
+          // Check if onboarding is completed
+          if (data.onboarding_completed && data.role && data.full_name && data.username) {
+            router.push("/home")
+            return
+          }
 
-          // If user already has a role selected
+          // Check onboarding_status to resume from last step
+          if (data.onboarding_status && typeof data.onboarding_status === 'object') {
+            const status = data.onboarding_status as any
+            
+            // If user has a role, restore it
+            if (data.role) {
+              setSelectedRole(data.role)
+              
+              // If role is host, check the current step in onboarding_status
+              if (data.role === "host") {
+                const currentStep = status.current_step || "profile"
+                // If current_step is "role-specific" or we're in host onboarding, go to host onboarding
+                if (currentStep === "profile" || currentStep === "property" || currentStep === "collaborations") {
+                  setStep("role-specific")
+                  setCheckingOnboarding(false)
+                  return
+                }
+              } else {
+                // For other roles, if they have basic info, redirect to home
+                if (data.full_name && data.username) {
+                  router.push("/home")
+                  return
+                }
+              }
+            }
+          }
+
+          // If user already has a role selected (fallback)
           if (data.role) {
             setSelectedRole(data.role)
-            // If role is host and onboarding not completed, go to host onboarding
-            if (data.role === "host" && !data.onboarding_completed) {
+            if (data.role === "host") {
               setStep("role-specific")
               setCheckingOnboarding(false)
               return
             }
-            // If profile data exists and onboarding completed, redirect to home
-            if (data.full_name && data.username && data.onboarding_completed) {
+            if (data.full_name && data.username) {
               router.push("/home")
               return
             }
@@ -97,12 +125,16 @@ export default function OnboardingPage() {
           if (!data.role) {
             setStep("role")
           } else if (data.role === "host") {
-            // Go directly to host onboarding if role is host
             setStep("role-specific")
           }
+        } else {
+          // Profile doesn't exist - start with role selection
+          setStep("role")
         }
       } catch (error) {
         console.error("Error checking onboarding status:", error)
+        // If profile doesn't exist, just start with role selection
+        setStep("role")
       } finally {
         setCheckingOnboarding(false)
       }
@@ -121,51 +153,75 @@ export default function OnboardingPage() {
 
     setLoading(true)
     try {
-      const { error } = await supabase
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
         .from("profiles")
-        .update({
-          role: selectedRole,
-          onboarding_step: 2,
-        })
+        .select("id")
         .eq("id", session.user.id)
+        .maybeSingle()
 
-      if (error) throw error
+      // Prepare profile data for UPSERT
+      const profileData: any = {
+        id: session.user.id,
+        role: selectedRole,
+        email: session.user.email || "", // Add email to satisfy NOT NULL constraint
+      }
 
-      // Award onboarding points
-      await supabase.from("points_history").insert({
-        user_id: session.user.id,
-        points: 75,
-        action_type: "onboarding",
-        description: "Onboarding completato",
-      })
+      // If profile doesn't exist, add initial values
+      if (!existingProfile) {
+        profileData.full_name = session.user.name || session.user.email?.split("@")[0] || ""
+        profileData.username = session.user.email?.split("@")[0] || ""
+      }
 
-      await supabase
+      // UPSERT: creates if doesn't exist, updates if exists
+      // First try without onboarding_status (in case PostgREST cache hasn't updated)
+      let { error: upsertError } = await supabase
         .from("profiles")
-        .update({ points: 175 }) // 100 sign up + 75 onboarding
-        .eq("id", session.user.id)
+        .upsert(profileData, { onConflict: "id" })
 
-      // If role is host, go to host-specific onboarding (which includes profile setup)
+      // If error is about onboarding_status column not found, try again without it
+      if (upsertError && upsertError.code === 'PGRST204' && upsertError.message?.includes('onboarding_status')) {
+        console.warn("onboarding_status column not in cache yet, saving without it for now")
+        // Remove onboarding_status and try again
+        const profileDataWithoutStatus = { ...profileData }
+        delete profileDataWithoutStatus.onboarding_status
+        const { error: retryError } = await supabase
+          .from("profiles")
+          .upsert(profileDataWithoutStatus, { onConflict: "id" })
+        
+        if (retryError) {
+          console.error("Upsert error (retry):", retryError)
+          throw retryError
+        }
+      } else if (upsertError) {
+        console.error("Upsert error:", upsertError)
+        throw upsertError
+      }
+      // onboarding_status temporarily disabled due to PostgREST cache issue
+
+      // If role is host, go to host-specific onboarding
       if (selectedRole === "host") {
         setStep("role-specific")
       } else {
-        // For other roles, they still need basic profile info, but we'll handle it in their specific onboarding
-        // For now, redirect to dashboard (they can complete profile later)
-        const { error: completeError } = await supabase
-          .from("profiles")
-          .update({
-            onboarding_completed: true,
-            onboarding_step: 3,
-          })
-          .eq("id", session.user.id)
-
-        if (completeError) throw completeError
-
-        router.push(getDashboardUrl(selectedRole))
+        // For other roles, mark onboarding as completed and redirect to home
+        try {
+          await supabase
+            .from("profiles")
+            .update({
+              onboarding_completed: true,
+            })
+            .eq("id", session.user.id)
+        } catch (err) {
+          console.warn("Could not update onboarding_completed:", err)
+        }
+        
+        router.push("/home")
       }
     } catch (error: any) {
+      console.error("Error in handleRoleSubmit:", error)
       toast({
         title: "Errore",
-        description: error.message,
+        description: error.message || "Si è verificato un errore durante il salvataggio. Riprova.",
         variant: "destructive",
       })
     } finally {

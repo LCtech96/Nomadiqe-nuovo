@@ -18,6 +18,7 @@ import {
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
+import { X, Upload } from "lucide-react"
 
 export default function NewPropertyPage() {
   const { data: session } = useSession()
@@ -40,7 +41,40 @@ export default function NewPropertyPage() {
     amenities: [] as string[],
   })
 
-  const [currentAmenity, setCurrentAmenity] = useState("")
+  const [images, setImages] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [uploadingImages, setUploadingImages] = useState(false)
+
+  // Lista servizi predefiniti
+  const availableAmenities = [
+    "WiFi",
+    "Parcheggio",
+    "Aria condizionata",
+    "Riscaldamento",
+    "Cucina",
+    "TV",
+    "Lavatrice",
+    "Asciugatrice",
+    "Piscina",
+    "Giardino",
+    "Balcone",
+    "Terrazza",
+    "Camino",
+    "Idromassaggio",
+    "Palestra",
+    "Sauna",
+    "Colazione inclusa",
+    "Animali ammessi",
+    "Accesso disabili",
+    "Servizio di pulizia",
+    "Asciugamani",
+    "Biancheria da letto",
+    "Ferro da stiro",
+    "Asciugacapelli",
+    "Culla",
+    "Seggiolone",
+    "Mensa per bambini",
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,6 +88,7 @@ export default function NewPropertyPage() {
     }
 
     setLoading(true)
+    setUploadingImages(true)
     try {
       // Geocode address
       const fullAddress = `${formData.address}, ${formData.city}, ${formData.country}`
@@ -66,12 +101,72 @@ export default function NewPropertyPage() {
         })
       }
 
+      // Upload images to Vercel Blob
+      const imageUrls: string[] = []
+      const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+
+      if (images.length > 0) {
+        if (!blobToken) {
+          toast({
+            title: "Errore",
+            description: "Token Vercel Blob non configurato. Le immagini non verranno caricate.",
+            variant: "destructive",
+          })
+        } else {
+          try {
+            const { put } = await import("@vercel/blob")
+            
+            for (const image of images) {
+              try {
+                const fileExtension = image.name.split(".").pop()
+                const fileName = `${session.user.id}/properties/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+                
+                const blob = await put(fileName, image, {
+                  access: "public",
+                  contentType: image.type,
+                  token: blobToken,
+                })
+                
+                imageUrls.push(blob.url)
+              } catch (uploadError: any) {
+                console.error("Image upload error:", uploadError)
+                toast({
+                  title: "Attenzione",
+                  description: `Errore nel caricamento di ${image.name}. Continuo con le altre.`,
+                  variant: "destructive",
+                })
+              }
+            }
+          } catch (importError) {
+            console.error("Error importing Vercel Blob:", importError)
+            toast({
+              title: "Errore",
+              description: "Errore nel caricamento delle immagini. La proprietà verrà salvata senza immagini.",
+              variant: "destructive",
+            })
+          }
+        }
+      }
+
+      setUploadingImages(false)
+
       const { data, error} = await supabase
         .from("properties")
         .insert({
           owner_id: session.user.id,
-          title: formData.name,
+          name: formData.name, // Richiesto dal database (NOT NULL)
+          title: formData.name, // Usato dal frontend
           description: formData.description,
+          property_type: formData.property_type, // Richiesto dal database (NOT NULL)
+          address: formData.address, // Richiesto dal database (NOT NULL)
+          city: formData.city, // Richiesto dal database (NOT NULL)
+          country: formData.country, // Richiesto dal database (NOT NULL)
+          latitude: geocodeResult?.lat || null,
+          longitude: geocodeResult?.lon || null,
+          price_per_night: parseFloat(formData.price_per_night), // Richiesto dal database (NOT NULL)
+          max_guests: parseInt(formData.max_guests), // Richiesto dal database (NOT NULL)
+          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
           location_data: {
             property_type: formData.property_type,
             address: formData.address,
@@ -85,8 +180,8 @@ export default function NewPropertyPage() {
             bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
           },
           amenities: formData.amenities,
-          images: [],
-          available_for_collab: true,
+          images: imageUrls,
+          // available_for_collab rimosso temporaneamente per cache PostgREST - default è true
         })
         .select()
         .single()
@@ -100,6 +195,7 @@ export default function NewPropertyPage() {
 
       router.push(`/dashboard/host/properties/${data.id}`)
     } catch (error: any) {
+      setUploadingImages(false)
       toast({
         title: "Errore",
         description: error.message,
@@ -110,21 +206,60 @@ export default function NewPropertyPage() {
     }
   }
 
-  const addAmenity = () => {
-    if (currentAmenity.trim() && !formData.amenities.includes(currentAmenity.trim())) {
+  const toggleAmenity = (amenity: string) => {
+    if (formData.amenities.includes(amenity)) {
+      // Rimuovi se già presente
       setFormData({
         ...formData,
-        amenities: [...formData.amenities, currentAmenity.trim()],
+        amenities: formData.amenities.filter((a) => a !== amenity),
       })
-      setCurrentAmenity("")
+    } else {
+      // Aggiungi se non presente
+      setFormData({
+        ...formData,
+        amenities: [...formData.amenities, amenity],
+      })
     }
   }
 
-  const removeAmenity = (amenity: string) => {
-    setFormData({
-      ...formData,
-      amenities: formData.amenities.filter((a) => a !== amenity),
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length + images.length > 10) {
+      toast({
+        title: "Errore",
+        description: "Puoi caricare massimo 10 immagini",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const newFiles = files.filter((file) => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Attenzione",
+          description: `${file.name} è troppo grande (max 5MB). L'immagine verrà ignorata.`,
+          variant: "destructive",
+        })
+        return false
+      }
+      return true
     })
+
+    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+
+    setImages([...images, ...newFiles])
+    setImagePreviews([...imagePreviews, ...newPreviews])
+  }
+
+  const removeImage = (index: number) => {
+    // Revoca l'URL dell'anteprima per liberare memoria
+    URL.revokeObjectURL(imagePreviews[index])
+    
+    const newImages = images.filter((_, i) => i !== index)
+    const newPreviews = imagePreviews.filter((_, i) => i !== index)
+    
+    setImages(newImages)
+    setImagePreviews(newPreviews)
   }
 
   return (
@@ -272,48 +407,126 @@ export default function NewPropertyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="amenities">Servizi</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="amenities"
-                    value={currentAmenity}
-                    onChange={(e) => setCurrentAmenity(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addAmenity()
-                      }
-                    }}
-                    placeholder="Aggiungi un servizio (es. WiFi, Parcheggio)"
-                  />
-                  <Button type="button" onClick={addAmenity}>
-                    Aggiungi
-                  </Button>
+                <Label>Immagini della struttura</Label>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <Label
+                      htmlFor="images"
+                      className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Carica immagini
+                    </Label>
+                    <Input
+                      id="images"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageChange}
+                      className="hidden"
+                      disabled={loading || uploadingImages}
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {images.length}/10 immagini
+                    </span>
+                  </div>
+                  
+                  {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg border"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={loading || uploadingImages}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {uploadingImages && (
+                    <p className="text-sm text-muted-foreground">
+                      Caricamento immagini in corso...
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Servizi</Label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Seleziona i servizi disponibili nella tua struttura
+                </p>
+                
+                {/* Servizi selezionati */}
                 {formData.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {formData.amenities.map((amenity) => (
                       <span
                         key={amenity}
-                        className="px-3 py-1 bg-secondary rounded-full text-sm flex items-center gap-2"
+                        className="px-3 py-1 bg-primary text-primary-foreground rounded-full text-sm flex items-center gap-2"
                       >
                         {amenity}
                         <button
                           type="button"
-                          onClick={() => removeAmenity(amenity)}
-                          className="text-destructive hover:text-destructive/80"
+                          onClick={() => toggleAmenity(amenity)}
+                          className="hover:bg-primary/80 rounded-full p-0.5"
+                          disabled={loading}
                         >
-                          ×
+                          <X className="w-3 h-3" />
                         </button>
                       </span>
                     ))}
                   </div>
                 )}
+
+                {/* Menu a tendina servizi */}
+                <Select
+                  onValueChange={(value) => toggleAmenity(value)}
+                  disabled={loading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona un servizio da aggiungere" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableAmenities
+                      .filter((amenity) => !formData.amenities.includes(amenity))
+                      .map((amenity) => (
+                        <SelectItem key={amenity} value={amenity}>
+                          {amenity}
+                        </SelectItem>
+                      ))}
+                    {availableAmenities.filter((amenity) => !formData.amenities.includes(amenity)).length === 0 && (
+                      <SelectItem value="no-more" disabled>
+                        Tutti i servizi sono stati aggiunti
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {formData.amenities.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nessun servizio selezionato
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? "Salvataggio..." : "Crea struttura"}
+                <Button type="submit" disabled={loading || uploadingImages} className="flex-1">
+                  {loading || uploadingImages
+                    ? uploadingImages
+                      ? "Caricamento immagini..."
+                      : "Salvataggio..."
+                    : "Crea struttura"}
                 </Button>
                 <Button
                   type="button"

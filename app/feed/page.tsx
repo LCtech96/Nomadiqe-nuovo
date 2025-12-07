@@ -96,8 +96,9 @@ export default function FeedPage() {
       const { data, error } = await supabase
         .from("posts")
         .insert({
-          author_id: session.user.id,
+          creator_id: session.user.id,
           content: newPostContent,
+          media_url: "", // media_url è obbligatorio, sarà aggiornato se si carica un'immagine
           location: newPostLocation || null,
         })
         .select()

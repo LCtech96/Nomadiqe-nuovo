@@ -90,6 +90,7 @@ export default function ProfilePage() {
   const [usernameLastChanged, setUsernameLastChanged] = useState<Date | null>(null)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [profileLoadAttempted, setProfileLoadAttempted] = useState(false)
 
   useEffect(() => {
     if (status === "loading") {
@@ -101,10 +102,11 @@ export default function ProfilePage() {
       return
     }
     
-    if (status === "authenticated" && session?.user?.id) {
+    if (status === "authenticated" && session?.user?.id && !profileLoadAttempted) {
+      setProfileLoadAttempted(true)
       loadData()
     }
-  }, [status, session, router])
+  }, [status, session, router, profileLoadAttempted])
 
   const loadData = async () => {
     if (!session?.user?.id) {
@@ -119,12 +121,12 @@ export default function ProfilePage() {
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
-        .single()
+        .maybeSingle()
 
       if (profileError) {
         console.error("Profile error:", profileError)
-        // If profile not found, redirect to onboarding
-        if (profileError.code === "PGRST116") {
+        // If profile not found or 406 error, redirect to onboarding
+        if (profileError.code === "PGRST116" || profileError.code === "PGRST301" || profileError.message?.includes("406")) {
           router.push("/onboarding")
           return
         }

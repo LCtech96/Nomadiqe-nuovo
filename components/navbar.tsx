@@ -28,31 +28,47 @@ export default function Navbar() {
   const { theme, setTheme } = useTheme()
   const [profile, setProfile] = useState<any>(null)
   const [availableRoles, setAvailableRoles] = useState<string[]>([])
+  const [profileError, setProfileError] = useState(false)
   const supabase = createSupabaseClient()
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (session?.user?.id && !profileError) {
       loadProfile()
     }
   }, [session])
 
   const loadProfile = async () => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || profileError) return
     try {
       const { data, error } = await createSupabaseClient()
         .from("profiles")
         .select("role, full_name, username")
         .eq("id", session.user.id)
-        .single()
+        .maybeSingle()
 
-      if (!error && data) {
+      if (error) {
+        // Handle specific error codes
+        if (error.code === "PGRST116" || error.code === "PGRST301" || error.message?.includes("406")) {
+          // Profile doesn't exist - don't retry
+          setProfileError(true)
+          return
+        }
+        console.error("Error loading profile:", error)
+        return
+      }
+
+      if (data) {
         setProfile(data)
         // For now, single role per user. In future, can be expanded to support multiple roles
         if (data.role) {
           setAvailableRoles([data.role])
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Handle network errors or other issues
+      if (error?.code === "PGRST116" || error?.message?.includes("406")) {
+        setProfileError(true)
+      }
       console.error("Error loading profile:", error)
     }
   }

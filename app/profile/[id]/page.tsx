@@ -83,7 +83,7 @@ export default function PublicProfilePage() {
         const { data: propertiesData } = await supabase
           .from("properties")
           .select("*")
-          .eq("host_id", userId)
+          .eq("owner_id", userId)
           .eq("is_active", true)
           .order("created_at", { ascending: false })
 

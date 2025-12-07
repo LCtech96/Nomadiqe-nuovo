@@ -51,6 +51,7 @@ export default function HomePage() {
   const [hosts, setHosts] = useState<HostProfile[]>([])
   const [managers, setManagers] = useState<any[]>([])
   const [posts, setPosts] = useState<any[]>([])
+  const [dataLoadAttempted, setDataLoadAttempted] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -58,10 +59,11 @@ export default function HomePage() {
       return
     }
 
-    if (status === "authenticated" && session?.user?.id) {
+    if (status === "authenticated" && session?.user?.id && !dataLoadAttempted) {
+      setDataLoadAttempted(true)
       loadData()
     }
-  }, [status, session, router])
+  }, [status, session, router, dataLoadAttempted])
 
   const loadData = async () => {
     if (!session?.user?.id) return
@@ -72,9 +74,25 @@ export default function HomePage() {
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
-        .single()
+        .maybeSingle()
 
-      if (profileError) throw profileError
+      // Handle profile not found
+      if (profileError) {
+        if (profileError.code === "PGRST116" || profileError.code === "PGRST301" || profileError.message?.includes("406")) {
+          // Profile doesn't exist - redirect to onboarding
+          console.log("Profile not found, redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+        throw profileError
+      }
+
+      if (!profileData) {
+        // No profile found
+        router.push("/onboarding")
+        return
+      }
+
       setProfile(profileData)
 
       if (!profileData?.role) {
@@ -102,8 +120,12 @@ export default function HomePage() {
           await loadPosts()
           break
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading data:", error)
+      // If it's a profile error, redirect to onboarding
+      if (error?.code === "PGRST116" || error?.code === "PGRST301" || error?.message?.includes("406")) {
+        router.push("/onboarding")
+      }
     } finally {
       setLoading(false)
     }
@@ -214,9 +236,9 @@ export default function HomePage() {
         .from("posts")
         .select(`
           *,
-          author:profiles!posts_author_id_fkey(username, full_name, avatar_url, role)
+          creator:profiles!posts_creator_id_fkey(username, full_name, avatar_url, role)
         `)
-        .in("author_id", hostCreatorIds)
+        .in("creator_id", hostCreatorIds)
         .order("created_at", { ascending: false })
         .limit(50)
 

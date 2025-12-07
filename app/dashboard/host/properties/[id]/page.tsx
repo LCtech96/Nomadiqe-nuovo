@@ -58,7 +58,7 @@ export default function EditPropertyPage() {
         .from("properties")
         .select("*")
         .eq("id", params.id)
-        .eq("host_id", session?.user.id)
+        .eq("owner_id", session?.user.id)
         .single()
 
       if (error) throw error
