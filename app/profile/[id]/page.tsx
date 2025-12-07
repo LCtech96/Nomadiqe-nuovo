@@ -9,6 +9,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import Link from "next/link"
 import { Instagram, Youtube, Users, MessageCircle, Euro, MapPin, Home, Mail } from "lucide-react"
+import SendMessageDialog from "@/components/send-message-dialog"
 
 interface PublicProfile {
   id: string
@@ -45,6 +46,7 @@ export default function PublicProfilePage() {
   const supabase = createSupabaseClient()
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showMessageDialog, setShowMessageDialog] = useState(false)
 
   useEffect(() => {
     if (params.id) {
@@ -196,10 +198,7 @@ export default function PublicProfilePage() {
                 {session && session.user.id !== profile.id && (
                   <Button
                     className="mt-4 w-full md:w-auto"
-                    onClick={() => {
-                      // TODO: Implement messaging
-                      router.push(`/profile/${profile.id}`)
-                    }}
+                    onClick={() => setShowMessageDialog(true)}
                   >
                     <MessageCircle className="w-4 h-4 mr-2" />
                     Invia messaggio
@@ -296,6 +295,17 @@ export default function PublicProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Message Dialog */}
+      {profile && (
+        <SendMessageDialog
+          open={showMessageDialog}
+          onOpenChange={setShowMessageDialog}
+          receiverId={profile.id}
+          receiverName={profile.username || profile.full_name || "Utente"}
+          receiverRole={profile.role || undefined}
+        />
+      )}
     </div>
   )
 }
