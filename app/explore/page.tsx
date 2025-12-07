@@ -160,11 +160,7 @@ export default function ExplorePage() {
         <div 
           className="absolute inset-0 w-full h-full z-0"
           style={{ 
-            touchAction: 'none',
-            overscrollBehavior: 'none',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-            WebkitTouchCallout: 'none'
+            overscrollBehavior: 'none'
           }}
         >
           <MapComponent
