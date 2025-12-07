@@ -68,32 +68,10 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If user is already registered and has completed onboarding - redirect to home
-          if (data.role && data.full_name && data.username && data.onboarding_completed) {
-            router.push("/home")
-            return
-          }
-          
-          // If user has a role selected, restore it and show appropriate onboarding
+          // If user has a role, redirect to home (regardless of onboarding status)
+          // User can complete missing profile info from profile page
           if (data.role) {
             setSelectedRole(data.role)
-            
-            // If role is host, always go to host-specific onboarding (even if not completed)
-            if (data.role === "host") {
-              setStep("role-specific")
-              setCheckingOnboarding(false)
-              return
-            }
-            
-            // For other roles, if they have basic info, redirect to home
-            if (data.full_name && data.username) {
-              router.push("/home")
-              return
-            }
-            
-            // For other roles without basic info, they should complete onboarding
-            // But since they're not host, they should have completed it already
-            // So redirect to home anyway
             router.push("/home")
             return
           }
@@ -172,11 +150,19 @@ export default function OnboardingPage() {
       }
       // onboarding_status temporarily disabled due to PostgREST cache issue
 
+      // Mark onboarding as completed for non-host roles
+      if (selectedRole !== "host") {
+        await supabase
+          .from("profiles")
+          .update({ onboarding_completed: true })
+          .eq("id", session.user.id)
+      }
+
       // If role is host, go to host-specific onboarding
       if (selectedRole === "host") {
         setStep("role-specific")
       } else {
-        // For other roles, mark onboarding as completed and redirect to home
+        // For other roles, redirect to home
         try {
           await supabase
             .from("profiles")
