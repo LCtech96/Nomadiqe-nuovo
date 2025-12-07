@@ -294,17 +294,19 @@ export default function MapComponent({ properties, onPropertySelect, center: pro
   }, [])
 
   return (
-    <div ref={mapContainerRef} style={{ height: "100%", width: "100%", touchAction: "pan-x pan-y pinch-zoom", overscrollBehavior: "none" }}>
+    <div ref={mapContainerRef} style={{ height: "100%", width: "100%", touchAction: "none", userSelect: "none", WebkitUserSelect: "none" }}>
       <MapContainer
         center={center}
         zoom={6}
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: "100%", width: "100%", touchAction: "none" }}
         scrollWheelZoom={true}
         zoomControl={true}
         dragging={true}
         touchZoom={true}
         doubleClickZoom={true}
         boxZoom={true}
+        preferCanvas={false}
+        attributionControl={true}
       >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

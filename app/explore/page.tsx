@@ -160,15 +160,11 @@ export default function ExplorePage() {
         <div 
           className="absolute inset-0 w-full h-full z-0"
           style={{ 
-            touchAction: 'pan-x pan-y pinch-zoom',
-            overscrollBehavior: 'none'
-          }}
-          onWheel={(e) => {
-            // Prevent wheel events from causing page scroll
-            const target = e.target as HTMLElement
-            if (target.closest('.leaflet-container') || target.closest('.leaflet-pane')) {
-              e.stopPropagation()
-            }
+            touchAction: 'none',
+            overscrollBehavior: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none'
           }}
         >
           <MapComponent
