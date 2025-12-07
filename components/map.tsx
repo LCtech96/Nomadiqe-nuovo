@@ -67,49 +67,86 @@ function ZoomHandler({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   return null
 }
 
-// Component to fix iOS Safari touch gestures
+// Component to fix iOS Safari touch gestures - AGGRESSIVE FIX
 function IOSMapFix() {
   const map = useMap()
   
   useEffect(() => {
-    // Force enable touch gestures on iOS - this is critical
-    if (map.dragging) map.dragging.enable()
-    if (map.touchZoom) map.touchZoom.enable()
-    if (map.doubleClickZoom) map.doubleClickZoom.enable()
-    
-    // Fix iOS Safari specific issues
-    const container = map.getContainer()
-    if (container) {
-      // CRITICAL: Use 'none' and let Leaflet handle all touch events
-      // This is the key to making pan work on iOS
-      container.style.touchAction = 'none'
-      ;(container.style as any).webkitTouchCallout = 'none'
-      container.style.webkitUserSelect = 'none'
-      container.style.userSelect = 'none'
+    const fixIOS = () => {
+      // Force enable ALL touch gestures multiple times
+      try {
+        if (map.dragging) {
+          map.dragging.enable()
+          // Force internal dragging state
+          const dragging = map.dragging as any
+          if (dragging._draggable) {
+            dragging._draggable._enabled = true
+            if (dragging._draggable._map) {
+              dragging._draggable._map.dragging.enable()
+            }
+          }
+        }
+        if (map.touchZoom) {
+          map.touchZoom.enable()
+        }
+        if (map.doubleClickZoom) {
+          map.doubleClickZoom.enable()
+        }
+      } catch (e) {
+        console.log('Error enabling map gestures:', e)
+      }
       
-      // Force reflow to apply styles
-      void container.offsetHeight
-    }
-    
-    // Ensure dragging is enabled - this is essential for pan
-    const ensureDragging = () => {
-      if (map && map.dragging && !map.dragging.enabled()) {
-        map.dragging.enable()
+      const container = map.getContainer()
+      if (container) {
+        // AGGRESSIVE: Set styles on container and ALL children
+        container.style.touchAction = 'none'
+        container.style.pointerEvents = 'auto'
+        ;(container.style as any).webkitTouchCallout = 'none'
+        container.style.webkitUserSelect = 'none'
+        container.style.userSelect = 'none'
+        ;(container.style as any).webkitTapHighlightColor = 'transparent'
+        
+        // Fix all panes - critical for iOS
+        const panes = container.querySelectorAll('.leaflet-pane')
+        panes.forEach((el: Element) => {
+          const htmlEl = el as HTMLElement
+          htmlEl.style.touchAction = 'none'
+          htmlEl.style.pointerEvents = 'auto'
+        })
+        
+        // Fix tiles
+        const tiles = container.querySelectorAll('.leaflet-tile')
+        tiles.forEach((el: Element) => {
+          const htmlEl = el as HTMLElement
+          htmlEl.style.pointerEvents = 'auto'
+          htmlEl.style.touchAction = 'none'
+        })
+        
+        // Force reflow
+        void container.offsetHeight
       }
     }
     
-    // Re-check and enable dragging multiple times to ensure it sticks
-    const timer1 = setTimeout(ensureDragging, 100)
-    const timer2 = setTimeout(ensureDragging, 500)
-    const timer3 = setTimeout(() => {
-      ensureDragging()
+    // Multiple attempts to fix - iOS needs time
+    fixIOS()
+    const timer1 = setTimeout(fixIOS, 100)
+    const timer2 = setTimeout(fixIOS, 300)
+    const timer3 = setTimeout(fixIOS, 500)
+    const timer4 = setTimeout(() => {
+      fixIOS()
       map.invalidateSize()
     }, 1000)
+    
+    // Also fix when map is ready
+    map.whenReady(() => {
+      fixIOS()
+    })
     
     return () => {
       clearTimeout(timer1)
       clearTimeout(timer2)
       clearTimeout(timer3)
+      clearTimeout(timer4)
     }
   }, [map])
   

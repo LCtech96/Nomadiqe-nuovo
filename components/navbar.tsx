@@ -137,8 +137,12 @@ export default function Navbar() {
     }
   }
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
-    <nav className="hidden md:block border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      {/* Desktop Navbar */}
+      <nav className="hidden md:block border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
@@ -285,6 +289,151 @@ export default function Navbar() {
         </DialogContent>
       </Dialog>
     </nav>
+
+      {/* Mobile Navbar */}
+      <nav className="md:hidden border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Nomadiqe
+            </Link>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Menu Dialog */}
+      <Dialog open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+        <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Menu</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {session ? (
+              <>
+                <div className="space-y-2">
+                  <DialogDescription className="text-base font-semibold">
+                    {profile?.full_name || session.user.name || session.user.email}
+                  </DialogDescription>
+                  {profile?.role && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Ruolo:</span>
+                      <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary">
+                        {roleLabels[profile.role] || profile.role}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t pt-4 space-y-2">
+                  <Link 
+                    href="/explore" 
+                    className="block py-2 text-base"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Esplora
+                  </Link>
+                  <Link 
+                    href="/home" 
+                    className="block py-2 text-base"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Home
+                  </Link>
+                  <Link 
+                    href="/kol-bed" 
+                    className="block py-2 text-base"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    KOL&BED
+                  </Link>
+                  <Link 
+                    href="/dashboard" 
+                    className="block py-2 text-base"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link 
+                    href="/profile" 
+                    className="block py-2 text-base"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Profilo
+                  </Link>
+                </div>
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex items-center justify-between py-2">
+                    <span className="text-base">Tema</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      className="gap-2"
+                    >
+                      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                      {theme === "dark" ? "Scuro" : "Chiaro"}
+                    </Button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      setShowDeleteDialog(true)
+                    }}
+                    className="w-full text-left py-2 text-base text-destructive"
+                  >
+                    Elimina profilo
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      signOut()
+                    }}
+                    className="w-full text-left py-2 text-base"
+                  >
+                    Esci
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Link 
+                  href="/auth/signin" 
+                  className="block py-2 text-base text-center border rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Accedi
+                </Link>
+                <Link 
+                  href="/auth/signup" 
+                  className="block py-2 text-base text-center bg-primary text-primary-foreground rounded-md"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Registrati
+                </Link>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
