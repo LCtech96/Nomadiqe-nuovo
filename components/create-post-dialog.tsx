@@ -43,6 +43,7 @@ export default function CreatePostDialog({
   const supabase = createSupabaseClient()
   const [loading, setLoading] = useState(false)
   const [content, setContent] = useState("")
+  const [location, setLocation] = useState("")
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [showCropper, setShowCropper] = useState(false)

@@ -195,7 +195,7 @@ export default function KOLBedPage() {
                 <li>• Raggiungi nuovi target</li>
                 <li>• Marketing efficace</li>
               </ul>
-              {profile?.role === "host" ? (
+              {(profile?.role as string) === "host" ? (
                 <Button asChild className="w-full">
                   <Link href="/kol-bed/creators">
                     Trova Creator

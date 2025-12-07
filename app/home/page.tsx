@@ -73,7 +73,7 @@ export default function HomePage() {
       }
 
       // Get unique author IDs
-      const authorIds = [...new Set(postsData.map((p: any) => p.author_id).filter(Boolean))]
+      const authorIds = Array.from(new Set(postsData.map((p: any) => p.author_id).filter(Boolean)))
       
       if (authorIds.length === 0) {
         setPosts(postsData.map((post: any) => ({ ...post, author: null, liked: false })))
