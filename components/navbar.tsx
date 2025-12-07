@@ -3,10 +3,12 @@
 import { useSession, signOut } from "next-auth/react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Menu, ChevronDown } from "lucide-react"
+import { Moon, Sun, Menu, ChevronDown, Trash2 } from "lucide-react"
 import { createSupabaseClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +17,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 const roleLabels: Record<string, string> = {
   host: "Host",
@@ -26,9 +36,13 @@ const roleLabels: Record<string, string> = {
 export default function Navbar() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
+  const { toast } = useToast()
   const [profile, setProfile] = useState<any>(null)
   const [availableRoles, setAvailableRoles] = useState<string[]>([])
   const [profileError, setProfileError] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const supabase = createSupabaseClient()
 
   useEffect(() => {
@@ -88,6 +102,38 @@ export default function Navbar() {
       window.location.reload()
     } catch (error) {
       console.error("Error changing role:", error)
+    }
+  }
+
+  const handleDeleteProfile = async () => {
+    if (!session?.user?.id) return
+
+    setDeleting(true)
+    try {
+      // Chiama la funzione database che elimina tutto, incluso auth.users
+      const { error } = await supabase.rpc("delete_user_account")
+
+      if (error) throw error
+
+      toast({
+        title: "Profilo eliminato",
+        description: "Il tuo profilo è stato eliminato con successo.",
+      })
+
+      // Logout e reindirizza immediatamente alla home
+      // Usa window.location per forzare un reload completo e fermare tutte le query pendenti
+      await signOut({ redirect: false })
+      window.location.href = "/"
+    } catch (error: any) {
+      console.error("Error deleting profile:", error)
+      toast({
+        title: "Errore",
+        description: error.message || "Si è verificato un errore durante l'eliminazione del profilo.",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+      setShowDeleteDialog(false)
     }
   }
 
@@ -176,6 +222,14 @@ export default function Navbar() {
                     <Link href="/profile">Profilo</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Elimina profilo
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
                     Esci
                   </DropdownMenuItem>
@@ -194,6 +248,42 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Delete Profile Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina profilo</DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare il tuo profilo? Questa azione è irreversibile e eliminerà:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Tutti i tuoi post</li>
+                <li>Le tue collaborazioni</li>
+                {profile?.role === "creator" && <li>I tuoi account social collegati</li>}
+                {profile?.role === "host" && <li>Le tue proprietà pubblicate</li>}
+                <li>Le tue prenotazioni</li>
+                <li>Il tuo profilo e tutti i dati associati</li>
+              </ul>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={deleting}
+            >
+              Annulla
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProfile}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminazione..." : "Elimina profilo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   )
 }

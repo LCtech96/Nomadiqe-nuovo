@@ -62,3 +62,5 @@ Dopo aver eseguito il refresh:
 - Il problema è solo nella cache PostgREST
 - A volte serve riavviare il progetto Supabase per forzare il refresh
 
+
+

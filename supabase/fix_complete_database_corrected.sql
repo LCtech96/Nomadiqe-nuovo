@@ -296,3 +296,5 @@ CREATE TRIGGER update_properties_updated_at
 -- ✅ Vedere i ruoli Host, Creator, Traveler, Manager nel database
 -- ============================================
 
+
+

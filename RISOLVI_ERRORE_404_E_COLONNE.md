@@ -151,3 +151,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 
 **Prima risolvi gli errori 404 riavviando il server, poi gestiamo le colonne!** 🚀
 
+
+

@@ -68,3 +68,5 @@ WHERE EXISTS (
 -- Se vedi 4 righe, significa che TUTTE le colonne esistono!
 -- ============================================
 
+
+

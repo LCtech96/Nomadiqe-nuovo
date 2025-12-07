@@ -43,3 +43,5 @@ L'app continua a funzionare normalmente usando solo `onboarding_completed` per o
 
 Quando PostgREST aggiorna la cache (riavviando il progetto o aspettando), possiamo riabilitare il tracciamento avanzato.
 
+
+

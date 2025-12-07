@@ -116,3 +116,5 @@ Per testare rapidamente senza configurare SMTP:
 
 **Prova prima a verificare il template email e la cartella spam!** 📧
 
+
+

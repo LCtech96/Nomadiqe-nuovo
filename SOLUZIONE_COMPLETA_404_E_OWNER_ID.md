@@ -179,3 +179,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 
 **Segui i passi 1-4 in ordine e dimmi se funziona!** 🚀
 
+
+

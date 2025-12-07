@@ -29,3 +29,5 @@ ORDER BY policyname;
 -- usa la query FIX_POLICY_DINAMICO.sql
 -- ============================================
 
+
+

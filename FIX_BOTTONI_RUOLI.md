@@ -38,3 +38,5 @@ I bottoni Traveler, Host, Creator, Manager nella landing page ora sono **cliccab
 2. Verificare la console del browser per eventuali errori
 3. Controllare se il server di sviluppo è in esecuzione
 
+
+

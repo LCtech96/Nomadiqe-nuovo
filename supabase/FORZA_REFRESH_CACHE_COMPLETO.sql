@@ -93,3 +93,5 @@ WHERE table_schema = 'public'
 -- 3. Ricarica la pagina nel browser (Ctrl+Shift+R)
 -- ============================================
 
+
+

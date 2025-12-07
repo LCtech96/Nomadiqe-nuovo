@@ -61,7 +61,23 @@ export default function EditPropertyPage() {
         .eq("owner_id", session?.user.id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        // Only log non-expected errors (not "not found" errors)
+        if (error.code !== "PGRST116" && error.code !== "PGRST301" && !error.message?.includes("406")) {
+          console.error("Error loading property:", error)
+        }
+        // If property not found, redirect to dashboard
+        if (error.code === "PGRST116" || error.code === "PGRST301" || error.message?.includes("406")) {
+          router.push("/dashboard/host")
+          return
+        }
+        throw error
+      }
+
+      if (!data) {
+        router.push("/dashboard/host")
+        return
+      }
 
       setFormData({
         name: data.name || "",
@@ -78,11 +94,15 @@ export default function EditPropertyPage() {
         is_active: data.is_active ?? true,
       })
     } catch (error: any) {
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare la proprietà",
-        variant: "destructive",
-      })
+      // Only log if it's not a "not found" error
+      if (error?.code !== "PGRST116" && error?.code !== "PGRST301" && !error?.message?.includes("406")) {
+        console.error("Error loading property:", error)
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare la proprietà",
+          variant: "destructive",
+        })
+      }
       router.push("/dashboard/host")
     } finally {
       setLoading(false)

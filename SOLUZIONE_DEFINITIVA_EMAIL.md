@@ -129,3 +129,5 @@ Dopo questa configurazione, le email saranno inviate a TUTTI gli indirizzi, non 
 
 **Procedi con SOLUZIONE 1 (aggiungi al team) o SOLUZIONE 2 (disabilita verifica)!** 🚀
 
+
+

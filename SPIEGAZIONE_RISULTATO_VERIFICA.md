@@ -87,3 +87,5 @@ Allora devi eseguire di nuovo la query di conversione (`CONVERTI_TUTTO_HOST_ID_T
 
 **Scorri in basso nella tabella dei risultati e dimmi cosa vedi nelle altre sezioni!** 📊
 
+
+

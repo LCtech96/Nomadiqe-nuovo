@@ -42,3 +42,5 @@ Le variabili d'ambiente senza `NEXT_PUBLIC_` sono disponibili solo lato server. 
 
 **Dopo questa configurazione, ricarica la pagina e riprova!**
 
+
+

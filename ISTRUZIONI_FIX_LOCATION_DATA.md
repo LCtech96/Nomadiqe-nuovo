@@ -106,3 +106,5 @@ La colonna `location_data` sarà un JSONB con questa struttura:
 
 **Esegui la query e dimmi se funziona!** 🚀
 
+
+

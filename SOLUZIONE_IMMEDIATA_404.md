@@ -50,3 +50,5 @@ Poi gestiamo il problema delle colonne duplicate (`host_id` e `owner_id`).
 
 **Riavvia il server e dimmi se gli errori 404 sono spariti!** 🚀
 
+
+

@@ -156,3 +156,5 @@ Ora puoi testare:
 
 Se hai problemi, esegui di nuovo la query di verifica per controllare lo stato del profilo!
 
+
+

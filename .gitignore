@@ -35,3 +35,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# MCP configuration (contains sensitive keys)
+**/mcp.json
+*.mcp.json
+mcp.json
+.cursor/mcp.json
+
+# Test scripts (delete after use)
+test-mcp-connection.js
+

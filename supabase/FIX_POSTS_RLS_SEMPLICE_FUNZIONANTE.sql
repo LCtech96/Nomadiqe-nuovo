@@ -35,3 +35,5 @@ WHERE schemaname = 'public'
 -- Ora tutti gli utenti autenticati possono creare post!
 -- ============================================
 
+
+

@@ -35,6 +35,7 @@ interface PublicProfile {
   }>
   total_followers?: number
   total_visitors?: number
+  points?: number
 }
 
 export default function PublicProfilePage() {
@@ -137,21 +138,29 @@ export default function PublicProfilePage() {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0 mx-auto md:mx-0">
-                {profile.avatar_url ? (
-                  <Image
-                    src={profile.avatar_url}
-                    alt={profile.username || profile.full_name || "Profile"}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-primary font-bold text-3xl">
-                      {(profile.username || profile.full_name || "U")[0].toUpperCase()}
-                    </span>
-                  </div>
-                )}
+              <div className="relative mx-auto md:mx-0">
+                <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0">
+                  {profile.avatar_url ? (
+                    <Image
+                      src={profile.avatar_url}
+                      alt={profile.username || profile.full_name || "Profile"}
+                      fill
+                      sizes="(max-width: 768px) 96px, 128px"
+                      priority
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-primary font-bold text-3xl">
+                        {(profile.username || profile.full_name || "U")[0].toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* Points Badge */}
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-background">
+                  ⭐ {profile.points || 0}
+                </div>
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">
@@ -178,6 +187,11 @@ export default function PublicProfilePage() {
                       <span className="text-sm text-muted-foreground">visitatori</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg">⭐</span>
+                    <span className="font-semibold text-primary">{profile.points || 0}</span>
+                    <span className="text-sm text-muted-foreground">punti</span>
+                  </div>
                 </div>
                 {session && session.user.id !== profile.id && (
                   <Button
@@ -253,6 +267,7 @@ export default function PublicProfilePage() {
                         src={property.images[0]}
                         alt={property.name}
                         fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                       />
                     </div>

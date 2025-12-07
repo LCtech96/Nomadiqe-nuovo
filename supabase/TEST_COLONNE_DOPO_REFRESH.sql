@@ -64,3 +64,5 @@ SELECT
 -- Se vedi "❌ COLONNA NON TROVATA", c'è ancora un problema
 -- ============================================
 
+
+

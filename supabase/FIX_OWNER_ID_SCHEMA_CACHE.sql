@@ -59,3 +59,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- 2. Clicca su "Restart API" o "Restart Project"
 -- ============================================
 
+
+

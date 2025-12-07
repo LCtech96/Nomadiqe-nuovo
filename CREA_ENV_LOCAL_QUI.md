@@ -161,3 +161,5 @@ Nomadiqe nuovo/                    ← Cartella principale
 
 **Se hai problemi a creare il file, dimmelo!** 😊
 
+
+

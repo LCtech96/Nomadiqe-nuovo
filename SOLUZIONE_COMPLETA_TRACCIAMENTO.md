@@ -115,3 +115,5 @@ Lo stato viene salvato in `onboarding_status` (JSONB):
 
 **Tutto pronto! Ora puoi testare l'applicazione! 🚀**
 
+
+

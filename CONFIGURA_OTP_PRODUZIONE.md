@@ -88,3 +88,5 @@ Se vuoi usare Resend invece del servizio email di Supabase:
 - Il codice scade dopo 1 ora (configurabile in Authentication Settings)
 - Assicurati che il dominio `nomadiqe.com` sia verificato in Resend se usi SMTP personalizzato
 
+
+

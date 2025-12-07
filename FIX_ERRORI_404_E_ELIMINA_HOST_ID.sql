@@ -96,3 +96,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- - Una lista di colonne che mostra owner_id ma NON host_id
 -- ============================================
 
+
+

@@ -27,10 +27,11 @@ import {
   ImageIcon
 } from "lucide-react"
 import Link from "next/link"
+import ImageCropper from "@/components/image-cropper"
 
 interface Post {
   id: string
-  media_url: string | null
+  images: string[] | null
   content: string | null
   likes_count: number
   created_at: string
@@ -81,6 +82,8 @@ export default function ProfilePage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState("")
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false)
+  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null)
   
   // Notifications
   const [notifications, setNotifications] = useState<any[]>([])
@@ -108,7 +111,7 @@ export default function ProfilePage() {
     }
   }, [status, session, router, profileLoadAttempted])
 
-  const loadData = async () => {
+  const loadData = async (retryCount = 0) => {
     if (!session?.user?.id) {
       setLoading(false)
       return
@@ -116,15 +119,33 @@ export default function ProfilePage() {
 
     setLoading(true)
     try {
-      // Load profile
-      const { data: profileData, error: profileError } = await supabase
+      // Load profile with retry mechanism for cache issues
+      let profileData = null
+      let profileError = null
+      
+      const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", session.user.id)
         .maybeSingle()
+      
+      profileData = data
+      profileError = error
+
+      // Retry once if it's a cache/RLS issue (but not if it's a real "not found")
+      if (profileError && retryCount === 0 && 
+          (profileError.message?.includes("cache") || profileError.message?.includes("RLS") || 
+           profileError.code === "PGRST301")) {
+        // Wait a bit and retry
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return loadData(1)
+      }
 
       if (profileError) {
-        console.error("Profile error:", profileError)
+        // Only log non-expected errors (not "not found" errors)
+        if (profileError.code !== "PGRST116" && profileError.code !== "PGRST301" && !profileError.message?.includes("406")) {
+          console.error("Profile error:", profileError)
+        }
         // If profile not found or 406 error, redirect to onboarding
         if (profileError.code === "PGRST116" || profileError.code === "PGRST301" || profileError.message?.includes("406")) {
           router.push("/onboarding")
@@ -134,7 +155,8 @@ export default function ProfilePage() {
       }
 
       if (!profileData) {
-        console.error("Profile not found for user:", session.user.id)
+        // Only redirect to onboarding if we're sure the profile doesn't exist
+        // Don't log if it's a cache/RLS issue that might resolve
         router.push("/onboarding")
         return
       }
@@ -146,11 +168,32 @@ export default function ProfilePage() {
       setAvatarUrl(profileData.avatar_url || "")
 
       // Load posts (don't fail if error, just set empty array)
-      const { data: postsData, error: postsError } = await supabase
-        .from("posts")
-        .select("*")
-        .eq("creator_id", session.user.id)
-        .order("created_at", { ascending: false })
+      // Retry logic in case of PostgREST cache issues
+      let postsData = null
+      let postsError = null
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const result = await supabase
+          .from("posts")
+          .select("*")
+          .eq("author_id", session.user.id)
+          .order("created_at", { ascending: false })
+        
+        postsData = result.data
+        postsError = result.error
+        
+        if (!postsError) {
+          break
+        }
+        
+        // If error is about column not existing, wait and retry (PostgREST cache issue)
+        if (postsError?.code === '42703' && attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)))
+          continue
+        }
+        
+        break
+      }
 
       if (postsError) {
         console.error("Posts error:", postsError)
@@ -264,7 +307,7 @@ export default function ProfilePage() {
       const { count: postsCount } = await supabase
         .from("posts")
         .select("*", { count: "exact", head: true })
-        .eq("creator_id", session.user.id)
+        .eq("author_id", session.user.id)
 
       // Properties count
       const { count: propertiesCount } = await supabase
@@ -314,18 +357,31 @@ export default function ProfilePage() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "Errore",
-          description: "L'immagine deve essere inferiore a 5MB",
+          description: "L'immagine è troppo grande. Dimensione massima: 10MB",
           variant: "destructive",
         })
         return
       }
-      setAvatarFile(file)
-      setAvatarPreview(URL.createObjectURL(file))
+      
+      // Open cropper instead of setting file directly
+      setAvatarFileToCrop(file)
+      setShowAvatarCropper(true)
+      
+      // Reset input
+      e.target.value = ""
     }
   }
+
+  const handleAvatarCropComplete = (croppedFile: File) => {
+    setAvatarFile(croppedFile)
+    setAvatarPreview(URL.createObjectURL(croppedFile))
+    setShowAvatarCropper(false)
+    setAvatarFileToCrop(null)
+  }
+
 
   // Check username availability
   useEffect(() => {
@@ -533,13 +589,15 @@ export default function ProfilePage() {
         <div className="p-4 md:p-6">
           <div className="flex flex-col md:flex-row gap-6">
             {/* Avatar */}
-            <div className="flex justify-center md:justify-start">
+            <div className="flex justify-center md:justify-start relative">
               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-foreground">
                 {(avatarPreview || avatarUrl) ? (
                   <Image
                     src={avatarPreview || avatarUrl}
                     alt={username || "Profile"}
                     fill
+                    sizes="(max-width: 768px) 96px, 128px"
+                    priority
                     className="object-cover"
                   />
                 ) : (
@@ -549,6 +607,10 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 )}
+              </div>
+              {/* Points Badge */}
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-background">
+                ⭐ {profile?.points || 0}
               </div>
             </div>
 
@@ -579,7 +641,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Statistics */}
-              <div className="flex gap-6 mb-4">
+              <div className="flex gap-6 mb-4 flex-wrap">
                 <div className="text-center md:text-left">
                   <span className="font-semibold">{stats.postsCount}</span>
                   <span className="text-muted-foreground ml-1">post</span>
@@ -595,6 +657,10 @@ export default function ProfilePage() {
                 <div className="text-center md:text-left">
                   <span className="font-semibold">{stats.propertiesCount}</span>
                   <span className="text-muted-foreground ml-1">property</span>
+                </div>
+                <div className="text-center md:text-left">
+                  <span className="font-semibold text-primary">{profile?.points || 0}</span>
+                  <span className="text-muted-foreground ml-1">punti</span>
                 </div>
               </div>
 
@@ -782,12 +848,13 @@ export default function ProfilePage() {
                       href={`/posts/${post.id}`}
                       className="relative aspect-square group cursor-pointer"
                     >
-                      {post.media_url ? (
+                      {post.images && post.images.length > 0 ? (
                         <>
                           <Image
-                            src={post.media_url}
+                            src={post.images[0]}
                             alt="Post"
                             fill
+                            sizes="(max-width: 768px) 33vw, 200px"
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
@@ -836,6 +903,7 @@ export default function ProfilePage() {
                               src={property.images[0]}
                               alt={property.title}
                               fill
+                              sizes="(max-width: 768px) 33vw, 200px"
                               className="object-cover"
                             />
                           </Link>
@@ -901,6 +969,7 @@ export default function ProfilePage() {
                             src={collab.property.images[0]}
                             alt={collab.property.title}
                             fill
+                            sizes="(max-width: 768px) 33vw, 200px"
                             className="object-cover"
                           />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -990,6 +1059,18 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+      
+      {/* Image Cropper for Avatar */}
+      <ImageCropper
+        open={showAvatarCropper}
+        onOpenChange={setShowAvatarCropper}
+        imageFile={avatarFileToCrop}
+        onCropComplete={handleAvatarCropComplete}
+        aspectRatio={1}
+        maxWidth={800}
+        maxHeight={800}
+        quality={0.85}
+      />
     </div>
   )
 }

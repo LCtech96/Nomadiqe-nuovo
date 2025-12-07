@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -18,6 +19,12 @@ import { useToast } from "@/hooks/use-toast"
 import { put } from "@vercel/blob"
 import { ImageIcon, X } from "lucide-react"
 import Image from "next/image"
+import dynamic from "next/dynamic"
+
+const ImageCropper = dynamic(() => import("@/components/image-cropper"), {
+  ssr: false,
+  loading: () => null,
+})
 
 interface CreatePostDialogProps {
   open: boolean
@@ -36,9 +43,11 @@ export default function CreatePostDialog({
   const supabase = createSupabaseClient()
   const [loading, setLoading] = useState(false)
   const [content, setContent] = useState("")
-  const [location, setLocation] = useState("")
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [showCropper, setShowCropper] = useState(false)
+  const [fileToCrop, setFileToCrop] = useState<File | null>(null)
+  const [cropIndex, setCropIndex] = useState<number>(-1)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -51,11 +60,55 @@ export default function CreatePostDialog({
       return
     }
 
-    const newFiles = files.filter((file) => file.size <= 5 * 1024 * 1024)
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+    // Filter files by size (max 10MB before cropping)
+    const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024)
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: "Errore",
+        description: "Le immagini devono essere inferiori a 10MB",
+        variant: "destructive",
+      })
+      return
+    }
 
-    setImages([...images, ...newFiles])
-    setImagePreviews([...imagePreviews, ...newPreviews])
+    // Open cropper for first file, queue others
+    if (validFiles.length > 0) {
+      setFileToCrop(validFiles[0])
+      setCropIndex(images.length) // Index where this image will be added
+      setShowCropper(true)
+      
+      // If there are more files, they'll be processed after cropping
+      if (validFiles.length > 1) {
+        // Store remaining files temporarily (you might want to use a queue)
+        // For now, we'll just process one at a time
+      }
+    }
+    
+    // Reset input
+    e.target.value = ""
+  }
+
+  const handleCropComplete = (croppedFile: File) => {
+    const newPreview = URL.createObjectURL(croppedFile)
+    
+    if (cropIndex === -1) {
+      // Adding new image
+      setImages([...images, croppedFile])
+      setImagePreviews([...imagePreviews, newPreview])
+    } else {
+      // Replacing existing image
+      const newImages = [...images]
+      const newPreviews = [...imagePreviews]
+      newImages[cropIndex] = croppedFile
+      newPreviews[cropIndex] = newPreview
+      setImages(newImages)
+      setImagePreviews(newPreviews)
+    }
+    
+    setShowCropper(false)
+    setFileToCrop(null)
+    setCropIndex(-1)
   }
 
   const removeImage = (index: number) => {
@@ -120,40 +173,44 @@ export default function CreatePostDialog({
       }
 
       // Create post - usando le colonne corrette del database
-      // Il database usa creator_id (non author_id) e media_url (non images array)
+      // Il database usa author_id e images (array)
       const { data, error } = await supabase
         .from("posts")
         .insert({
-          creator_id: session.user.id,
+          author_id: session.user.id,
           content: content.trim() || null,
-          media_url: imageUrls.length > 0 ? imageUrls[0] : "", // media_url è TEXT, prendiamo la prima immagine
-          location: location.trim() || null,
+          images: imageUrls.length > 0 ? imageUrls : null, // Array di immagini
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Award points for creating post
-      await supabase.from("points_history").insert({
-        user_id: session.user.id,
-        points: 15,
-        action_type: "post",
-        description: "Post creato",
-      })
+      // Award points for creating post (se la tabella esiste)
+      try {
+        await supabase.from("points_history").insert({
+          user_id: session.user.id,
+          points: 15,
+          action_type: "post",
+          description: "Post creato",
+        })
 
-      // Update user points
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("points")
-        .eq("id", session.user.id)
-        .single()
-
-      if (profile) {
-        await supabase
+        // Update user points
+        const { data: profile } = await supabase
           .from("profiles")
-          .update({ points: profile.points + 15 })
+          .select("points")
           .eq("id", session.user.id)
+          .maybeSingle()
+
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({ points: (profile.points || 0) + 15 })
+            .eq("id", session.user.id)
+        }
+      } catch (pointsError) {
+        // Ignora errori se la tabella points_history non esiste
+        console.warn("Could not award points:", pointsError)
       }
 
       toast({
@@ -163,7 +220,6 @@ export default function CreatePostDialog({
 
       // Reset form
       setContent("")
-      setLocation("")
       setImages([])
       setImagePreviews([])
       onOpenChange(false)
@@ -189,6 +245,9 @@ export default function CreatePostDialog({
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crea un nuovo post</DialogTitle>
+          <DialogDescription>
+            Condividi i tuoi momenti con la community. Il post sarà visibile a tutti gli utenti nel feed.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -231,6 +290,7 @@ export default function CreatePostDialog({
                       src={preview}
                       alt={`Preview ${index + 1}`}
                       fill
+                      sizes="(max-width: 768px) 33vw, 150px"
                       className="object-cover rounded-lg"
                     />
                     <button
@@ -262,6 +322,18 @@ export default function CreatePostDialog({
           </div>
         </form>
       </DialogContent>
+      
+      {/* Image Cropper */}
+      <ImageCropper
+        open={showCropper}
+        onOpenChange={setShowCropper}
+        imageFile={fileToCrop}
+        onCropComplete={handleCropComplete}
+        aspectRatio={4/3}
+        maxWidth={1920}
+        maxHeight={1920}
+        quality={0.85}
+      />
     </Dialog>
   )
 }

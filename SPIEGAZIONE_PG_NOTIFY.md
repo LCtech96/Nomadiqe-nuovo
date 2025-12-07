@@ -56,3 +56,5 @@ Se dopo aver eseguito la query principale vedi errori:
 
 Esegui la query di verifica per confermare che tutto sia stato convertito correttamente! 🚀
 
+
+

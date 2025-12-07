@@ -61,3 +61,5 @@ CREATE POLICY "Authenticated users can create posts" ON public.posts
 
 **Vuoi che proceda a correggere tutti i file?**
 
+
+

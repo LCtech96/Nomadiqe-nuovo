@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost', '*.vercel.app', '*.supabase.co'],
+    domains: ['localhost', '*.vercel.app', '*.supabase.co', 'images.unsplash.com'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -11,9 +11,15 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
   },
 }
 
 module.exports = nextConfig
+
+
 

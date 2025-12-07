@@ -63,3 +63,5 @@ SELECT
 -- Se vedi "❌ NON TROVATA", esegui le query separatamente
 -- ============================================
 
+
+

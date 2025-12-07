@@ -142,3 +142,5 @@ Una volta testato tutto e funzionante:
 
 Se hai problemi, controlla i log del browser (F12 → Console) e i log di Supabase per vedere eventuali errori.
 
+
+

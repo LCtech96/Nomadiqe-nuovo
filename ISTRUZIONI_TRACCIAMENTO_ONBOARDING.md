@@ -52,3 +52,5 @@ Lo stato viene salvato in `onboarding_status` (JSONB):
 
 **Vuoi che proceda con le modifiche al frontend dopo che hai eseguito lo script SQL?**
 
+
+

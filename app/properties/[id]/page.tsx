@@ -55,15 +55,48 @@ export default function PropertyDetailPage() {
         .eq("id", params.id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        // Only log non-expected errors (not "not found" errors)
+        if (error.code !== "PGRST116" && error.code !== "PGRST301" && !error.message?.includes("406")) {
+          console.error("Error loading property:", error)
+        }
+        // If property not found, redirect to explore
+        if (error.code === "PGRST116" || error.code === "PGRST301" || error.message?.includes("406")) {
+          toast({
+            title: "Proprietà non trovata",
+            description: "La proprietà che stai cercando non esiste più o non è disponibile.",
+            variant: "destructive",
+          })
+          router.push("/explore")
+          return
+        }
+        throw error
+      }
+      
+      if (!data) {
+        toast({
+          title: "Proprietà non trovata",
+          description: "La proprietà che stai cercando non esiste più o non è disponibile.",
+          variant: "destructive",
+        })
+        router.push("/explore")
+        return
+      }
+      
       setProperty(data)
-    } catch (error) {
-      console.error("Error loading property:", error)
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare la proprietà",
-        variant: "destructive",
-      })
+    } catch (error: any) {
+      // Only log if it's not a "not found" error or 406 error
+      if (error?.code !== "PGRST116" && error?.code !== "PGRST301" && !error?.message?.includes("406")) {
+        console.error("Error loading property:", error)
+        toast({
+          title: "Errore",
+          description: "Impossibile caricare la proprietà",
+          variant: "destructive",
+        })
+      } else {
+        // Silently redirect for not found errors
+        router.push("/explore")
+      }
     } finally {
       setLoading(false)
     }

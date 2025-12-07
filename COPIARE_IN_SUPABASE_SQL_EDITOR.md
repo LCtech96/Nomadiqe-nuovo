@@ -93,3 +93,5 @@ Se dopo 30 secondi il problema persiste:
 
 **Copia la query da `supabase/FIX_OWNER_ID_SCHEMA_CACHE.sql` e incollala su Supabase SQL Editor!** 🚀
 
+
+

@@ -149,3 +149,5 @@ Se non vuoi usare Vercel Blob, puoi usare **Supabase Storage** (già incluso nel
 
 **Hai bisogno di aiuto?** Controlla i log su Vercel Dashboard → Deployments → Logs per vedere eventuali errori dettagliati.
 
+
+

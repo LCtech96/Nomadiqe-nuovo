@@ -22,3 +22,5 @@ CREATE POLICY IF NOT EXISTS "Users can delete own properties" ON public.properti
 -- CREATE POLICY "Users can update own properties" ON public.properties FOR UPDATE USING (auth.uid() = owner_id) WITH CHECK (auth.uid() = owner_id);
 -- ============================================
 
+
+

@@ -107,3 +107,5 @@ Supabase auth error: Invalid login credentials
    - Guarda il terminale dove gira `npm run dev`
    - Cerca messaggi di errore specifici
 
+
+

@@ -45,3 +45,5 @@ ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 -- NOTA: Se le policy già esistono, non serve fare nulla!
 -- ============================================
 
+
+

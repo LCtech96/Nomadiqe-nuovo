@@ -60,6 +60,84 @@ export default function KOLBedPage() {
     return null
   }
 
+  // Se l'utente è host, mostra solo la sezione "Per Host"
+  if (profile?.role === "host") {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <div className="container mx-auto p-4 max-w-4xl">
+          <div className="mb-8 text-center">
+            <Building2 className="w-16 h-16 mx-auto mb-4 text-primary" />
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">KOL&BED</h1>
+            <p className="text-muted-foreground text-lg">
+              La piattaforma che connette Key Opinion Leaders e strutture ricettive
+            </p>
+          </div>
+
+          <Card className="hover:shadow-lg transition-shadow mb-8 max-w-2xl mx-auto">
+            <CardHeader>
+              <CardTitle>Per Host</CardTitle>
+              <CardDescription>
+                Collabora con creator per promuovere la tua struttura
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
+                <li>• Aumenta la visibilità</li>
+                <li>• Contenuti autentici</li>
+                <li>• Raggiungi nuovi target</li>
+                <li>• Marketing efficace</li>
+              </ul>
+              <Button asChild className="w-full">
+                <Link href="/kol-bed/creators">
+                  Trova Creator
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Come funziona</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary font-bold text-xl">1</span>
+                  </div>
+                  <h3 className="font-semibold mb-2">Registrati</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Crea il tuo profilo come Creator o Host
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary font-bold text-xl">2</span>
+                  </div>
+                  <h3 className="font-semibold mb-2">Connettiti</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Esplora e contatta potenziali collaboratori
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary font-bold text-xl">3</span>
+                  </div>
+                  <h3 className="font-semibold mb-2">Collabora</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Inizia collaborazioni proficue per entrambi
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Per altri ruoli o utenti senza ruolo, mostra entrambe le sezioni
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="container mx-auto p-4 max-w-4xl">
@@ -119,7 +197,7 @@ export default function KOLBedPage() {
               </ul>
               {profile?.role === "host" ? (
                 <Button asChild className="w-full">
-                  <Link href="/home">
+                  <Link href="/kol-bed/creators">
                     Trova Creator
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
@@ -175,4 +253,6 @@ export default function KOLBedPage() {
     </div>
   )
 }
+
+
 

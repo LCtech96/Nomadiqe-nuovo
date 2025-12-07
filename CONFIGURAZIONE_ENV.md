@@ -43,3 +43,5 @@ Dopo il riavvio, il messaggio di errore sul token Vercel Blob dovrebbe scomparir
 - Dopo aver completato le altre variabili, riavvia il server
 - Le immagini potranno essere caricate correttamente
 
+
+

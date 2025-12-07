@@ -27,3 +27,5 @@ CREATE POLICY "Hosts can manage own properties" ON public.properties
 -- "new row violates row-level security policy"
 -- ============================================
 
+
+

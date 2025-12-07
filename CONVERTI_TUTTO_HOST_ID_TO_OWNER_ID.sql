@@ -277,3 +277,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- - Policy su properties che usano owner_id
 -- ============================================
 
+
+

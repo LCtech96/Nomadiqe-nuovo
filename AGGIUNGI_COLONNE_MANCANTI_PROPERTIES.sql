@@ -139,3 +139,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- Una lista che mostra title, location_data, name, owner_id
 -- ============================================
 
+
+

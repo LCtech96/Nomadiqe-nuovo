@@ -18,3 +18,5 @@ CREATE POLICY "Users can update own properties" ON public.properties
 --   USING (auth.uid() = owner_id);
 -- ============================================
 
+
+

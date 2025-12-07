@@ -69,3 +69,5 @@ Dopo aver eseguito lo script SQL aggiornato, ogni nuovo utente avrà automaticam
 
 **Importante:** Esegui lo script SQL aggiornato in Supabase SQL Editor se non l'hai già fatto!
 
+
+

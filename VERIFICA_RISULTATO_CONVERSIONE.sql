@@ -121,3 +121,5 @@ ORDER BY tc.constraint_name;
 -- ✅ Indici e foreign keys corretti
 -- ============================================
 
+
+

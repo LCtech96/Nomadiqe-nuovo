@@ -68,65 +68,38 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If user is already registered, they should have role and profile data - redirect to home
-          if (data.role && data.full_name && data.username) {
+          // If user is already registered and has completed onboarding - redirect to home
+          if (data.role && data.full_name && data.username && data.onboarding_completed) {
             router.push("/home")
             return
           }
           
-          // Check if onboarding is completed
-          if (data.onboarding_completed && data.role && data.full_name && data.username) {
-            router.push("/home")
-            return
-          }
-
-          // Check onboarding_status to resume from last step
-          if (data.onboarding_status && typeof data.onboarding_status === 'object') {
-            const status = data.onboarding_status as any
-            
-            // If user has a role, restore it
-            if (data.role) {
-              setSelectedRole(data.role)
-              
-              // If role is host, check the current step in onboarding_status
-              if (data.role === "host") {
-                const currentStep = status.current_step || "profile"
-                // If current_step is "role-specific" or we're in host onboarding, go to host onboarding
-                if (currentStep === "profile" || currentStep === "property" || currentStep === "collaborations") {
-                  setStep("role-specific")
-                  setCheckingOnboarding(false)
-                  return
-                }
-              } else {
-                // For other roles, if they have basic info, redirect to home
-                if (data.full_name && data.username) {
-                  router.push("/home")
-                  return
-                }
-              }
-            }
-          }
-
-          // If user already has a role selected (fallback)
+          // If user has a role selected, restore it and show appropriate onboarding
           if (data.role) {
             setSelectedRole(data.role)
+            
+            // If role is host, always go to host-specific onboarding (even if not completed)
             if (data.role === "host") {
               setStep("role-specific")
               setCheckingOnboarding(false)
               return
             }
+            
+            // For other roles, if they have basic info, redirect to home
             if (data.full_name && data.username) {
               router.push("/home")
               return
             }
+            
+            // For other roles without basic info, they should complete onboarding
+            // But since they're not host, they should have completed it already
+            // So redirect to home anyway
+            router.push("/home")
+            return
           }
 
           // If no role selected, start with role selection
-          if (!data.role) {
-            setStep("role")
-          } else if (data.role === "host") {
-            setStep("role-specific")
-          }
+          setStep("role")
         } else {
           // Profile doesn't exist - start with role selection
           setStep("role")
@@ -332,11 +305,22 @@ export default function OnboardingPage() {
   // Role-specific onboarding
   if (step === "role-specific" && selectedRole === "host") {
     return (
-      <HostOnboarding
-        onComplete={() => {
-          router.push("/home")
-        }}
-      />
+      <div className="min-h-screen">
+        {profile?.role === "host" && (
+          <div className="container mx-auto p-4 max-w-4xl">
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ✓ Sei già registrato come <strong>Host</strong>. Completa l'onboarding per pubblicare la tua prima struttura.
+              </p>
+            </div>
+          </div>
+        )}
+        <HostOnboarding
+          onComplete={() => {
+            router.push("/home")
+          }}
+        />
+      </div>
     )
   }
 

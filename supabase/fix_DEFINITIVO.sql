@@ -184,3 +184,5 @@ CREATE TRIGGER update_properties_updated_at
 -- ✅ Avere tutte le colonne necessarie nel database
 -- ============================================
 
+
+

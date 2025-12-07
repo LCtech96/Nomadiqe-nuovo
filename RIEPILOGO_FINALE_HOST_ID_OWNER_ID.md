@@ -128,3 +128,5 @@ CREATE POLICY "Bookings are viewable by traveler and host" ON public.bookings
 
 **Esegui la query SQL e dimmi se funziona tutto!** 🚀
 
+
+

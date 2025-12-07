@@ -122,3 +122,5 @@ Se scegli l'Opzione 2, usa questo template:
 
 **Procedi con l'Opzione 1 (disabilita verifica email) e dimmi se funziona!** 🚀
 
+
+

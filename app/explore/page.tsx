@@ -8,7 +8,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
-import { Star, Users, MapPin, Map as MapIcon, List } from "lucide-react"
+import { Star, Users, MapPin, Map as MapIcon, List, Search } from "lucide-react"
 
 // Dynamically import map to avoid SSR issues
 const MapComponent = dynamic(() => import("@/components/map"), { ssr: false })
@@ -36,6 +36,7 @@ export default function ExplorePage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null)
   const [viewMode, setViewMode] = useState<"map" | "feed">("map")
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
 
   useEffect(() => {
     loadProperties()
@@ -85,19 +86,60 @@ export default function ExplorePage() {
     }
   }
 
+  const handleLocationSearch = async () => {
+    if (!searchQuery.trim()) return
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1`,
+        {
+          headers: {
+            'User-Agent': 'Nomadiqe App'
+          }
+        }
+      )
+      const data = await response.json()
+      
+      if (data && data.length > 0) {
+        const location = data[0]
+        const lat = parseFloat(location.lat)
+        const lon = parseFloat(location.lon)
+        setMapCenter([lat, lon])
+      }
+    } catch (error) {
+      console.error("Error geocoding location:", error)
+    }
+  }
+
   // Map View - Full Screen
   if (viewMode === "map") {
     return (
-      <div className="relative h-[calc(100vh-4rem-4rem)] md:h-[calc(100vh-4rem)] pb-16 md:pb-0">
-        {/* Search Bar - Fixed at top */}
-        <div className="absolute top-4 left-4 right-4 z-10 md:left-auto md:right-auto md:w-96 md:mx-auto">
-          <div className="bg-background/95 backdrop-blur-sm rounded-lg shadow-lg p-2 flex gap-2">
-            <Input
-              placeholder="Cerca per nome, città o paese..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-            />
+      <div className="fixed inset-0 w-full h-[100dvh] md:h-screen overflow-hidden">
+        {/* Search Bar - Fixed overlay at top */}
+        <div className="fixed top-0 md:top-16 left-0 right-0 z-[100] p-4 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 border-b">
+          <div className="flex gap-2 items-center max-w-2xl mx-auto">
+            <form 
+              onSubmit={(e) => { 
+                e.preventDefault()
+                handleLocationSearch()
+              }}
+              className="flex gap-2 items-center flex-1"
+            >
+              <Input
+                placeholder="Cerca per nome, città o paese..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                variant="outline"
+                className="shrink-0"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </form>
             <Button
               onClick={() => setViewMode("feed")}
               className="shrink-0"
@@ -107,23 +149,32 @@ export default function ExplorePage() {
               Feed View
             </Button>
           </div>
+          {searchQuery && filteredProperties.length > 0 && (
+            <div className="text-xs text-center mt-2 text-muted-foreground">
+              {filteredProperties.length} {filteredProperties.length === 1 ? 'risultato trovato' : 'risultati trovati'}
+            </div>
+          )}
         </div>
 
-        {/* Floating Toggle Button */}
-        <Button
-          onClick={() => setViewMode("feed")}
-          className="fixed bottom-20 right-4 z-10 md:hidden rounded-full h-14 w-14 shadow-lg"
-          size="icon"
+        {/* Map - Full Screen (bottom nav will overlay on top with z-index) */}
+        <div 
+          className="absolute inset-0 w-full h-full z-0"
+          style={{ 
+            touchAction: 'pan-x pan-y pinch-zoom',
+            overscrollBehavior: 'none'
+          }}
+          onWheel={(e) => {
+            // Prevent wheel events from causing page scroll
+            const target = e.target as HTMLElement
+            if (target.closest('.leaflet-container') || target.closest('.leaflet-pane')) {
+              e.stopPropagation()
+            }
+          }}
         >
-          <List className="h-6 w-6" />
-          <span className="sr-only">Feed View</span>
-        </Button>
-
-        {/* Map - Full Screen */}
-        <div className="w-full h-full">
           <MapComponent
             properties={filteredProperties}
             onPropertySelect={handlePropertySelect}
+            center={mapCenter || undefined}
           />
         </div>
       </div>
@@ -133,9 +184,9 @@ export default function ExplorePage() {
   // Feed View
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto p-4">
-        {/* Search Bar */}
-        <div className="mb-6">
+      {/* Search Bar - Sticky at top */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto p-4">
           <div className="flex gap-2 items-center">
             <Input
               placeholder="Cerca per nome, città o paese..."
@@ -152,6 +203,9 @@ export default function ExplorePage() {
             </Button>
           </div>
         </div>
+      </div>
+      
+      <div className="container mx-auto p-4">
 
         {loading ? (
           <div className="flex items-center justify-center py-12">

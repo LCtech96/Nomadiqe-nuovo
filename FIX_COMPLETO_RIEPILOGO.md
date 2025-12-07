@@ -76,3 +76,5 @@ Dopo aver eseguito lo script:
 
 **Procedi con lo script SQL e fammi sapere se funziona!**
 
+
+

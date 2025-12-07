@@ -67,3 +67,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- 4. "Users can delete own properties" (DELETE)
 -- ============================================
 
+
+

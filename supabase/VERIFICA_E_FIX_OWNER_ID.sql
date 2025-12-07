@@ -69,3 +69,5 @@ SELECT pg_notify('pgrst', 'reload schema');
 -- E poi una riga con i dettagli della colonna owner_id
 -- ============================================
 
+
+

@@ -98,3 +98,5 @@ Se dopo 5 minuti vedi ancora errori:
 
 **ASPETTA 2-3 MINUTI**, poi esegui il test delle colonne e fammi sapere cosa vedi! 🚀
 
+
+

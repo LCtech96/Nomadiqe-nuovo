@@ -59,3 +59,5 @@ Se dopo aver eseguito le query SQL e aver fatto il deploy, hai ancora problemi:
 2. Verifica che il tuo profilo abbia `onboarding_completed = true` dopo l'onboarding
 3. Controlla i log del browser per eventuali errori
 
+
+
