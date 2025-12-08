@@ -11,6 +11,16 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Nomadiqe - Soggiorni Più Equi, Connessioni Più Profonde",
   description: "Piattaforma di viaggio che connette Traveler, Host, Creator e Manager",
+  icons: {
+    icon: [
+      { url: "/publicicon.png", type: "image/png" },
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: [
+      { url: "/publicicon.png", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -20,9 +30,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="it" suppressHydrationWarning>
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-      </head>
       <body className={inter.className}>
         <Providers
           attribute="class"

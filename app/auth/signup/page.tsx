@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -117,6 +118,17 @@ function SignUpContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
+        <div className="relative w-full h-24 md:h-32 rounded-t-lg overflow-visible bg-transparent flex items-center justify-center p-6">
+          <div className="relative w-full h-full max-w-[200px] max-h-[200px] mx-auto">
+            <Image
+              src="/onboarding.png"
+              alt="Nomadiqe"
+              fill
+              className="object-contain"
+              priority
+            />
+          </div>
+        </div>
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Registrati su Nomadiqe</CardTitle>
           <CardDescription className="text-center">
@@ -199,6 +211,17 @@ export default function SignUpPage() {
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
         <Card className="w-full max-w-md">
+          <div className="relative w-full h-24 md:h-32 rounded-t-lg overflow-visible bg-transparent flex items-center justify-center p-6">
+            <div className="relative w-full h-full max-w-[200px] max-h-[200px] mx-auto">
+              <Image
+                src="/onboarding.png"
+                alt="Nomadiqe"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+          </div>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-center">Registrati su Nomadiqe</CardTitle>
             <CardDescription className="text-center">
