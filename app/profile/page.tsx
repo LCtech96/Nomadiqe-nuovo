@@ -572,37 +572,39 @@ export default function ProfilePage() {
       setAvatarFile(null)
       setAvatarPreview("")
       
-      // Force update state immediately with new values (before reload)
+      // Update local state immediately with new values
+      const newUsername = username ? username.toLowerCase().trim() : profile?.username
+      const newFullName = fullName ? fullName.trim() : profile?.full_name
+      
+      if (newUsername) {
+        setUsername(newUsername)
+      }
+      if (newFullName !== undefined) {
+        setFullName(newFullName)
+      }
+      
+      // Update avatar URL with cache buster
       if (finalAvatarUrl) {
-        // Add cache buster for mobile browsers
         const cacheBuster = `?t=${Date.now()}`
         const newAvatarUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
         setAvatarUrl(newAvatarUrl)
       }
-      if (username && username !== profile?.username) {
-        setUsername(username.toLowerCase().trim())
-      }
-      if (fullName) {
-        setFullName(fullName.trim())
-      }
       
-      // Reload data to sync with database
-      await loadData()
-      
-      // Force update profile state after reload to ensure UI updates
-      if (finalAvatarUrl && profile) {
+      // Update profile state immediately with new values
+      if (profile) {
         setProfile({
           ...profile,
-          avatar_url: finalAvatarUrl,
-          username: username || profile.username,
-          full_name: fullName || profile.full_name,
+          avatar_url: finalAvatarUrl || profile.avatar_url,
+          username: newUsername || profile.username,
+          full_name: newFullName || profile.full_name,
         })
       }
       
-      // Force router refresh on mobile to clear cache
-      if (typeof window !== 'undefined') {
-        router.refresh()
-      }
+      // Reload data to sync with database (this will update profile state again)
+      await loadData()
+      
+      // Force router refresh to clear cache
+      router.refresh()
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -685,9 +687,16 @@ export default function ProfilePage() {
             {/* Profile Info */}
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                <h1 className="text-xl md:text-2xl font-light">
-                  {username || "username"}
-                </h1>
+                <div className="flex flex-col">
+                  <h1 className="text-xl md:text-2xl font-light">
+                    {username || profile?.username || "username"}
+                  </h1>
+                  {(fullName || profile?.full_name) && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {fullName || profile?.full_name}
+                    </p>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
