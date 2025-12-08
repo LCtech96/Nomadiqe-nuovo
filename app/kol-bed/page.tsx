@@ -40,7 +40,7 @@ export default function KOLBedPage() {
         .single()
 
       if (error) throw error
-      setProfile(data)
+      setProfile(data as Profile)
     } catch (error) {
       console.error("Error loading profile:", error)
     } finally {
@@ -61,7 +61,7 @@ export default function KOLBedPage() {
   }
 
   // Se l'utente è creator, mostra solo la sezione "Per Creator"
-  if (profile?.role === "creator") {
+  if ((profile?.role as string) === "creator") {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="container mx-auto p-4 max-w-4xl">
@@ -138,7 +138,7 @@ export default function KOLBedPage() {
   }
 
   // Se l'utente è host, mostra solo la sezione "Per Host"
-  if (profile?.role === "host") {
+  if ((profile?.role as string) === "host") {
     return (
       <div className="min-h-screen bg-background pb-20">
         <div className="container mx-auto p-4 max-w-4xl">
@@ -241,7 +241,7 @@ export default function KOLBedPage() {
                 <li>• Partnership retribuite</li>
                 <li>• Esposizione delle tue piattaforme</li>
               </ul>
-              {profile?.role === "creator" ? (
+              {(profile?.role as string) === "creator" ? (
                 <Button asChild className="w-full">
                   <Link href="/kol-bed/hosts">
                     Trova Host
