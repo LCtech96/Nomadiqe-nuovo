@@ -64,6 +64,13 @@ export default function ProfilePage() {
   const [properties, setProperties] = useState<Property[]>([])
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [activeTab, setActiveTab] = useState<TabType>("posts")
+
+  // Se l'utente non è host e prova ad accedere a tab non disponibili, reindirizza a posts
+  useEffect(() => {
+    if (profile && profile.role !== "host" && (activeTab === "vetrina" || activeTab === "collab")) {
+      setActiveTab("posts")
+    }
+  }, [profile, activeTab])
   
   // Statistics
   const [stats, setStats] = useState({
@@ -84,6 +91,9 @@ export default function ProfilePage() {
   const [shareLinkCopied, setShareLinkCopied] = useState(false)
   const [showAvatarCropper, setShowAvatarCropper] = useState(false)
   const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
+  const [referralLinkCopied, setReferralLinkCopied] = useState(false)
+  const [referralLink, setReferralLink] = useState<string>("")
   
   // Notifications
   const [notifications, setNotifications] = useState<any[]>([])
@@ -117,20 +127,38 @@ export default function ProfilePage() {
       return
     }
 
+    // SICUREZZA: Verifica esplicita che abbiamo un ID utente valido
+    const currentUserId = session.user.id
+    if (!currentUserId) {
+      router.push("/auth/signin")
+      return
+    }
+
     setLoading(true)
     try {
       // Load profile with retry mechanism for cache issues
       let profileData = null
       let profileError = null
       
+      // SICUREZZA: Usa sempre l'ID dell'utente autenticato, mai parametri dall'URL
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", session.user.id)
+        .eq("id", currentUserId)
         .maybeSingle()
       
       profileData = data
       profileError = error
+
+      // SICUREZZA: Verifica che il profilo caricato corrisponda all'utente autenticato
+      if (profileData && profileData.id !== currentUserId) {
+        console.error("SECURITY ERROR: Profile ID mismatch!", {
+          profileId: profileData.id,
+          currentUserId: currentUserId
+        })
+        router.push("/auth/signin")
+        return
+      }
 
       // Retry once if it's a cache/RLS issue (but not if it's a real "not found")
       if (profileError && retryCount === 0 && 
@@ -166,6 +194,24 @@ export default function ProfilePage() {
       setUsername(profileData.username || "")
       setBio(profileData.bio || "")
       setAvatarUrl(profileData.avatar_url || "")
+
+      // Carica referral code se esiste
+      if (profileData.referral_code) {
+        setReferralCode(profileData.referral_code)
+        setReferralLink(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`)
+      } else {
+        // Prova a caricare dalla tabella referral_codes
+        const { data: refCodeData } = await supabase
+          .from("referral_codes")
+          .select("code")
+          .eq("user_id", session.user.id)
+          .maybeSingle()
+        
+        if (refCodeData?.code) {
+          setReferralCode(refCodeData.code)
+          setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
+        }
+      }
 
       // Load posts (don't fail if error, just set empty array)
       // Retry logic in case of PostgREST cache issues
@@ -564,28 +610,10 @@ export default function ProfilePage() {
     )
   }
 
-  // Only show Instagram-style profile for Host role
-  if (profile.role !== "host") {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="container mx-auto p-4 max-w-4xl">
-          <h1 className="text-2xl font-bold mb-4">Il tuo profilo</h1>
-          <Card>
-            <CardContent className="p-6">
-              <p className="text-muted-foreground">
-                La vista Instagram-style è disponibile solo per gli Host.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-4xl mx-auto">
-        {/* Header - Instagram Style */}
+        {/* Header - Profile Style */}
         <div className="p-4 md:p-6">
           <div className="flex flex-col md:flex-row gap-6">
             {/* Avatar */}
@@ -654,10 +682,13 @@ export default function ProfilePage() {
                   <span className="font-semibold">{stats.following}</span>
                   <span className="text-muted-foreground ml-1">following</span>
                 </div>
-                <div className="text-center md:text-left">
-                  <span className="font-semibold">{stats.propertiesCount}</span>
-                  <span className="text-muted-foreground ml-1">property</span>
-                </div>
+                {/* Mostra "property" solo per host */}
+                {profile?.role === "host" && (
+                  <div className="text-center md:text-left">
+                    <span className="font-semibold">{stats.propertiesCount}</span>
+                    <span className="text-muted-foreground ml-1">property</span>
+                  </div>
+                )}
                 <div className="text-center md:text-left">
                   <span className="font-semibold text-primary">{profile?.points || 0}</span>
                   <span className="text-muted-foreground ml-1">punti</span>
@@ -744,23 +775,61 @@ export default function ProfilePage() {
                   <>
                     <p className="font-semibold">{fullName}</p>
                     {bio && <p className="text-sm mt-1 whitespace-pre-line">{bio}</p>}
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-wrap gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const url = `${window.location.origin}/properties?host=${session?.user?.id}`
+                          const url = `${window.location.origin}/profile/${session?.user?.id}`
                           navigator.clipboard.writeText(url)
                           toast({
                             title: "Link copiato!",
-                            description: "Condividi questo link per promuovere le tue strutture",
+                            description: "Condividi questo link per far conoscere il tuo profilo",
                           })
                         }}
                         className="text-xs"
                       >
                         <Link2 className="w-3 h-3 mr-1" />
-                        Condividi strutture
+                        Condividi profilo
                       </Button>
+                      {referralCode && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (referralLink) {
+                              try {
+                                await navigator.clipboard.writeText(referralLink)
+                                setReferralLinkCopied(true)
+                                toast({
+                                  title: "Link referral copiato!",
+                                  description: "Condividi questo link per invitare amici e guadagnare punti!",
+                                })
+                                setTimeout(() => setReferralLinkCopied(false), 2000)
+                              } catch (error) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Impossibile copiare il link",
+                                  variant: "destructive",
+                                })
+                              }
+                            }
+                          }}
+                          className="text-xs bg-primary/10 hover:bg-primary/20"
+                        >
+                          {referralLinkCopied ? (
+                            <>
+                              <Check className="w-3 h-3 mr-1" />
+                              Copiato!
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="w-3 h-3 mr-1" />
+                              Link Referral
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </>
                 )}
@@ -785,32 +854,38 @@ export default function ProfilePage() {
                 Post
               </div>
             </button>
-            <button
-              onClick={() => setActiveTab("vetrina")}
-              className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-                activeTab === "vetrina"
-                  ? "border-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Square className="w-4 h-4" />
-                Vetrina
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("collab")}
-              className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
-                activeTab === "collab"
-                  ? "border-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Heart className="w-4 h-4" />
-                Collab
-              </div>
-            </button>
+            {/* Tab Vetrina solo per host */}
+            {profile?.role === "host" && (
+              <button
+                onClick={() => setActiveTab("vetrina")}
+                className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+                  activeTab === "vetrina"
+                    ? "border-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Square className="w-4 h-4" />
+                  Vetrina
+                </div>
+              </button>
+            )}
+            {/* Tab Collab solo per host */}
+            {profile?.role === "host" && (
+              <button
+                onClick={() => setActiveTab("collab")}
+                className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors ${
+                  activeTab === "collab"
+                    ? "border-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Heart className="w-4 h-4" />
+                  Collab
+                </div>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("notifications")}
               className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors relative ${
@@ -878,7 +953,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "vetrina" && (
+          {activeTab === "vetrina" && profile?.role === "host" && (
             <div>
               {properties.length === 0 ? (
                 <div className="text-center py-12">
@@ -911,7 +986,11 @@ export default function ProfilePage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleShareProperty(property.id)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleShareProperty(property.id)
+                              }}
                               className="text-white hover:text-white hover:bg-white/20"
                             >
                               {shareLinkCopied ? (
@@ -922,7 +1001,7 @@ export default function ProfilePage() {
                               ) : (
                                 <>
                                   <Share2 className="w-4 h-4 mr-2" />
-                                  Condividi
+                                  Condividi struttura
                                 </>
                               )}
                             </Button>
@@ -944,7 +1023,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "collab" && (
+          {activeTab === "collab" && profile?.role === "host" && (
             <div>
               {collaborations.length === 0 ? (
                 <div className="text-center py-12">

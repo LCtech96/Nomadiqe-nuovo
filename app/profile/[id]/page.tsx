@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import Link from "next/link"
-import { Instagram, Youtube, Users, MessageCircle, Euro, MapPin, Home, Mail } from "lucide-react"
+import { Instagram, Youtube, Users, MessageCircle, Euro, MapPin, Home, Mail, UserPlus, UserCheck, Share2, Check } from "lucide-react"
 import SendMessageDialog from "@/components/send-message-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 interface PublicProfile {
   id: string
@@ -47,6 +48,10 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [showMessageDialog, setShowMessageDialog] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followingLoading, setFollowingLoading] = useState(false)
+  const [shareLinkCopied, setShareLinkCopied] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (params.id) {
@@ -110,10 +115,89 @@ export default function PublicProfilePage() {
       } else {
         setProfile(data)
       }
+
+      // Verifica se l'utente corrente sta seguendo questo profilo
+      if (session?.user?.id && session.user.id !== userId) {
+        const { data: followData } = await supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", session.user.id)
+          .eq("following_id", userId)
+          .maybeSingle()
+        
+        setIsFollowing(!!followData)
+      }
     } catch (error) {
       console.error("Error loading profile:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFollow = async () => {
+    if (!session?.user?.id || !profile) return
+
+    setFollowingLoading(true)
+    try {
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", session.user.id)
+          .eq("following_id", profile.id)
+
+        if (error) throw error
+        setIsFollowing(false)
+        toast({
+          title: "Hai smesso di seguire",
+          description: `Non segui più ${profile.username || profile.full_name || "questo utente"}`,
+        })
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from("follows")
+          .insert({
+            follower_id: session.user.id,
+            following_id: profile.id,
+          })
+
+        if (error) throw error
+        setIsFollowing(true)
+        toast({
+          title: "Ora segui questo utente",
+          description: `Stai seguendo ${profile.username || profile.full_name || "questo utente"}`,
+        })
+      }
+    } catch (error: any) {
+      console.error("Error toggling follow:", error)
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile seguire/non seguire questo utente",
+        variant: "destructive",
+      })
+    } finally {
+      setFollowingLoading(false)
+    }
+  }
+
+  const handleShareProperty = async (propertyId: string) => {
+    const shareUrl = `${window.location.origin}/properties/${propertyId}?ref=${session?.user?.id || ''}`
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setShareLinkCopied(propertyId)
+      toast({
+        title: "Link copiato!",
+        description: "Condividi questo link per promuovere la struttura",
+      })
+      setTimeout(() => setShareLinkCopied(null), 2000)
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare il link",
+        variant: "destructive",
+      })
     }
   }
 
@@ -196,13 +280,34 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
                 {session && session.user.id !== profile.id && (
-                  <Button
-                    className="mt-4 w-full md:w-auto"
-                    onClick={() => setShowMessageDialog(true)}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Invia messaggio
-                  </Button>
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      variant={isFollowing ? "outline" : "default"}
+                      className="flex-1 md:flex-none"
+                      onClick={handleFollow}
+                      disabled={followingLoading}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Segui già
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Segui
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex-1 md:flex-none"
+                      onClick={() => setShowMessageDialog(true)}
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Messaggio
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -257,11 +362,10 @@ export default function PublicProfilePage() {
               {profile.properties.map((property) => (
                 <Card
                   key={property.id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/properties/${property.id}`)}
+                  className="overflow-hidden hover:shadow-lg transition-shadow"
                 >
-                  {property.images && property.images.length > 0 && (
-                    <div className="relative w-full h-48">
+                  {property.images && property.images.length > 0 ? (
+                    <div className="relative w-full h-48 group cursor-pointer" onClick={() => router.push(`/properties/${property.id}`)}>
                       <Image
                         src={property.images[0]}
                         alt={property.name}
@@ -269,10 +373,45 @@ export default function PublicProfilePage() {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover"
                       />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            handleShareProperty(property.id)
+                          }}
+                          className="text-white hover:text-white hover:bg-white/20"
+                        >
+                          {shareLinkCopied === property.id ? (
+                            <>
+                              <Check className="w-4 h-4 mr-2" />
+                              Copiato!
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="w-4 h-4 mr-2" />
+                              Condividi struttura
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-48 cursor-pointer" onClick={() => router.push(`/properties/${property.id}`)}>
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <Home className="w-12 h-12 text-muted-foreground" />
+                      </div>
                     </div>
                   )}
                   <CardContent className="p-4">
-                    <h3 className="font-semibold text-lg mb-1">{property.name}</h3>
+                    <h3 
+                      className="font-semibold text-lg mb-1 cursor-pointer hover:underline"
+                      onClick={() => router.push(`/properties/${property.id}`)}
+                    >
+                      {property.name}
+                    </h3>
                     <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
                       <MapPin className="w-3 h-3" />
                       {property.city}, {property.country}

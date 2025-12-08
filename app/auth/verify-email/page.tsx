@@ -19,6 +19,37 @@ function VerifyEmailContent() {
   const [resending, setResending] = useState(false)
   const email = searchParams.get("email") || ""
 
+  const registerReferralIfExists = async () => {
+    try {
+      const pendingCode = localStorage.getItem('pending_referral_code')
+      if (!pendingCode) return
+
+      // Ottieni l'utente corrente
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.id) return
+
+      // Chiama la funzione SQL per registrare il referral
+      const { data, error } = await supabase.rpc('register_referral', {
+        referred_user_id: user.id,
+        code_used: pendingCode.trim().toUpperCase()
+      })
+
+      if (error) {
+        console.error("Error registering referral:", error)
+        // Non mostrare errore all'utente, il codice potrebbe essere invalido
+      } else if (data) {
+        // Rimuovi il codice da localStorage
+        localStorage.removeItem('pending_referral_code')
+        toast({
+          title: "Bonus referral!",
+          description: "Hai utilizzato un codice referral. Il referrer riceverà i punti bonus!",
+        })
+      }
+    } catch (error) {
+      console.error("Error in registerReferralIfExists:", error)
+    }
+  }
+
   useEffect(() => {
     const token = searchParams.get("token")
     if (token) {
@@ -44,11 +75,15 @@ function VerifyEmailContent() {
       } else {
         // User is already authenticated and has password from signUp
         // No need to set password again
+        
+        // Registra referral se presente
+        await registerReferralIfExists()
+        
         toast({
           title: "Successo",
           description: "Email verificata con successo!",
         })
-        router.push("/onboarding")
+        router.push("/guide")
       }
     } catch (error) {
       toast({
@@ -81,11 +116,15 @@ function VerifyEmailContent() {
       } else {
         // User is already authenticated and has password from signUp
         // No need to set password again
+        
+        // Registra referral se presente
+        await registerReferralIfExists()
+        
         toast({
           title: "Successo",
           description: "Email verificata con successo!",
         })
-        router.push("/onboarding")
+        router.push("/guide")
       }
     } catch (error) {
       toast({
@@ -106,6 +145,14 @@ function VerifyEmailContent() {
           <CardDescription className="text-center">
             Inserisci il codice a 6 cifre inviato alla tua email
           </CardDescription>
+          {email && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200 text-center">
+                📧 <strong>Email inviata a:</strong> {email}<br />
+                💡 <strong>Non vedi l'email?</strong> Controlla la cartella <strong>spam</strong> o usa il pulsante "Rinvia il codice" qui sotto.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -136,46 +183,62 @@ function VerifyEmailContent() {
                 onClick={async () => {
                   setResending(true)
                   try {
-                    const { error } = await supabase.auth.resend({
-                      type: 'signup',
-                      email: email,
+                    let emailSent = false
+                    let lastError: any = null
+
+                    // Strategia 1: Prova con signInWithOtp (metodo più affidabile)
+                    // Questo funziona sia per utenti esistenti che nuovi
+                    const { error: otpError } = await supabase.auth.signInWithOtp({
+                      email,
                       options: {
+                        shouldCreateUser: false, // L'utente esiste già dalla registrazione
                         emailRedirectTo: `${window.location.origin}/auth/verify-email`,
                       },
                     })
 
-                    if (error) {
-                      // Fallback: try signInWithOtp
-                      const { error: otpError } = await supabase.auth.signInWithOtp({
-                        email,
+                    if (!otpError) {
+                      emailSent = true
+                    } else {
+                      lastError = otpError
+                      console.error("signInWithOtp error:", otpError)
+                      
+                      // Strategia 2: Fallback con resend (solo se signInWithOtp fallisce)
+                      const { error: resendError } = await supabase.auth.resend({
+                        type: 'signup',
+                        email: email,
                         options: {
-                          shouldCreateUser: false,
                           emailRedirectTo: `${window.location.origin}/auth/verify-email`,
                         },
                       })
 
-                      if (otpError) {
-                        toast({
-                          title: "Errore",
-                          description: "Impossibile inviare il codice. Riprova più tardi.",
-                          variant: "destructive",
-                        })
+                      if (!resendError) {
+                        emailSent = true
                       } else {
-                        toast({
-                          title: "Successo",
-                          description: "Codice di verifica reinviato!",
-                        })
+                        console.error("Resend error:", resendError)
+                        lastError = resendError
                       }
-                    } else {
+                    }
+
+                    if (emailSent) {
                       toast({
                         title: "Successo",
-                        description: "Codice di verifica reinviato!",
+                        description: "Codice di verifica inviato! Controlla la tua email (anche spam).",
+                      })
+                    } else {
+                      // Mostra un messaggio più dettagliato con l'errore
+                      const errorMessage = lastError?.message || "Errore sconosciuto"
+                      console.error("Failed to send email:", lastError)
+                      toast({
+                        title: "Errore",
+                        description: `Impossibile inviare il codice: ${errorMessage}. Verifica la configurazione SMTP su Supabase.`,
+                        variant: "destructive",
                       })
                     }
-                  } catch (error) {
+                  } catch (error: any) {
+                    console.error("Unexpected error:", error)
                     toast({
                       title: "Errore",
-                      description: "Si è verificato un errore",
+                      description: error?.message || "Si è verificato un errore. Riprova più tardi.",
                       variant: "destructive",
                     })
                   } finally {
