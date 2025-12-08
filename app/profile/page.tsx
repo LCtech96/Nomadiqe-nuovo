@@ -599,39 +599,86 @@ export default function ProfilePage() {
       console.log("Updating profile with data:", updateData)
       console.log("User ID:", session.user.id)
 
-      const { data: updatedData, error } = await supabase
+      // First, try to update without select to see if it works
+      const { error: updateError, count } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("id", session.user.id)
-        .select()
 
-      if (error) {
-        console.error("Profile update error:", error)
-        throw error
+      if (updateError) {
+        console.error("Profile update error:", updateError)
+        console.error("Error details:", JSON.stringify(updateError, null, 2))
+        throw updateError
       }
 
-      console.log("Profile updated successfully:", updatedData)
-      
-      // Verify that the update was successful
-      if (updatedData && updatedData.length > 0) {
-        const updatedProfile = updatedData[0]
-        console.log("Updated profile from database:", updatedProfile)
-        
-        // Verify avatar_url was saved correctly
-        if (avatarWasUploaded && updatedProfile.avatar_url) {
-          console.log("✅ Avatar URL saved correctly:", updatedProfile.avatar_url)
-        } else if (avatarWasUploaded && !updatedProfile.avatar_url) {
-          console.error("❌ Avatar URL was NOT saved to database!")
+      console.log("Update executed. Rows affected:", count)
+
+      // If update didn't affect any rows, try using the SQL function as fallback
+      if (count === 0 || count === null) {
+        console.warn("⚠️ Direct update returned 0 rows. Trying SQL function fallback...")
+        try {
+          const { data: rpcData, error: rpcError } = await supabase.rpc('update_user_profile', {
+            p_user_id: session.user.id,
+            p_full_name: updateData.full_name || null,
+            p_username: updateData.username || null,
+            p_bio: updateData.bio || null,
+            p_avatar_url: updateData.avatar_url || null
+          })
+          
+          if (rpcError) {
+            console.error("RPC function error:", rpcError)
+            // If RPC also fails, throw error
+            throw new Error(`Update failed: ${rpcError.message}`)
+          } else {
+            console.log("✅ RPC function executed successfully:", rpcData)
+          }
+        } catch (rpcErr: any) {
+          console.error("Error calling RPC function:", rpcErr)
+          throw rpcErr
         }
+      } else {
+        console.log("✅ Direct update succeeded, affected rows:", count)
+      }
+
+      // Wait a moment for database to sync
+      await new Promise(resolve => setTimeout(resolve, 200))
+
+      // Now fetch the updated profile to verify
+      const { data: updatedData, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single()
+
+      if (fetchError) {
+        console.error("Error fetching updated profile:", fetchError)
+        // Don't throw - the update might have worked even if fetch failed
+      } else {
+        console.log("Profile updated successfully. Fetched data:", updatedData)
+        console.log("Avatar URL in database:", updatedData?.avatar_url)
         
-        // Verify username was saved correctly
-        if (updateData.username && updatedProfile.username === updateData.username) {
-          console.log("✅ Username saved correctly:", updatedProfile.username)
-        }
-        
-        // Verify full_name was saved correctly
-        if (updateData.full_name !== undefined && updatedProfile.full_name === updateData.full_name) {
-          console.log("✅ Full name saved correctly:", updatedProfile.full_name)
+        // Verify that the update was successful
+        if (updatedData) {
+          console.log("Updated profile from database:", updatedData)
+          
+          // Verify avatar_url was saved correctly
+          if (avatarWasUploaded && updatedData.avatar_url) {
+            console.log("✅ Avatar URL saved correctly:", updatedData.avatar_url)
+          } else if (avatarWasUploaded && !updatedData.avatar_url) {
+            console.error("❌ Avatar URL was NOT saved to database!")
+            console.error("Update data sent:", updateData.avatar_url)
+            console.error("Data received:", updatedData.avatar_url)
+          }
+          
+          // Verify username was saved correctly
+          if (updateData.username && updatedData.username === updateData.username) {
+            console.log("✅ Username saved correctly:", updatedData.username)
+          }
+          
+          // Verify full_name was saved correctly
+          if (updateData.full_name !== undefined && updatedData.full_name === updateData.full_name) {
+            console.log("✅ Full name saved correctly:", updatedData.full_name)
+          }
         }
       }
 

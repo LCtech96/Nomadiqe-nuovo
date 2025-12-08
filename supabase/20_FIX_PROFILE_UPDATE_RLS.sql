@@ -76,15 +76,17 @@ BEGIN
   END IF;
 
   -- Aggiorna il profilo
+  -- IMPORTANT: Se un parametro è NULL, lo imposta a NULL (non mantiene il valore esistente)
+  -- Questo permette di sovrascrivere i valori
   UPDATE public.profiles
   SET
-    full_name = COALESCE(p_full_name, full_name),
-    username = COALESCE(p_username, username),
-    bio = COALESCE(p_bio, bio),
-    avatar_url = COALESCE(p_avatar_url, avatar_url),
+    full_name = p_full_name,
+    username = p_username,
+    bio = p_bio,
+    avatar_url = p_avatar_url,
     updated_at = NOW(),
     username_changed_at = CASE 
-      WHEN p_username IS NOT NULL AND p_username != username 
+      WHEN p_username IS NOT NULL AND p_username != (SELECT username FROM public.profiles WHERE id = p_user_id)
       THEN NOW() 
       ELSE username_changed_at 
     END
