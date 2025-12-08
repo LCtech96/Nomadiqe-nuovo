@@ -193,13 +193,18 @@ export default function ProfilePage() {
       setFullName(profileData.full_name || "")
       setUsername(profileData.username || "")
       setBio(profileData.bio || "")
-      // Add cache buster for mobile browsers to force image reload
+      // Load avatar_url from database - always use the clean URL from database
+      // Add cache buster only for display, not for saving
       if (profileData.avatar_url) {
-        const baseUrl = profileData.avatar_url.split('?')[0]
+        // Remove any existing cache busters first
+        const cleanUrl = profileData.avatar_url.split('?')[0]
+        // Add cache buster for display to force browser reload
         const cacheBuster = `?t=${Date.now()}`
-        setAvatarUrl(baseUrl + cacheBuster)
+        setAvatarUrl(cleanUrl + cacheBuster)
+        console.log("Loaded avatar_url from database:", cleanUrl)
       } else {
         setAvatarUrl("")
+        console.log("No avatar_url in database")
       }
 
       // Carica referral code se esiste
@@ -549,21 +554,17 @@ export default function ProfilePage() {
       }
 
       // Always update avatar_url if a new one was uploaded
-      // If no new file was uploaded, don't change avatar_url (keep existing)
+      // IMPORTANT: Only update avatar_url if a new file was uploaded
+      // Don't update if no new file - this prevents overwriting with null
       if (avatarWasUploaded && finalAvatarUrl) {
-        updateData.avatar_url = finalAvatarUrl
-        console.log("Updating avatar_url to:", finalAvatarUrl)
-      } else if (!avatarWasUploaded && profile?.avatar_url) {
-        // Keep existing avatar_url, but remove any cache busters
-        const cleanUrl = profile.avatar_url.split('?')[0]
-        updateData.avatar_url = cleanUrl
-        finalAvatarUrl = cleanUrl
-        console.log("Keeping existing avatar_url:", cleanUrl)
-      } else if (!avatarWasUploaded && !profile?.avatar_url) {
-        // No avatar exists, set to null
-        updateData.avatar_url = null
-        finalAvatarUrl = null
+        // Remove any existing cache busters before saving
+        const cleanAvatarUrl = finalAvatarUrl.split('?')[0]
+        updateData.avatar_url = cleanAvatarUrl
+        finalAvatarUrl = cleanAvatarUrl
+        console.log("Updating avatar_url to:", cleanAvatarUrl)
       }
+      // If no new file was uploaded, don't include avatar_url in updateData
+      // This ensures the existing avatar_url in database is preserved
 
       // Update username if provided and available
       if (username && username.trim()) {
@@ -610,6 +611,29 @@ export default function ProfilePage() {
       }
 
       console.log("Profile updated successfully:", updatedData)
+      
+      // Verify that the update was successful
+      if (updatedData && updatedData.length > 0) {
+        const updatedProfile = updatedData[0]
+        console.log("Updated profile from database:", updatedProfile)
+        
+        // Verify avatar_url was saved correctly
+        if (avatarWasUploaded && updatedProfile.avatar_url) {
+          console.log("✅ Avatar URL saved correctly:", updatedProfile.avatar_url)
+        } else if (avatarWasUploaded && !updatedProfile.avatar_url) {
+          console.error("❌ Avatar URL was NOT saved to database!")
+        }
+        
+        // Verify username was saved correctly
+        if (updateData.username && updatedProfile.username === updateData.username) {
+          console.log("✅ Username saved correctly:", updatedProfile.username)
+        }
+        
+        // Verify full_name was saved correctly
+        if (updateData.full_name !== undefined && updatedProfile.full_name === updateData.full_name) {
+          console.log("✅ Full name saved correctly:", updatedProfile.full_name)
+        }
+      }
 
       toast({
         title: "Successo",
@@ -624,18 +648,20 @@ export default function ProfilePage() {
       const newUsername = username && username.trim() ? username.toLowerCase().trim() : (profile?.username || "")
       const newFullName = fullName && fullName.trim() ? fullName.trim() : (profile?.full_name || "")
       
-      // Update avatar URL with cache buster immediately
-      let newAvatarUrl = finalAvatarUrl
+      // Update avatar URL with cache buster immediately for display
+      // But remember: finalAvatarUrl is already clean (no cache buster) if uploaded
       if (finalAvatarUrl) {
+        // Add cache buster for display only
         const cacheBuster = `?t=${Date.now()}`
-        newAvatarUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
-        setAvatarUrl(newAvatarUrl)
+        const displayUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
+        setAvatarUrl(displayUrl)
+        console.log("Setting avatarUrl for display:", displayUrl)
       } else if (profile?.avatar_url) {
         // Keep existing avatar with cache buster if no new one uploaded
         const baseUrl = profile.avatar_url.split('?')[0]
         const cacheBuster = `?t=${Date.now()}`
-        newAvatarUrl = baseUrl + cacheBuster
-        setAvatarUrl(newAvatarUrl)
+        const displayUrl = baseUrl + cacheBuster
+        setAvatarUrl(displayUrl)
       }
       
       // Update all state immediately with new values
@@ -654,28 +680,28 @@ export default function ProfilePage() {
       }
       
       // Wait a bit for database to update, then reload data
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(resolve => setTimeout(resolve, 500))
       
-      // Reload data to sync with database
+      // Reload data to sync with database - this ensures fresh data from DB
+      console.log("Reloading data from database...")
       await loadData()
+      
+      // Verify data was loaded correctly
+      console.log("Data reloaded. Profile avatar_url:", profile?.avatar_url)
+      console.log("Data reloaded. AvatarUrl state:", avatarUrl)
       
       // Force router refresh to clear cache
       router.refresh()
       
-      // Force a re-render by updating a key or forcing state update
+      // Force a re-render by updating avatarUrl with new cache buster
       // This ensures the image component re-renders with new URL
       if (finalAvatarUrl) {
-        // Force image reload by updating avatarUrl again with new timestamp
         setTimeout(() => {
+          const cleanUrl = finalAvatarUrl.split('?')[0]
           const freshCacheBuster = `?t=${Date.now()}`
-          const freshUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + freshCacheBuster
+          const freshUrl = cleanUrl + freshCacheBuster
           setAvatarUrl(freshUrl)
-          if (profile) {
-            setProfile({
-              ...profile,
-              avatar_url: finalAvatarUrl,
-            })
-          }
+          console.log("Forced avatarUrl update:", freshUrl)
         }, 100)
       }
     } catch (error: any) {
