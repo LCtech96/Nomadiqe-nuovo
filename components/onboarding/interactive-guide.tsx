@@ -273,19 +273,29 @@ export default function InteractiveGuide({ onComplete }: InteractiveGuideProps) 
       // Verifica profilo completo
       Promise.resolve(!!(profileData?.full_name && profileData?.username)),
       // Verifica se ha seguito qualcuno
-      supabase
-        .from("follows")
-        .select("id", { count: "exact", head: true })
-        .eq("follower_id", currentUserId)
-        .then(({ count }) => (count || 0) > 0)
-        .catch(() => false),
+      (async () => {
+        try {
+          const { count } = await supabase
+            .from("follows")
+            .select("id", { count: "exact", head: true })
+            .eq("follower_id", currentUserId)
+          return (count || 0) > 0
+        } catch {
+          return false
+        }
+      })(),
       // Verifica se ha creato un post
-      supabase
-        .from("posts")
-        .select("id", { count: "exact", head: true })
-        .eq("author_id", currentUserId)
-        .then(({ count }) => (count || 0) > 0)
-        .catch(() => false),
+      (async () => {
+        try {
+          const { count } = await supabase
+            .from("posts")
+            .select("id", { count: "exact", head: true })
+            .eq("author_id", currentUserId)
+          return (count || 0) > 0
+        } catch {
+          return false
+        }
+      })(),
       // Verifica se ha un avatar
       Promise.resolve(!!profileData?.avatar_url)
     ])
