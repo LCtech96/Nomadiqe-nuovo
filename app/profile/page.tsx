@@ -487,27 +487,12 @@ export default function ProfilePage() {
       return
     }
 
-    // Check username availability if changed
-    if (username && username !== profile?.username) {
-      if (usernameAvailable === false) {
-        toast({
-          title: "Errore",
-          description: "Username non disponibile. Scegline un altro.",
-          variant: "destructive",
-        })
-        return
-      }
-      if (checkingUsername || usernameAvailable === null) {
-        toast({
-          title: "Attendere",
-          description: "Verifica username in corso...",
-        })
-        return
-      }
-    }
+    // Note: Username availability check is now done inside the update logic
+    // to allow saving other fields even if username check is pending
 
     try {
-      let finalAvatarUrl = avatarUrl
+      let finalAvatarUrl: string | null = null
+      let avatarWasUploaded = false
 
       // Upload avatar if file is provided
       if (avatarFile) {
@@ -532,6 +517,8 @@ export default function ProfilePage() {
             token: blobToken,
           })
           finalAvatarUrl = blob.url
+          avatarWasUploaded = true
+          console.log("Avatar uploaded successfully:", finalAvatarUrl)
         } catch (uploadError: any) {
           console.error("Avatar upload error:", uploadError)
           toast({
@@ -541,33 +528,88 @@ export default function ProfilePage() {
           })
           return
         }
+      } else {
+        // No new file uploaded, keep existing avatar_url from profile
+        finalAvatarUrl = profile?.avatar_url || null
       }
 
-      // Prepare update data
+      // Prepare update data - always update if values are provided
       const updateData: any = {
-        full_name: fullName.trim() || null,
-        bio: bio.trim() || null,
-        avatar_url: finalAvatarUrl || null,
         updated_at: new Date().toISOString(),
       }
 
-      // Only update username if changed and available
-      if (username && username !== profile?.username && usernameAvailable) {
-        updateData.username = username.toLowerCase().trim()
-        // Try to set username_changed_at, but don't fail if column doesn't exist
-        try {
-          updateData.username_changed_at = new Date().toISOString()
-        } catch (e) {
-          // Column might not exist, ignore
+      // Always update full_name if provided (even if same, to ensure it's saved)
+      if (fullName !== undefined) {
+        updateData.full_name = fullName.trim() || null
+      }
+
+      // Always update bio if provided
+      if (bio !== undefined) {
+        updateData.bio = bio.trim() || null
+      }
+
+      // Always update avatar_url if a new one was uploaded
+      // If no new file was uploaded, don't change avatar_url (keep existing)
+      if (avatarWasUploaded && finalAvatarUrl) {
+        updateData.avatar_url = finalAvatarUrl
+        console.log("Updating avatar_url to:", finalAvatarUrl)
+      } else if (!avatarWasUploaded && profile?.avatar_url) {
+        // Keep existing avatar_url, but remove any cache busters
+        const cleanUrl = profile.avatar_url.split('?')[0]
+        updateData.avatar_url = cleanUrl
+        finalAvatarUrl = cleanUrl
+        console.log("Keeping existing avatar_url:", cleanUrl)
+      } else if (!avatarWasUploaded && !profile?.avatar_url) {
+        // No avatar exists, set to null
+        updateData.avatar_url = null
+        finalAvatarUrl = null
+      }
+
+      // Update username if provided and available
+      if (username && username.trim()) {
+        const newUsername = username.toLowerCase().trim()
+        if (newUsername !== profile?.username) {
+          // Username is changing - check availability
+          if (usernameAvailable === false) {
+            toast({
+              title: "Errore",
+              description: "Username non disponibile. Scegline un altro.",
+              variant: "destructive",
+            })
+            return
+          }
+          if (checkingUsername || usernameAvailable === null) {
+            toast({
+              title: "Attendere",
+              description: "Verifica username in corso...",
+            })
+            return
+          }
+          if (usernameAvailable) {
+            updateData.username = newUsername
+            updateData.username_changed_at = new Date().toISOString()
+          }
+        } else {
+          // Username is the same, but update it anyway to ensure it's saved
+          updateData.username = newUsername
         }
       }
 
-      const { error } = await supabase
+      console.log("Updating profile with data:", updateData)
+      console.log("User ID:", session.user.id)
+
+      const { data: updatedData, error } = await supabase
         .from("profiles")
         .update(updateData)
         .eq("id", session.user.id)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error("Profile update error:", error)
+        throw error
+      }
+
+      console.log("Profile updated successfully:", updatedData)
 
       toast({
         title: "Successo",
