@@ -158,12 +158,15 @@ export default function Navbar() {
                 <Link href="/home" className="text-sm font-medium hover:text-primary">
                   Home
                 </Link>
-                <Link href="/kol-bed" className="text-sm font-medium hover:text-primary">
-                  KOL&BED
-                </Link>
-                <Link href="/dashboard" className="text-sm font-medium hover:text-primary">
-                  Dashboard
-                </Link>
+                {profile?.role === "traveler" ? (
+                  <Link href="/dashboard/traveler" className="text-sm font-medium hover:text-primary">
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link href="/kol-bed" className="text-sm font-medium hover:text-primary">
+                    KOL&BED
+                  </Link>
+                )}
               </div>
             )}
           </div>

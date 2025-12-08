@@ -1,18 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Home, Map, User, Building2, Plus } from "lucide-react"
+import { Home, Map, User, Building2, Plus, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 import CreatePostDialog from "@/components/create-post-dialog"
+import { createSupabaseClient } from "@/lib/supabase/client"
 
 export default function BottomNav() {
   const { data: session } = useSession()
   const pathname = usePathname()
   const router = useRouter()
   const [createPostOpen, setCreatePostOpen] = useState(false)
+  const [profile, setProfile] = useState<any>(null)
+  const supabase = createSupabaseClient()
+
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadProfile()
+    }
+  }, [session])
+
+  const loadProfile = async () => {
+    if (!session?.user?.id) return
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle()
+      
+      if (data) {
+        setProfile(data)
+      }
+    } catch (error) {
+      console.error("Error loading profile:", error)
+    }
+  }
 
   // Don't show bottom nav on auth pages
   const hideOnRoutes = ["/auth/signin", "/auth/signup", "/auth/verify-email"]
@@ -20,6 +46,9 @@ export default function BottomNav() {
     return null
   }
 
+  // For travelers, show Dashboard instead of KOL&BED
+  const isTraveler = profile?.role === "traveler"
+  
   const navItems = [
     {
       href: "/home",
@@ -31,11 +60,18 @@ export default function BottomNav() {
       label: "Esplora",
       icon: Map,
     },
-    {
-      href: "/kol-bed",
-      label: "KOL&BED",
-      icon: Building2,
-    },
+    ...(isTraveler 
+      ? [{
+          href: "/dashboard/traveler",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+        }]
+      : [{
+          href: "/kol-bed",
+          label: "KOL&BED",
+          icon: Building2,
+        }]
+    ),
     {
       href: "/profile",
       label: "Profilo",
