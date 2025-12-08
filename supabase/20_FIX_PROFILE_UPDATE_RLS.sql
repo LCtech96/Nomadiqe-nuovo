@@ -69,30 +69,44 @@ RETURNS BOOLEAN
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+DECLARE
+  v_old_username TEXT;
 BEGIN
   -- Verifica che l'utente stia aggiornando il proprio profilo
   IF auth.uid() != p_user_id THEN
     RAISE EXCEPTION 'Non puoi aggiornare il profilo di un altro utente';
   END IF;
 
+  -- Ottieni il vecchio username per confronto
+  SELECT username INTO v_old_username FROM public.profiles WHERE id = p_user_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profilo non trovato';
+  END IF;
+
   -- Aggiorna il profilo
-  -- IMPORTANT: Se un parametro è NULL, lo imposta a NULL (non mantiene il valore esistente)
-  -- Questo permette di sovrascrivere i valori
+  -- IMPORTANT: Aggiorna solo i campi che sono stati passati (non NULL)
+  -- Se un campo è NULL, mantiene il valore esistente
   UPDATE public.profiles
   SET
-    full_name = p_full_name,
-    username = p_username,
-    bio = p_bio,
-    avatar_url = p_avatar_url,
+    full_name = COALESCE(p_full_name, full_name),
+    username = COALESCE(p_username, username),
+    bio = COALESCE(p_bio, bio),
+    avatar_url = COALESCE(p_avatar_url, avatar_url),
     updated_at = NOW(),
     username_changed_at = CASE 
-      WHEN p_username IS NOT NULL AND p_username != (SELECT username FROM public.profiles WHERE id = p_user_id)
+      WHEN p_username IS NOT NULL AND p_username != v_old_username
       THEN NOW() 
       ELSE username_changed_at 
     END
   WHERE id = p_user_id;
 
-  RETURN FOUND;
+  -- Verifica che l'update sia andato a buon fine
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Nessuna riga aggiornata. Verifica che l''utente esista e che tu abbia i permessi.';
+  END IF;
+
+  RETURN TRUE;
 END;
 $$;
 
@@ -101,33 +115,45 @@ GRANT EXECUTE ON FUNCTION update_user_profile(UUID, TEXT, TEXT, TEXT, TEXT) TO a
 
 -- 4. VERIFICA FINALE
 -- ============================================
+-- Questa query restituisce i risultati nel pannello Results (visibile!)
 
-DO $$
-DECLARE
-  policy_exists BOOLEAN;
-  function_exists BOOLEAN;
-BEGIN
-  -- Verifica policy
-  SELECT EXISTS (
-    SELECT 1 FROM pg_policies 
-    WHERE schemaname = 'public' 
-    AND tablename = 'profiles' 
-    AND policyname = 'Users can update own profile'
-  ) INTO policy_exists;
-
-  -- Verifica funzione
-  SELECT EXISTS (
-    SELECT 1 FROM pg_proc 
-    WHERE proname = 'update_user_profile'
-    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
-  ) INTO function_exists;
-
-  RAISE NOTICE '========================================';
-  RAISE NOTICE 'VERIFICA FINALE:';
-  RAISE NOTICE 'Policy UPDATE esistente: %', policy_exists;
-  RAISE NOTICE 'Funzione update_user_profile esistente: %', function_exists;
-  RAISE NOTICE '========================================';
-END $$;
+SELECT 
+  'VERIFICA CONFIGURAZIONE' as info,
+  CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM pg_policies 
+      WHERE schemaname = 'public' 
+      AND tablename = 'profiles' 
+      AND policyname = 'Users can update own profile'
+    ) THEN '✅ ESISTE'
+    ELSE '❌ NON ESISTE'
+  END as policy_update,
+  CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM pg_proc 
+      WHERE proname = 'update_user_profile'
+      AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+    ) THEN '✅ ESISTE'
+    ELSE '❌ NON ESISTE'
+  END as funzione_rpc,
+  CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'profiles' 
+      AND column_name = 'avatar_url'
+    ) THEN '✅ ESISTE'
+    ELSE '❌ NON ESISTE'
+  END as colonna_avatar_url,
+  CASE 
+    WHEN EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = 'profiles' 
+      AND column_name = 'username_changed_at'
+    ) THEN '✅ ESISTE'
+    ELSE '❌ NON ESISTE'
+  END as colonna_username_changed_at;
 
 -- ============================================
 -- FINE

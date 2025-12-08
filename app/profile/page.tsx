@@ -599,45 +599,50 @@ export default function ProfilePage() {
       console.log("Updating profile with data:", updateData)
       console.log("User ID:", session.user.id)
 
-      // First, try to update without select to see if it works
-      const { error: updateError, count } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("id", session.user.id)
-
-      if (updateError) {
-        console.error("Profile update error:", updateError)
-        console.error("Error details:", JSON.stringify(updateError, null, 2))
-        throw updateError
+      // Use RPC function as primary method (more reliable with RLS)
+      // Prepare RPC parameters - only include fields that are being updated
+      const rpcParams: any = {
+        p_user_id: session.user.id,
       }
-
-      console.log("Update executed. Rows affected:", count)
-
-      // If update didn't affect any rows, try using the SQL function as fallback
-      if (count === 0 || count === null) {
-        console.warn("⚠️ Direct update returned 0 rows. Trying SQL function fallback...")
-        try {
-          const { data: rpcData, error: rpcError } = await supabase.rpc('update_user_profile', {
-            p_user_id: session.user.id,
-            p_full_name: updateData.full_name || null,
-            p_username: updateData.username || null,
-            p_bio: updateData.bio || null,
-            p_avatar_url: updateData.avatar_url || null
-          })
-          
-          if (rpcError) {
-            console.error("RPC function error:", rpcError)
-            // If RPC also fails, throw error
-            throw new Error(`Update failed: ${rpcError.message}`)
-          } else {
-            console.log("✅ RPC function executed successfully:", rpcData)
-          }
-        } catch (rpcErr: any) {
-          console.error("Error calling RPC function:", rpcErr)
-          throw rpcErr
+      
+      // Only include fields that are in updateData (not undefined)
+      if (updateData.full_name !== undefined) {
+        rpcParams.p_full_name = updateData.full_name
+      }
+      if (updateData.username !== undefined) {
+        rpcParams.p_username = updateData.username
+      }
+      if (updateData.bio !== undefined) {
+        rpcParams.p_bio = updateData.bio
+      }
+      if (updateData.avatar_url !== undefined) {
+        rpcParams.p_avatar_url = updateData.avatar_url
+      }
+      
+      console.log("Calling RPC function with params:", rpcParams)
+      
+      // Use RPC function as primary method (bypasses RLS issues)
+      const { data: rpcData, error: rpcError } = await supabase.rpc('update_user_profile', rpcParams)
+      
+      if (rpcError) {
+        console.error("❌ RPC function error:", rpcError)
+        console.error("Error details:", JSON.stringify(rpcError, null, 2))
+        
+        // Fallback: try direct update if RPC fails
+        console.warn("⚠️ RPC failed, trying direct update as fallback...")
+        const { error: updateError, count } = await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", session.user.id)
+        
+        if (updateError) {
+          console.error("Direct update also failed:", updateError)
+          throw new Error(`Update failed: ${rpcError.message}`)
         }
+        
+        console.log("✅ Direct update succeeded as fallback, rows affected:", count)
       } else {
-        console.log("✅ Direct update succeeded, affected rows:", count)
+        console.log("✅ RPC function executed successfully:", rpcData)
       }
 
       // Wait a moment for database to sync
