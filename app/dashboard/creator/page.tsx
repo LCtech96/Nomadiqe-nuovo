@@ -48,7 +48,7 @@ export default function CreatorDashboard() {
           property:properties(id, name, city, country),
           host:profiles!collaborations_host_id_fkey(username, full_name)
         `)
-        .eq("author_id", session!.user.id)
+        .eq("creator_id", session!.user.id)
         .order("created_at", { ascending: false })
 
       if (collabsError) throw collabsError

@@ -193,7 +193,14 @@ export default function ProfilePage() {
       setFullName(profileData.full_name || "")
       setUsername(profileData.username || "")
       setBio(profileData.bio || "")
-      setAvatarUrl(profileData.avatar_url || "")
+      // Add cache buster for mobile browsers to force image reload
+      if (profileData.avatar_url) {
+        const baseUrl = profileData.avatar_url.split('?')[0]
+        const cacheBuster = `?t=${Date.now()}`
+        setAvatarUrl(baseUrl + cacheBuster)
+      } else {
+        setAvatarUrl("")
+      }
 
       // Carica referral code se esiste
       if (profileData.referral_code) {
@@ -564,7 +571,38 @@ export default function ProfilePage() {
       setIsEditing(false)
       setAvatarFile(null)
       setAvatarPreview("")
-      loadData()
+      
+      // Force update state immediately with new values (before reload)
+      if (finalAvatarUrl) {
+        // Add cache buster for mobile browsers
+        const cacheBuster = `?t=${Date.now()}`
+        const newAvatarUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
+        setAvatarUrl(newAvatarUrl)
+      }
+      if (username && username !== profile?.username) {
+        setUsername(username.toLowerCase().trim())
+      }
+      if (fullName) {
+        setFullName(fullName.trim())
+      }
+      
+      // Reload data to sync with database
+      await loadData()
+      
+      // Force update profile state after reload to ensure UI updates
+      if (finalAvatarUrl && profile) {
+        setProfile({
+          ...profile,
+          avatar_url: finalAvatarUrl,
+          username: username || profile.username,
+          full_name: fullName || profile.full_name,
+        })
+      }
+      
+      // Force router refresh on mobile to clear cache
+      if (typeof window !== 'undefined') {
+        router.refresh()
+      }
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -627,6 +665,8 @@ export default function ProfilePage() {
                     sizes="(max-width: 768px) 96px, 128px"
                     priority
                     className="object-cover"
+                    unoptimized={avatarPreview ? true : false}
+                    key={avatarPreview ? `preview-${Date.now()}` : (avatarUrl ? avatarUrl.split('?')[0] : 'avatar')}
                   />
                 ) : (
                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
