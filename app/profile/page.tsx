@@ -578,39 +578,64 @@ export default function ProfilePage() {
       setAvatarFile(null)
       setAvatarPreview("")
       
-      // Update local state immediately with new values
-      const newUsername = username ? username.toLowerCase().trim() : profile?.username
-      const newFullName = fullName ? fullName.trim() : profile?.full_name
+      // Prepare new values
+      const newUsername = username && username.trim() ? username.toLowerCase().trim() : (profile?.username || "")
+      const newFullName = fullName && fullName.trim() ? fullName.trim() : (profile?.full_name || "")
       
-      if (newUsername) {
-        setUsername(newUsername)
-      }
-      if (newFullName !== undefined) {
-        setFullName(newFullName)
-      }
-      
-      // Update avatar URL with cache buster
+      // Update avatar URL with cache buster immediately
+      let newAvatarUrl = finalAvatarUrl
       if (finalAvatarUrl) {
         const cacheBuster = `?t=${Date.now()}`
-        const newAvatarUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
+        newAvatarUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + cacheBuster
+        setAvatarUrl(newAvatarUrl)
+      } else if (profile?.avatar_url) {
+        // Keep existing avatar with cache buster if no new one uploaded
+        const baseUrl = profile.avatar_url.split('?')[0]
+        const cacheBuster = `?t=${Date.now()}`
+        newAvatarUrl = baseUrl + cacheBuster
         setAvatarUrl(newAvatarUrl)
       }
       
-      // Update profile state immediately with new values
+      // Update all state immediately with new values
+      setUsername(newUsername)
+      setFullName(newFullName)
+      
+      // Update profile state immediately - this ensures UI updates right away
       if (profile) {
         setProfile({
           ...profile,
           avatar_url: finalAvatarUrl || profile.avatar_url,
-          username: newUsername || profile.username,
-          full_name: newFullName || profile.full_name,
+          username: newUsername,
+          full_name: newFullName,
+          bio: bio.trim() || profile.bio || null,
         })
       }
       
-      // Reload data to sync with database (this will update profile state again)
+      // Wait a bit for database to update, then reload data
+      await new Promise(resolve => setTimeout(resolve, 300))
+      
+      // Reload data to sync with database
       await loadData()
       
       // Force router refresh to clear cache
       router.refresh()
+      
+      // Force a re-render by updating a key or forcing state update
+      // This ensures the image component re-renders with new URL
+      if (finalAvatarUrl) {
+        // Force image reload by updating avatarUrl again with new timestamp
+        setTimeout(() => {
+          const freshCacheBuster = `?t=${Date.now()}`
+          const freshUrl = finalAvatarUrl + (finalAvatarUrl.includes('?') ? '&' : '?') + freshCacheBuster
+          setAvatarUrl(freshUrl)
+          if (profile) {
+            setProfile({
+              ...profile,
+              avatar_url: finalAvatarUrl,
+            })
+          }
+        }, 100)
+      }
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -665,16 +690,16 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="flex justify-center md:justify-start relative">
               <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-foreground">
-                {(avatarPreview || avatarUrl) ? (
+                {(avatarPreview || avatarUrl || profile?.avatar_url) ? (
                   <Image
-                    src={avatarPreview || avatarUrl}
-                    alt={username || "Profile"}
+                    src={avatarPreview || avatarUrl || profile?.avatar_url || ""}
+                    alt={(isEditing ? username : (username || profile?.username)) || "Profile"}
                     fill
                     sizes="(max-width: 768px) 96px, 128px"
                     priority
                     className="object-cover"
                     unoptimized={avatarPreview ? true : false}
-                    key={avatarPreview ? `preview-${Date.now()}` : (avatarUrl ? avatarUrl.split('?')[0] : 'avatar')}
+                    key={`avatar-${profile?.id || 'default'}-${avatarUrl ? avatarUrl.split('?')[0] : (profile?.avatar_url ? profile.avatar_url.split('?')[0] : 'none')}-${avatarPreview ? 'preview' : 'saved'}`}
                   />
                 ) : (
                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
@@ -695,11 +720,11 @@ export default function ProfilePage() {
               <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                 <div className="flex flex-col">
                   <h1 className="text-xl md:text-2xl font-light">
-                    {username || profile?.username || "username"}
+                    {(isEditing ? username : (username || profile?.username)) || "username"}
                   </h1>
-                  {(fullName || profile?.full_name) && (
+                  {((isEditing ? fullName : (fullName || profile?.full_name))) && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      {fullName || profile?.full_name}
+                      {isEditing ? fullName : (fullName || profile?.full_name)}
                     </p>
                   )}
                 </div>
