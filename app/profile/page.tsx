@@ -395,9 +395,9 @@ export default function ProfilePage() {
 
   const canChangeUsername = (): boolean => {
     if (!usernameLastChanged) return true
-    const oneWeekAgo = new Date()
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-    return usernameLastChanged <= oneWeekAgo
+    const oneMonthAgo = new Date()
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
+    return usernameLastChanged <= oneMonthAgo
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -468,7 +468,7 @@ export default function ProfilePage() {
     if (username && username !== profile?.username && !canChangeUsername()) {
       toast({
         title: "Errore",
-        description: "Puoi cambiare lo username solo una volta a settimana. Riprova tra qualche giorno.",
+        description: "Puoi cambiare lo username solo una volta al mese. Riprova tra qualche settimana.",
         variant: "destructive",
       })
       return
@@ -719,7 +719,7 @@ export default function ProfilePage() {
                       />
                       {!canChangeUsername() && username !== profile?.username && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Puoi cambiare lo username solo una volta a settimana
+                          Puoi cambiare lo username solo una volta al mese
                         </p>
                       )}
                       {checkingUsername && username && username !== profile?.username && (
@@ -1073,67 +1073,80 @@ export default function ProfilePage() {
 
           {activeTab === "notifications" && (
             <div className="py-4">
-              {notifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Nessuna notifica</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {notifications.map((notification) => (
-                    <Card
-                      key={notification.id}
-                      className={`cursor-pointer transition-colors ${
-                        !notification.read ? "bg-primary/5 border-primary/20" : ""
-                      }`}
-                      onClick={async () => {
-                        if (!notification.read) {
-                          await supabase
-                            .from("notifications")
-                            .update({ read: true })
-                            .eq("id", notification.id)
-                          loadNotifications()
-                        }
-                        
-                        // Navigate based on notification type
-                        if (notification.related_id) {
-                          if (notification.type.includes("post")) {
-                            router.push(`/posts/${notification.related_id}`)
-                          } else if (notification.type.includes("property")) {
-                            router.push(`/properties/${notification.related_id}`)
-                          } else if (notification.type.includes("profile")) {
-                            router.push(`/profile/${notification.related_id}`)
+              <div className="mb-4">
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/messages")}
+                  className="w-full"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Vai ai Messaggi Diretti
+                </Button>
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-4">Notifiche</h3>
+                {notifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Nessuna notifica</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.map((notification) => (
+                      <Card
+                        key={notification.id}
+                        className={`cursor-pointer transition-colors ${
+                          !notification.read ? "bg-primary/5 border-primary/20" : ""
+                        }`}
+                        onClick={async () => {
+                          if (!notification.read) {
+                            await supabase
+                              .from("notifications")
+                              .update({ read: true })
+                              .eq("id", notification.id)
+                            loadNotifications()
                           }
-                        }
-                      }}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${
-                            !notification.read ? "bg-primary" : "bg-transparent"
-                          }`} />
-                          <div className="flex-1">
-                            <p className="font-semibold text-sm">{notification.title}</p>
-                            {notification.message && (
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {notification.message}
+                          
+                          // Navigate based on notification type
+                          if (notification.related_id) {
+                            if (notification.type.includes("post")) {
+                              router.push(`/posts/${notification.related_id}`)
+                            } else if (notification.type.includes("property")) {
+                              router.push(`/properties/${notification.related_id}`)
+                            } else if (notification.type.includes("profile")) {
+                              router.push(`/profile/${notification.related_id}`)
+                            }
+                          }
+                        }}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-2 ${
+                              !notification.read ? "bg-primary" : "bg-transparent"
+                            }`} />
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{notification.title}</p>
+                              {notification.message && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {notification.message}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {new Date(notification.created_at).toLocaleDateString("it-IT", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </p>
-                            )}
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {new Date(notification.created_at).toLocaleDateString("it-IT", {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

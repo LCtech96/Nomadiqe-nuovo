@@ -3,13 +3,23 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Profile } from "@/types/user"
 import Image from "next/image"
-import { Users, Euro, Heart, MessageCircle, Share2, User } from "lucide-react"
+import { Users, Euro, Heart, MessageCircle, Share2, User, MoreVertical, Edit, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import SharePostDialog from "@/components/share-post-dialog"
+import EditPostDialog from "@/components/edit-post-dialog"
+import UserSearch from "@/components/user-search"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export default function HomePage() {
   const { data: session, status } = useSession()
@@ -22,6 +32,10 @@ export default function HomePage() {
   const [showComments, setShowComments] = useState<string | null>(null)
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState("")
+  const [showShareDialog, setShowShareDialog] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<any>(null)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [postToEdit, setPostToEdit] = useState<any>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -149,36 +163,9 @@ export default function HomePage() {
     }
   }
 
-  const handleShare = async (post: any) => {
-    const shareUrl = `${window.location.origin}/post/${post.id}`
-    const shareText = post.content ? `${post.content.substring(0, 100)}...` : "Guarda questo post su Nomadiqe!"
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: "Post su Nomadiqe",
-          text: shareText,
-          url: shareUrl,
-        })
-      } catch (error) {
-        console.log("Condivisione annullata")
-      }
-    } else {
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(shareUrl)
-        toast({
-          title: "Link copiato!",
-          description: "Il link del post è stato copiato negli appunti",
-        })
-      } catch (error) {
-        toast({
-          title: "Errore",
-          description: "Impossibile condividere il post",
-          variant: "destructive",
-        })
-      }
-    }
+  const handleShare = (post: any) => {
+    setSelectedPost(post)
+    setShowShareDialog(true)
   }
 
   const loadPosts = async () => {
@@ -217,11 +204,22 @@ export default function HomePage() {
       // Create a map for quick lookup
       const profilesMap = new Map((profilesData || []).map((p: any) => [p.id, p]))
 
-      // Combine posts with author data
+      // Check which posts are liked by current user
+      let likedPostIds = new Set<string>()
+      if (session?.user?.id) {
+        const { data: likesData } = await supabase
+          .from("post_likes")
+          .select("post_id")
+          .eq("user_id", session.user.id)
+
+        likedPostIds = new Set(likesData?.map((l) => l.post_id) || [])
+      }
+
+      // Combine posts with author data and like status
       const mappedPosts = postsData.map((post: any) => ({
         ...post,
         author: profilesMap.get(post.author_id) || null,
-        liked: false
+        liked: likedPostIds.has(post.id)
       }))
 
       setPosts(mappedPosts)
@@ -238,10 +236,74 @@ export default function HomePage() {
     return null
   }
 
+  const handleEditPost = (post: any) => {
+    setPostToEdit(post)
+    setShowEditDialog(true)
+  }
+
+  const handleDeletePost = async (postId: string) => {
+    if (!session?.user?.id) return
+
+    if (!confirm("Sei sicuro di voler eliminare questo post?")) {
+      return
+    }
+
+    try {
+      // Delete post likes
+      await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+
+      // Delete post comments
+      await supabase
+        .from("post_comments")
+        .delete()
+        .eq("post_id", postId)
+
+      // Delete post reposts
+      await supabase
+        .from("post_reposts")
+        .delete()
+        .eq("original_post_id", postId)
+
+      // Delete the post
+      const { error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", postId)
+        .eq("author_id", session.user.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Post eliminato",
+        description: "Il post è stato eliminato con successo",
+      })
+
+      await loadPosts()
+    } catch (error: any) {
+      console.error("Error deleting post:", error)
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile eliminare il post",
+        variant: "destructive",
+      })
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 md:pb-32">
       <div className="container mx-auto p-4 max-w-2xl">
-        <h1 className="text-2xl md:text-3xl font-bold mb-6">Home</h1>
+        {/* Sticky Search Bar for Mobile */}
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 px-4 pt-2 pb-4 mb-4 md:static md:bg-transparent md:backdrop-blur-none md:mx-0 md:px-0 md:pt-0 md:pb-0">
+          <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Home</h1>
+          
+          {/* User Search Bar */}
+          <div className="mb-2 md:mb-6">
+            <UserSearch userRole={profile?.role || null} />
+          </div>
+        </div>
         {posts.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Nessun post disponibile al momento</p>
@@ -252,7 +314,10 @@ export default function HomePage() {
               <Card key={post.id}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
+                    <div 
+                      className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 cursor-pointer"
+                      onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
+                    >
                       {post.author?.avatar_url ? (
                         <Image
                           src={post.author.avatar_url}
@@ -270,13 +335,45 @@ export default function HomePage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">
+                      <p 
+                        className="font-semibold text-sm cursor-pointer hover:underline"
+                        onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
+                      >
                         {post.author?.full_name || post.author?.username || "Utente"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(post.created_at).toLocaleDateString("it-IT")}
                       </p>
                     </div>
+                    {/* Menu a tre puntini per il proprietario del post */}
+                    {session?.user?.id === post.author_id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button 
+                            className="p-2 md:p-1 hover:bg-accent active:bg-accent rounded-full transition-colors touch-manipulation"
+                            aria-label="Menu opzioni post"
+                          >
+                            <MoreVertical className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 md:w-auto">
+                          <DropdownMenuItem 
+                            onClick={() => handleEditPost(post)}
+                            className="cursor-pointer touch-manipulation"
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            <span className="text-sm md:text-base">Modifica</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeletePost(post.id)}
+                            className="text-destructive focus:text-destructive cursor-pointer touch-manipulation"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            <span className="text-sm md:text-base">Elimina</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                   
                   {post.content && (
@@ -284,15 +381,18 @@ export default function HomePage() {
                   )}
                   
                   {post.images && post.images.length > 0 && (
-                    <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4">
-                      <Image
-                        src={post.images[0]}
-                        alt="Post image"
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover"
-                      />
-                    </div>
+                    <Link href={`/posts/${post.id}`}>
+                      <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 cursor-pointer">
+                        <Image
+                          src={post.images[0]}
+                          alt="Post image"
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover"
+                          priority={false}
+                        />
+                      </div>
+                    </Link>
                   )}
                   
                   <div className="flex items-center gap-6 pt-4 border-t">
@@ -358,7 +458,10 @@ export default function HomePage() {
                         <div className="space-y-3">
                           {comments.map((comment) => (
                             <div key={comment.id} className="flex gap-3">
-                              <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
+                              <div 
+                                className="relative w-8 h-8 rounded-full overflow-hidden shrink-0 cursor-pointer"
+                                onClick={() => comment.user?.id && router.push(`/profile/${comment.user.id}`)}
+                              >
                                 {comment.user?.avatar_url ? (
                                   <Image
                                     src={comment.user.avatar_url}
@@ -374,7 +477,10 @@ export default function HomePage() {
                                 )}
                               </div>
                               <div className="flex-1">
-                                <p className="text-sm font-semibold">
+                                <p 
+                                  className="text-sm font-semibold cursor-pointer hover:underline"
+                                  onClick={() => comment.user?.id && router.push(`/profile/${comment.user.id}`)}
+                                >
                                   {comment.user?.username || comment.user?.full_name || "Utente"}
                                 </p>
                                 <p className="text-sm text-muted-foreground">{comment.content}</p>
@@ -391,6 +497,25 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Share Dialog */}
+      {selectedPost && (
+        <SharePostDialog
+          open={showShareDialog}
+          onOpenChange={setShowShareDialog}
+          post={selectedPost}
+        />
+      )}
+
+      {/* Edit Post Dialog */}
+      {postToEdit && (
+        <EditPostDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          post={postToEdit}
+          onPostUpdated={loadPosts}
+        />
+      )}
     </div>
   )
 }

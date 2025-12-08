@@ -5,12 +5,69 @@ import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import Link from "next/link"
-import { Instagram, Youtube, Users, MessageCircle, Euro, MapPin, Home, Mail, UserPlus, UserCheck, Share2, Check } from "lucide-react"
+import { 
+  Instagram, 
+  Youtube, 
+  Users, 
+  MessageCircle, 
+  MapPin, 
+  Home, 
+  UserPlus, 
+  UserCheck, 
+  Share2, 
+  Check, 
+  ArrowLeft,
+  Eye,
+  ThumbsUp,
+  Heart,
+  Facebook,
+  TrendingUp,
+  PieChart,
+  BarChart3,
+  Globe
+} from "lucide-react"
 import SendMessageDialog from "@/components/send-message-dialog"
 import { useToast } from "@/hooks/use-toast"
+
+interface Post {
+  id: string
+  images: string[] | null
+  content: string | null
+  likes_count: number
+  created_at: string
+}
+
+interface Property {
+  id: string
+  title: string
+  name: string
+  images: string[] | null
+  location_data: any
+  city?: string
+  country?: string
+  price_per_night?: number
+  rating?: number
+}
+
+interface Collaboration {
+  id: string
+  property_id: string
+  property: Property
+  status: string
+}
+
+interface Stats {
+  followers: number
+  following: number
+  postsCount: number
+  profileViews?: number
+  totalInteractions?: number
+}
 
 interface PublicProfile {
   id: string
@@ -24,20 +81,12 @@ interface PublicProfile {
     username: string
     follower_count: number
     verified: boolean
+    engagement_rate?: number
   }>
-  properties?: Array<{
-    id: string
-    name: string
-    city: string
-    country: string
-    price_per_night: number
-    images: string[]
-    rating: number
-    review_count: number
-  }>
-  total_followers?: number
-  total_visitors?: number
-  points?: number
+  properties?: Property[]
+  posts?: Post[]
+  collaborations?: Collaboration[]
+  stats?: Stats
 }
 
 export default function PublicProfilePage() {
@@ -51,13 +100,37 @@ export default function PublicProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false)
   const [followingLoading, setFollowingLoading] = useState(false)
   const [shareLinkCopied, setShareLinkCopied] = useState<string | null>(null)
+  const [stats, setStats] = useState<Stats>({
+    followers: 0,
+    following: 0,
+    postsCount: 0,
+    profileViews: 0,
+    totalInteractions: 0
+  })
   const { toast } = useToast()
 
   useEffect(() => {
     if (params.id) {
       loadProfile(params.id as string)
+      trackProfileView(params.id as string)
     }
   }, [params.id])
+
+  const trackProfileView = async (userId: string) => {
+    if (!session?.user?.id || session.user.id === userId) return
+    
+    try {
+      // Registra una view del profilo
+      await supabase
+        .from("profile_views")
+        .insert({
+          profile_id: userId,
+          viewer_id: session.user.id
+        })
+    } catch (error) {
+      console.error("Error tracking profile view:", error)
+    }
+  }
 
   const loadProfile = async (userId: string) => {
     try {
@@ -69,6 +142,16 @@ export default function PublicProfilePage() {
 
       if (error) throw error
 
+      // Load stats
+      await loadStats(userId)
+
+      // Load posts
+      const { data: postsData } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("author_id", userId)
+        .order("created_at", { ascending: false })
+
       if (data.role === "creator") {
         // Load social accounts for creators
         const { data: socialData } = await supabase
@@ -76,15 +159,35 @@ export default function PublicProfilePage() {
           .select("*")
           .eq("user_id", userId)
 
-        const totalFollowers = (socialData || []).reduce(
-          (sum, acc) => sum + (acc.follower_count || 0),
-          0
-        )
+        // Load collaborations
+        const { data: collabsData } = await supabase
+          .from("collaborations")
+          .select(`
+            id,
+            property_id,
+            status,
+            property:properties(id, title, images, location_data)
+          `)
+          .eq("creator_id", userId)
+          .in("status", ["approved", "completed"])
+
+        const mappedCollaborations = (collabsData || [])
+          .filter((c: any) => c.property)
+          .map((c: any) => {
+            const property = Array.isArray(c.property) ? c.property[0] : c.property
+            return {
+              id: c.id,
+              property_id: c.property_id,
+              status: c.status,
+              property: property,
+            }
+          })
 
         setProfile({
           ...data,
           social_accounts: socialData || [],
-          total_followers: totalFollowers,
+          posts: postsData || [],
+          collaborations: mappedCollaborations,
         })
       } else if (data.role === "host") {
         // Load properties for hosts
@@ -95,28 +198,44 @@ export default function PublicProfilePage() {
           .eq("is_active", true)
           .order("created_at", { ascending: false })
 
-        // Get total visitors
-        const propertyIds = (propertiesData || []).map((p) => p.id)
-        let totalVisitors = 0
-        if (propertyIds.length > 0) {
-          const { count } = await supabase
-            .from("bookings")
-            .select("*", { count: "exact", head: true })
-            .in("property_id", propertyIds)
-            .eq("status", "confirmed")
-          totalVisitors = count || 0
-        }
+        // Load collaborations where host sponsors
+        const { data: collabsData } = await supabase
+          .from("collaborations")
+          .select(`
+            id,
+            property_id,
+            status,
+            property:properties(id, title, images, location_data)
+          `)
+          .eq("host_id", userId)
+          .in("status", ["approved", "completed"])
+
+        const mappedCollaborations = (collabsData || [])
+          .filter((c: any) => c.property)
+          .map((c: any) => {
+            const property = Array.isArray(c.property) ? c.property[0] : c.property
+            return {
+              id: c.id,
+              property_id: c.property_id,
+              status: c.status,
+              property: property,
+            }
+          })
 
         setProfile({
           ...data,
           properties: propertiesData || [],
-          total_visitors: totalVisitors,
+          posts: postsData || [],
+          collaborations: mappedCollaborations,
         })
       } else {
-        setProfile(data)
+        setProfile({
+          ...data,
+          posts: postsData || [],
+        })
       }
 
-      // Verifica se l'utente corrente sta seguendo questo profilo
+      // Check if following
       if (session?.user?.id && session.user.id !== userId) {
         const { data: followData } = await supabase
           .from("follows")
@@ -131,6 +250,55 @@ export default function PublicProfilePage() {
       console.error("Error loading profile:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadStats = async (userId: string) => {
+    try {
+      // Followers count
+      const { count: followersCount } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", userId)
+
+      // Following count
+      const { count: followingCount } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", userId)
+
+      // Posts count
+      const { count: postsCount } = await supabase
+        .from("posts")
+        .select("*", { count: "exact", head: true })
+        .eq("author_id", userId)
+
+      // Profile views
+      const { count: viewsCount } = await supabase
+        .from("profile_views")
+        .select("*", { count: "exact", head: true })
+        .eq("profile_id", userId)
+
+      // Total interactions (likes + comments on user's posts)
+      const { data: userPosts } = await supabase
+        .from("posts")
+        .select("id, likes_count, comments_count")
+        .eq("author_id", userId)
+
+      const totalInteractions = (userPosts || []).reduce(
+        (sum, post) => sum + (post.likes_count || 0) + (post.comments_count || 0),
+        0
+      )
+
+      setStats({
+        followers: followersCount || 0,
+        following: followingCount || 0,
+        postsCount: postsCount || 0,
+        profileViews: viewsCount || 0,
+        totalInteractions: totalInteractions,
+      })
+    } catch (error) {
+      console.error("Error loading stats:", error)
     }
   }
 
@@ -149,6 +317,10 @@ export default function PublicProfilePage() {
 
         if (error) throw error
         setIsFollowing(false)
+        
+        // Update local stats
+        setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }))
+        
         toast({
           title: "Hai smesso di seguire",
           description: `Non segui più ${profile.username || profile.full_name || "questo utente"}`,
@@ -164,6 +336,29 @@ export default function PublicProfilePage() {
 
         if (error) throw error
         setIsFollowing(true)
+        
+        // Update local stats
+        setStats(prev => ({ ...prev, followers: prev.followers + 1 }))
+
+        // Create notification for the followed user
+        const { data: followerProfile } = await supabase
+          .from("profiles")
+          .select("username, full_name")
+          .eq("id", session.user.id)
+          .single()
+
+        const followerName = followerProfile?.username || followerProfile?.full_name || "Un utente"
+
+        await supabase
+          .from("notifications")
+          .insert({
+            user_id: profile.id,
+            type: "new_follower",
+            title: "Nuovo follower",
+            message: `${followerName} ha iniziato a seguirti`,
+            related_id: session.user.id,
+          })
+
         toast({
           title: "Ora segui questo utente",
           description: `Stai seguendo ${profile.username || profile.full_name || "questo utente"}`,
@@ -201,6 +396,21 @@ export default function PublicProfilePage() {
     }
   }
 
+  const getRoleBadgeColor = (role: string | null) => {
+    switch (role) {
+      case "host":
+        return "bg-blue-500"
+      case "creator":
+        return "bg-purple-500"
+      case "traveler":
+        return "bg-green-500"
+      case "manager":
+        return "bg-orange-500"
+      default:
+        return "bg-gray-500"
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -219,13 +429,28 @@ export default function PublicProfilePage() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {/* Back Button */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container mx-auto px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.back()}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Indietro
+          </Button>
+        </div>
+      </div>
+
       <div className="container mx-auto p-4 max-w-4xl">
         {/* Profile Header */}
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
               <div className="relative mx-auto md:mx-0">
-                <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0">
+                <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shrink-0 border-4 border-primary/20">
                   {profile.avatar_url ? (
                     <Image
                       src={profile.avatar_url}
@@ -243,10 +468,12 @@ export default function PublicProfilePage() {
                     </div>
                   )}
                 </div>
-                {/* Points Badge */}
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-background">
-                  ⭐ {profile.points || 0}
-                </div>
+                {/* Role Badge */}
+                {profile.role && (
+                  <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 ${getRoleBadgeColor(profile.role)} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg border-2 border-background uppercase`}>
+                    {profile.role}
+                  </div>
+                )}
               </div>
               <div className="flex-1 text-center md:text-left">
                 <h1 className="text-2xl md:text-3xl font-bold mb-2">
@@ -258,27 +485,23 @@ export default function PublicProfilePage() {
                 {profile.bio && (
                   <p className="text-muted-foreground mb-4">{profile.bio}</p>
                 )}
-                <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                  {profile.role === "creator" && profile.total_followers !== undefined && (
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span className="font-semibold">{profile.total_followers.toLocaleString()}</span>
-                      <span className="text-sm text-muted-foreground">follower</span>
-                    </div>
-                  )}
-                  {profile.role === "host" && profile.total_visitors !== undefined && (
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span className="font-semibold">{profile.total_visitors}</span>
-                      <span className="text-sm text-muted-foreground">visitatori</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <span className="text-lg">⭐</span>
-                    <span className="font-semibold text-primary">{profile.points || 0}</span>
-                    <span className="text-sm text-muted-foreground">punti</span>
+                
+                {/* Stats */}
+                <div className="flex flex-wrap gap-6 justify-center md:justify-start mb-4">
+                  <div className="text-center">
+                    <span className="font-bold text-lg block">{stats.postsCount}</span>
+                    <span className="text-sm text-muted-foreground">post</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="font-bold text-lg block">{stats.followers}</span>
+                    <span className="text-sm text-muted-foreground">follower</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="font-bold text-lg block">{stats.following}</span>
+                    <span className="text-sm text-muted-foreground">following</span>
                   </div>
                 </div>
+
                 {session && session.user.id !== profile.id && (
                   <div className="flex gap-2 mt-4">
                     <Button
@@ -314,123 +537,408 @@ export default function PublicProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Social Accounts (for Creators) */}
-        {profile.role === "creator" && profile.social_accounts && profile.social_accounts.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Piattaforme Social</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid md:grid-cols-3 gap-4">
-                {profile.social_accounts.map((account, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-3 p-3 border rounded-lg"
-                  >
-                    {account.platform === "instagram" && (
-                      <Instagram className="w-6 h-6 text-pink-500" />
-                    )}
-                    {account.platform === "youtube" && (
-                      <Youtube className="w-6 h-6 text-red-500" />
-                    )}
-                    {account.platform === "tiktok" && (
-                      <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">TT</span>
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="font-semibold">@{account.username}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {account.follower_count.toLocaleString()} follower
-                      </p>
-                    </div>
-                    {account.verified && (
-                      <span className="text-blue-500">✓</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* HOST PROFILE */}
+        {profile.role === "host" && (
+          <Tabs defaultValue="strutture" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="strutture">Strutture</TabsTrigger>
+              <TabsTrigger value="collaborazioni">Collaborazioni</TabsTrigger>
+              <TabsTrigger value="post">Post</TabsTrigger>
+            </TabsList>
 
-        {/* Properties (for Hosts) */}
-        {profile.role === "host" && profile.properties && profile.properties.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Strutture</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {profile.properties.map((property) => (
-                <Card
-                  key={property.id}
-                  className="overflow-hidden hover:shadow-lg transition-shadow"
-                >
-                  {property.images && property.images.length > 0 ? (
-                    <div className="relative w-full h-48 group cursor-pointer" onClick={() => router.push(`/properties/${property.id}`)}>
-                      <Image
-                        src={property.images[0]}
-                        alt={property.name}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleShareProperty(property.id)
-                          }}
-                          className="text-white hover:text-white hover:bg-white/20"
-                        >
-                          {shareLinkCopied === property.id ? (
-                            <>
-                              <Check className="w-4 h-4 mr-2" />
-                              Copiato!
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-4 h-4 mr-2" />
-                              Condividi struttura
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="relative w-full h-48 cursor-pointer" onClick={() => router.push(`/properties/${property.id}`)}>
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <Home className="w-12 h-12 text-muted-foreground" />
-                      </div>
-                    </div>
-                  )}
-                  <CardContent className="p-4">
-                    <h3 
-                      className="font-semibold text-lg mb-1 cursor-pointer hover:underline"
+            <TabsContent value="strutture" className="mt-6">
+              {profile.properties && profile.properties.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.properties.map((property) => (
+                    <div
+                      key={property.id}
+                      className="relative aspect-square group cursor-pointer"
                       onClick={() => router.push(`/properties/${property.id}`)}
                     >
-                      {property.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
-                      <MapPin className="w-3 h-3" />
-                      {property.city}, {property.country}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold">
-                        €{property.price_per_night}
-                        <span className="text-sm font-normal text-muted-foreground">/notte</span>
-                      </span>
-                      {property.rating > 0 && (
-                        <span className="text-sm">
-                          ⭐ {property.rating.toFixed(1)}
-                        </span>
+                      {property.images && property.images.length > 0 ? (
+                        <Image
+                          src={property.images[0]}
+                          alt={property.title || property.name}
+                          fill
+                          sizes="(max-width: 768px) 33vw, 200px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <Home className="w-8 h-8 text-muted-foreground" />
+                        </div>
                       )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <p className="text-white text-sm font-semibold px-2 text-center">
+                          {property.title || property.name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Home className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessuna struttura pubblicata</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="collaborazioni" className="mt-6">
+              {profile.collaborations && profile.collaborations.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.collaborations.map((collab) => (
+                    <div
+                      key={collab.id}
+                      className="relative aspect-square group cursor-pointer"
+                      onClick={() => router.push(`/properties/${collab.property_id}`)}
+                    >
+                      {collab.property.images && collab.property.images.length > 0 ? (
+                        <Image
+                          src={collab.property.images[0]}
+                          alt={collab.property.title || collab.property.name}
+                          fill
+                          sizes="(max-width: 768px) 33vw, 200px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <p className="text-white text-sm font-semibold px-2 text-center">
+                          {collab.property.title || collab.property.name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessuna collaborazione attiva</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="post" className="mt-6">
+              {profile.posts && profile.posts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.posts.map((post) => (
+                    <Link
+                      key={post.id}
+                      href={`/posts/${post.id}`}
+                      className="relative aspect-square group"
+                    >
+                      {post.images && post.images.length > 0 ? (
+                        <>
+                          <Image
+                            src={post.images[0]}
+                            alt="Post"
+                            fill
+                            sizes="(max-width: 768px) 33vw, 200px"
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
+                            <div className="flex items-center gap-1 text-white">
+                              <Heart className="w-5 h-5 fill-white" />
+                              <span className="font-semibold">{post.likes_count || 0}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+                          <span className="text-muted-foreground text-xs text-center line-clamp-3">
+                            {post.content}
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Nessun post pubblicato</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* CREATOR PROFILE */}
+        {profile.role === "creator" && (
+          <Tabs defaultValue="statistiche" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="statistiche">Statistiche</TabsTrigger>
+              <TabsTrigger value="collaborazioni">Collaborazioni</TabsTrigger>
+              <TabsTrigger value="post">Post</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="statistiche" className="mt-6 space-y-6">
+              {/* Profile Stats */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="w-5 h-5" />
+                    Statistiche Profilo
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-primary/5 rounded-lg">
+                      <Eye className="w-6 h-6 mx-auto mb-2 text-primary" />
+                      <p className="text-2xl font-bold">{stats.profileViews || 0}</p>
+                      <p className="text-sm text-muted-foreground">Views Profilo</p>
+                    </div>
+                    <div className="text-center p-4 bg-primary/5 rounded-lg">
+                      <ThumbsUp className="w-6 h-6 mx-auto mb-2 text-primary" />
+                      <p className="text-2xl font-bold">{stats.totalInteractions || 0}</p>
+                      <p className="text-sm text-muted-foreground">Interazioni</p>
+                    </div>
+                    <div className="text-center p-4 bg-primary/5 rounded-lg">
+                      <TrendingUp className="w-6 h-6 mx-auto mb-2 text-primary" />
+                      <p className="text-2xl font-bold">
+                        {stats.totalInteractions && stats.profileViews 
+                          ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
+                          : 0}%
+                      </p>
+                      <p className="text-sm text-muted-foreground">Engagement</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Social Media Stats */}
+              {profile.social_accounts && profile.social_accounts.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="w-5 h-5" />
+                      Social Media
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {profile.social_accounts.map((account, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            {account.platform === "instagram" && (
+                              <Instagram className="w-6 h-6 text-pink-500" />
+                            )}
+                            {account.platform === "youtube" && (
+                              <Youtube className="w-6 h-6 text-red-500" />
+                            )}
+                            {account.platform === "tiktok" && (
+                              <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">TT</span>
+                              </div>
+                            )}
+                            {account.platform === "facebook" && (
+                              <Facebook className="w-6 h-6 text-blue-600" />
+                            )}
+                            <div>
+                              <p className="font-semibold">@{account.username}</p>
+                              <p className="text-sm text-muted-foreground capitalize">{account.platform}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">{account.follower_count.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">follower</p>
+                            {account.engagement_rate && (
+                              <p className="text-xs text-primary mt-1">
+                                {account.engagement_rate.toFixed(2)}% engagement
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              )}
+
+              {/* Engagement Info */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5" />
+                    Performance
+                  </CardTitle>
+                  <CardDescription>
+                    Statistiche basate sull'attività su Nomadiqe
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Engagement Rate</span>
+                        <span className="text-sm text-muted-foreground">
+                          {stats.totalInteractions && stats.profileViews 
+                            ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
+                            : 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-primary h-full transition-all"
+                          style={{ 
+                            width: `${Math.min(
+                              stats.totalInteractions && stats.profileViews 
+                                ? (stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100 
+                                : 0, 
+                              100
+                            )}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Reach</span>
+                        <span className="text-sm text-muted-foreground">{stats.profileViews || 0} views</span>
+                      </div>
+                      <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="bg-blue-500 h-full transition-all"
+                          style={{ width: `${Math.min((stats.profileViews || 0) / 10, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="collaborazioni" className="mt-6">
+              {profile.collaborations && profile.collaborations.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.collaborations.map((collab) => (
+                    <div
+                      key={collab.id}
+                      className="relative aspect-square group cursor-pointer"
+                      onClick={() => router.push(`/properties/${collab.property_id}`)}
+                    >
+                      {collab.property.images && collab.property.images.length > 0 ? (
+                        <Image
+                          src={collab.property.images[0]}
+                          alt={collab.property.title || collab.property.name}
+                          fill
+                          sizes="(max-width: 768px) 33vw, 200px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <Users className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <p className="text-white text-sm font-semibold px-2 text-center">
+                          {collab.property.title || collab.property.name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessuna collaborazione attiva</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="post" className="mt-6">
+              {profile.posts && profile.posts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.posts.map((post) => (
+                    <Link
+                      key={post.id}
+                      href={`/posts/${post.id}`}
+                      className="relative aspect-square group"
+                    >
+                      {post.images && post.images.length > 0 ? (
+                        <>
+                          <Image
+                            src={post.images[0]}
+                            alt="Post"
+                            fill
+                            sizes="(max-width: 768px) 33vw, 200px"
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
+                            <div className="flex items-center gap-1 text-white">
+                              <Heart className="w-5 h-5 fill-white" />
+                              <span className="font-semibold">{post.likes_count || 0}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+                          <span className="text-muted-foreground text-xs text-center line-clamp-3">
+                            {post.content}
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Nessun post pubblicato</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+
+        {/* TRAVELER/OTHER PROFILE */}
+        {profile.role !== "host" && profile.role !== "creator" && (
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-4">Post</h2>
+            {profile.posts && profile.posts.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1 md:gap-2">
+                {profile.posts.map((post) => (
+                  <Link
+                    key={post.id}
+                    href={`/posts/${post.id}`}
+                    className="relative aspect-square group"
+                  >
+                    {post.images && post.images.length > 0 ? (
+                      <>
+                        <Image
+                          src={post.images[0]}
+                          alt="Post"
+                          fill
+                          sizes="(max-width: 768px) 33vw, 200px"
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
+                          <div className="flex items-center gap-1 text-white">
+                            <Heart className="w-5 h-5 fill-white" />
+                            <span className="font-semibold">{post.likes_count || 0}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+                        <span className="text-muted-foreground text-xs text-center line-clamp-3">
+                          {post.content}
+                        </span>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nessun post pubblicato</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -448,4 +956,3 @@ export default function PublicProfilePage() {
     </div>
   )
 }
-
