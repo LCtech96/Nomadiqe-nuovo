@@ -402,9 +402,9 @@ export default function ProfilePage() {
 
   const canChangeUsername = (): boolean => {
     if (!usernameLastChanged) return true
-    const oneMonthAgo = new Date()
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1)
-    return usernameLastChanged <= oneMonthAgo
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+    return usernameLastChanged <= oneWeekAgo
   }
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,7 +438,13 @@ export default function ProfilePage() {
 
   // Check username availability
   useEffect(() => {
-    if (!username || username.trim().length === 0 || username === profile?.username) {
+    // Allow empty username during editing - don't check availability if empty
+    if (!username || username.trim().length === 0) {
+      setUsernameAvailable(null)
+      return
+    }
+    // Only check if username is different from current profile username
+    if (username === profile?.username) {
       setUsernameAvailable(null)
       return
     }
@@ -471,11 +477,11 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!session?.user?.id) return
 
-    // Check username change limit
-    if (username && username !== profile?.username && !canChangeUsername()) {
+    // Check username change limit (only when actually saving a different username)
+    if (username && username.trim() && username !== profile?.username && !canChangeUsername()) {
       toast({
         title: "Errore",
-        description: "Puoi cambiare lo username solo una volta al mese. Riprova tra qualche settimana.",
+        description: "Puoi cambiare lo username solo una volta a settimana. Riprova tra qualche giorno.",
         variant: "destructive",
       })
       return
@@ -764,11 +770,11 @@ export default function ProfilePage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="mt-1"
-                        disabled={!canChangeUsername() && username !== profile?.username}
+                        placeholder="Inserisci username"
                       />
-                      {!canChangeUsername() && username !== profile?.username && (
+                      {!canChangeUsername() && username && username !== profile?.username && (
                         <p className="text-xs text-muted-foreground mt-1">
-                          Puoi cambiare lo username solo una volta al mese
+                          ⚠️ Puoi salvare un nuovo username solo una volta a settimana
                         </p>
                       )}
                       {checkingUsername && username && username !== profile?.username && (
