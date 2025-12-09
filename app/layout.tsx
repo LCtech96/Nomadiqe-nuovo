@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Navbar from "@/components/navbar";
 import BottomNav from "@/components/bottom-nav";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -45,6 +46,7 @@ export default function RootLayout({
             <BottomNav />
             <Toaster />
             <Analytics />
+            <SpeedInsights />
           </OneSignalProvider>
         </Providers>
       </body>

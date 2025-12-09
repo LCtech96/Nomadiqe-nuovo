@@ -63,7 +63,7 @@ export default function HostsListPage() {
           const { data: propertiesData } = await supabase
             .from("properties")
             .select("id, name, city, country, images")
-            .eq("host_id", host.id)
+            .eq("owner_id", host.id)
             .eq("is_active", true)
 
           return {

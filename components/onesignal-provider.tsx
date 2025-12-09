@@ -55,6 +55,12 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
           enable: false,
         },
         allowLocalhostAsSecureOrigin: true,
+        // Configurazioni per notifiche anche quando app è chiusa
+        serviceWorkerParam: { scope: "/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        welcomeNotification: {
+          disable: true,
+        },
       })
 
       // Controlla se l'utente è già iscritto

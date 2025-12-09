@@ -99,13 +99,13 @@ BEGIN
   -- 15. Elimina bookings (se la tabella esiste)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
     DELETE FROM public.bookings WHERE traveler_id = user_id_to_delete OR property_id IN (
-      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete OR host_id = user_id_to_delete
+      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
     );
     RAISE NOTICE 'Bookings eliminate';
   END IF;
   
-  -- 16. Elimina properties (dove l'utente è owner o host)
-  DELETE FROM public.properties WHERE owner_id = user_id_to_delete OR host_id = user_id_to_delete;
+  -- 16. Elimina properties (dove l'utente è owner)
+  DELETE FROM public.properties WHERE owner_id = user_id_to_delete;
   RAISE NOTICE 'Properties eliminate';
   
   -- 17. Elimina collaborations (se la tabella esiste)
@@ -132,11 +132,17 @@ BEGIN
     RAISE NOTICE 'Referrals eliminate';
   END IF;
   
-  -- 21. Elimina il profilo (questo triggererà CASCADE su altre tabelle se configurate)
+  -- 21. Elimina email verifications (se la tabella esiste)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_verifications') THEN
+    DELETE FROM public.email_verifications WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'Email verifications eliminate';
+  END IF;
+  
+  -- 22. Elimina il profilo (questo triggererà CASCADE su altre tabelle se configurate)
   DELETE FROM public.profiles WHERE id = user_id_to_delete;
   RAISE NOTICE 'Profilo eliminato';
   
-  -- 22. Elimina l'utente da auth.users (questo è l'ultimo passo)
+  -- 23. Elimina l'utente da auth.users (questo è l'ultimo passo)
   -- Nota: Questo richiede privilegi elevati, quindi la funzione usa SECURITY DEFINER
   DELETE FROM auth.users WHERE id = user_id_to_delete;
   RAISE NOTICE 'Utente eliminato da auth.users';
