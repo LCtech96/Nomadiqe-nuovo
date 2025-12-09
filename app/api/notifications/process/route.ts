@@ -5,15 +5,28 @@ const ONESIGNAL_APP_ID = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID
 const ONESIGNAL_REST_API_KEY = process.env.ONESIGNAL_REST_API_KEY
 
 // Questa API route processa le notifiche pending dal database
-// Può essere chiamata da un cron job (Vercel Cron) o da un webhook
+// Può essere chiamata da:
+// 1. Vercel Cron Job (ogni minuto)
+// 2. Webhook Supabase (quando viene inserita una notifica)
+// 3. Chiamata manuale (per test)
 export async function POST(request: Request) {
   try {
-    // Verifica autenticazione (opzionale, puoi usare un secret key)
+    // Verifica autenticazione solo se è configurata una secret key
+    // Per Vercel Cron, usa il header 'x-vercel-cron' per autenticazione
     const authHeader = request.headers.get("authorization")
+    const vercelCronHeader = request.headers.get("x-vercel-cron")
     const secretKey = process.env.NOTIFICATION_WEBHOOK_SECRET
     
-    if (secretKey && authHeader !== `Bearer ${secretKey}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Se è una chiamata da Vercel Cron, è autenticata automaticamente
+    const isVercelCron = vercelCronHeader === "1"
+    
+    // Se è configurata una secret key e non è Vercel Cron, verifica l'autenticazione
+    if (secretKey && !isVercelCron && authHeader !== `Bearer ${secretKey}`) {
+      // Se non c'è secret key configurata, permette comunque (per semplicità)
+      // In produzione, è consigliabile configurare una secret key
+      if (secretKey) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
     }
 
     if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY) {
@@ -75,6 +88,10 @@ export async function POST(request: Request) {
             contents: { en: notification.message, it: notification.message },
             url: notification.url || "/",
             data: notification.data || {},
+            // Suono per le notifiche
+            sound: "default",
+            // Priorità alta per i messaggi
+            priority: notification.notification_type === "message" ? 10 : 5,
             // Configurazioni per notifiche anche quando app è chiusa
             content_available: true,
             mutable_content: true,
@@ -128,3 +145,4 @@ export async function GET() {
     pending: count || 0,
   })
 }
+

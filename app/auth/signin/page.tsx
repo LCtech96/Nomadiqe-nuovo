@@ -51,7 +51,7 @@ export default function SignInPage() {
       // Prima verifica se l'utente esiste nel database
       const { data: userData, error: userCheckError } = await supabase
         .from("profiles")
-        .select("id, email, role")
+        .select("id, email, role, onboarding_completed")
         .eq("email", email)
         .maybeSingle()
 
@@ -65,9 +65,9 @@ export default function SignInPage() {
         return
       }
 
-      // Se l'utente ha già completato l'onboarding (ha un ruolo), permette il login senza verificare email
+      // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), permette il login senza verificare email
       // La verifica email è richiesta solo durante la registrazione iniziale
-      if (userData.role) {
+      if (userData.role || userData.onboarding_completed) {
         // Utente ha completato l'onboarding, procedi direttamente con il login
         // Non richiedere la verifica email ogni volta
       } else {

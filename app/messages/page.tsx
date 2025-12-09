@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,6 +57,7 @@ export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -68,6 +69,172 @@ export default function MessagesPage() {
       loadConversations()
     }
   }, [status, session, router])
+
+  // Setup Realtime listener per nuovi messaggi
+  useEffect(() => {
+    if (!session?.user?.id || status !== "authenticated") return
+
+    console.log("🔔 Messages: Setup Realtime listener per messaggi in tempo reale")
+
+    // Listener per nuovi messaggi ricevuti
+    const messagesChannel = supabase
+      .channel(`messages-realtime:${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `receiver_id=eq.${session.user.id}`,
+        },
+        async (payload) => {
+          console.log("📨 Messages: Nuovo messaggio ricevuto in tempo reale!", payload.new)
+          
+          // Carica i dati del sender
+          const { data: sender } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url")
+            .eq("id", payload.new.sender_id)
+            .single()
+
+          const newMessage: Message = {
+            ...payload.new,
+            sender: sender || undefined,
+          }
+
+          // Se abbiamo una conversazione aperta con questo mittente, aggiungi il messaggio
+          if (selectedConversation === payload.new.sender_id) {
+            setMessages((prev) => [...prev, newMessage])
+            
+            // Scroll to bottom
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+            }, 100)
+            
+            // Marca come letto
+            await supabase
+              .from("messages")
+              .update({ read: true })
+              .eq("id", payload.new.id)
+          }
+
+          // Aggiorna la lista conversazioni in tempo reale
+          setConversations((prev) => {
+            const existingConv = prev.find((c) => c.otherUserId === payload.new.sender_id)
+            
+            if (existingConv) {
+              // Aggiorna la conversazione esistente
+              return prev.map((conv) => {
+                if (conv.otherUserId === payload.new.sender_id) {
+                  return {
+                    ...conv,
+                    lastMessage: newMessage,
+                    unreadCount: selectedConversation === payload.new.sender_id 
+                      ? 0 
+                      : conv.unreadCount + 1,
+                  }
+                }
+                return conv
+              })
+            } else {
+              // Aggiungi nuova conversazione
+              return [
+                {
+                  otherUserId: payload.new.sender_id,
+                  otherUser: sender || { id: payload.new.sender_id, username: null, full_name: null, avatar_url: null },
+                  lastMessage: newMessage,
+                  unreadCount: selectedConversation === payload.new.sender_id ? 0 : 1,
+                },
+                ...prev,
+              ]
+            }
+          })
+
+          // Mostra notifica toast
+          toast({
+            title: "💬 Nuovo messaggio",
+            description: `Hai ricevuto un nuovo messaggio`,
+          })
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `sender_id=eq.${session.user.id}`,
+        },
+        async (payload) => {
+          console.log("📤 Messages: Messaggio inviato in tempo reale!", payload.new)
+          
+          // Carica i dati del receiver
+          const { data: receiver } = await supabase
+            .from("profiles")
+            .select("id, username, full_name, avatar_url")
+            .eq("id", payload.new.receiver_id)
+            .single()
+
+          const newMessage: Message = {
+            ...payload.new,
+            receiver: receiver || undefined,
+            sender: session.user ? {
+              id: session.user.id,
+              username: null,
+              full_name: null,
+              avatar_url: null,
+            } : undefined,
+          }
+
+          // Se abbiamo una conversazione aperta, aggiungi il messaggio alla lista
+          if (selectedConversation === payload.new.receiver_id) {
+            setMessages((prev) => [...prev, newMessage])
+            
+            // Scroll to bottom
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+            }, 100)
+          }
+
+          // Aggiorna la lista conversazioni in tempo reale
+          setConversations((prev) => {
+            const existingConv = prev.find((c) => c.otherUserId === payload.new.receiver_id)
+            
+            if (existingConv) {
+              // Aggiorna la conversazione esistente
+              return prev.map((conv) => {
+                if (conv.otherUserId === payload.new.receiver_id) {
+                  return {
+                    ...conv,
+                    lastMessage: newMessage,
+                  }
+                }
+                return conv
+              })
+            } else {
+              // Aggiungi nuova conversazione
+              return [
+                {
+                  otherUserId: payload.new.receiver_id,
+                  otherUser: receiver || { id: payload.new.receiver_id, username: null, full_name: null, avatar_url: null },
+                  lastMessage: newMessage,
+                  unreadCount: 0,
+                },
+                ...prev,
+              ]
+            }
+          })
+        }
+      )
+      .subscribe((status) => {
+        console.log("📡 Messages: Realtime subscription status:", status)
+      })
+
+    return () => {
+      console.log("🔌 Messages: Disconnesso Realtime listener")
+      supabase.removeChannel(messagesChannel)
+    }
+  }, [session?.user?.id, status, selectedConversation, supabase, toast])
 
   const loadConversations = async () => {
     if (!session?.user?.id) return
@@ -150,33 +317,69 @@ export default function MessagesPage() {
 
       // Reload conversations to update unread count
       loadConversations()
+
+      // Scroll to bottom after messages load
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
     } catch (error) {
       console.error("Error loading messages:", error)
     }
   }
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
+    }
+  }, [messages.length])
 
   const handleSendMessage = async () => {
     if (!session?.user?.id || !selectedConversation || !newMessage.trim()) return
 
     setSending(true)
     try {
-      const { error } = await supabase
+      const messageContent = newMessage.trim()
+      setNewMessage("") // Pulisci subito il campo per UX migliore
+
+      const { data, error } = await supabase
         .from("messages")
         .insert({
           sender_id: session.user.id,
           receiver_id: selectedConversation,
-          content: newMessage.trim(),
+          content: messageContent,
           read: false,
         })
+        .select(`
+          *,
+          sender:profiles!messages_sender_id_fkey(id, username, full_name, avatar_url),
+          receiver:profiles!messages_receiver_id_fkey(id, username, full_name, avatar_url)
+        `)
+        .single()
 
-      if (error) throw error
+      if (error) {
+        console.error("❌ Errore nell'invio del messaggio:", error)
+        throw error
+      }
 
-      setNewMessage("")
-      loadMessages(selectedConversation)
+      console.log("✅ Messaggio inviato con successo:", data)
+
+      // Il messaggio verrà aggiunto automaticamente dal listener Realtime
+      // Ma ricarichiamo comunque per sicurezza
+      if (data) {
+        setMessages((prev) => [...prev, data as Message])
+      }
+
+      // Scroll automatico al nuovo messaggio (verrà gestito dal render)
     } catch (error: any) {
+      console.error("❌ Errore completo:", error)
+      // Ripristina il messaggio in caso di errore
+      setNewMessage(messageContent)
       toast({
         title: "Errore",
-        description: error.message || "Impossibile inviare il messaggio",
+        description: error.message || "Impossibile inviare il messaggio. Verifica la connessione.",
         variant: "destructive",
       })
     } finally {
@@ -340,6 +543,7 @@ export default function MessagesPage() {
                         </div>
                       )
                     })}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Send Message */}

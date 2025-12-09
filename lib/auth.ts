@@ -93,9 +93,9 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          // Se l'utente ha già completato l'onboarding (ha un ruolo), permette il login senza verificare email
+          // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), permette il login senza verificare email
           // La verifica email è richiesta solo durante la registrazione iniziale
-          if (profile?.role) {
+          if (profile?.role || profile?.onboarding_completed) {
             console.log("User has completed onboarding, allowing login without email verification")
             // Utente ha completato l'onboarding, procedi con il login
           } else {

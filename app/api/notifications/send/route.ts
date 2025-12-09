@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tipo di notifica non valido" }, { status: 400 })
     }
 
-    // Invia notifica tramite OneSignal API
+    // Invia notifica tramite OneSignal API con suono
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
@@ -109,6 +109,17 @@ export async function POST(request: Request) {
         contents: { en: message, it: message },
         url: url,
         data: notificationData,
+        // Suono per le notifiche web push
+        // IMPORTANTE: Per web push, il suono funziona solo se:
+        // 1. Il browser ha i permessi per le notifiche
+        // 2. Il dispositivo non è in modalità silenziosa
+        // 3. OneSignal è configurato correttamente
+        sound: "default",
+        // Priorità alta per i messaggi (assicura che la notifica appaia immediatamente)
+        priority: type === "message" ? 10 : 5,
+        // Configurazioni per notifiche anche quando app è chiusa
+        content_available: true,
+        mutable_content: true,
       }),
     })
 
@@ -125,3 +136,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message || "Errore sconosciuto" }, { status: 500 })
   }
 }
+
