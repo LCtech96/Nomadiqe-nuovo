@@ -1,7 +1,9 @@
 {
-  "buildCommand": "pnpm run build",
-  "devCommand": "pnpm run dev",
-  "installCommand": "pnpm install",
-  "framework": "nextjs",
-  "regions": ["iad1"]
+  "crons": [
+    {
+      "path": "/api/notifications/process",
+      "schedule": "*/1 * * * *"
+    }
+  ]
 }
+
