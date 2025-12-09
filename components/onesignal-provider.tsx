@@ -31,6 +31,14 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const [isOneSignalReady, setIsOneSignalReady] = useState(false)
 
   useEffect(() => {
+    console.log("🔄 OneSignal: useEffect triggerato", {
+      hasWindow: typeof window !== "undefined",
+      hasOneSignal: !!window?.OneSignal,
+      hasUserId: !!session?.user?.id,
+      isReady: isOneSignalReady,
+      status,
+    })
+
     if (
       typeof window !== "undefined" &&
       window.OneSignal &&
@@ -38,7 +46,16 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       isOneSignalReady &&
       status === "authenticated"
     ) {
+      console.log("✅ OneSignal: Condizioni soddisfatte, inizializzo...")
       initializeOneSignal()
+    } else {
+      console.log("⏳ OneSignal: In attesa di condizioni...", {
+        window: typeof window !== "undefined",
+        OneSignal: !!window?.OneSignal,
+        userId: !!session?.user?.id,
+        ready: isOneSignalReady,
+        status,
+      })
     }
   }, [session, status, isOneSignalReady])
 
@@ -125,40 +142,66 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
       // Controlla se l'utente è già iscritto in Supabase
       const supabase = createSupabaseClient()
-      const { data: existingSubscription } = await supabase
+      console.log("🔍 OneSignal: Controllo subscription per user_id:", session.user.id)
+      
+      const { data: existingSubscription, error: subError } = await supabase
         .from("push_subscriptions")
         .select("onesignal_player_id")
         .eq("user_id", session.user.id)
         .maybeSingle()
 
+      if (subError) {
+        console.error("❌ OneSignal: Errore nel controllo subscription:", subError)
+      }
+
       const hasSubscriptionInDB = !!existingSubscription?.onesignal_player_id
       console.log("📱 OneSignal: Utente iscritto in DB?", hasSubscriptionInDB)
+      console.log("📱 OneSignal: Dati subscription:", existingSubscription)
 
       // Controlla anche lo stato di OneSignal
-      const isSubscribedInOneSignal = await OneSignal.isPushNotificationsEnabled()
-      console.log("📱 OneSignal: Utente iscritto in OneSignal?", isSubscribedInOneSignal)
+      let isSubscribedInOneSignal = false
+      try {
+        isSubscribedInOneSignal = await OneSignal.isPushNotificationsEnabled()
+        console.log("📱 OneSignal: Utente iscritto in OneSignal?", isSubscribedInOneSignal)
+      } catch (error) {
+        console.error("❌ OneSignal: Errore nel controllo stato OneSignal:", error)
+      }
 
       // Se l'utente è iscritto in OneSignal ma non in DB, salva il player ID
       if (isSubscribedInOneSignal && !hasSubscriptionInDB) {
-        const playerId = await OneSignal.getUserId()
-        console.log("🆔 OneSignal: Player ID:", playerId)
-        if (playerId) {
-          await savePlayerId(playerId)
-          console.log("💾 OneSignal: Player ID salvato in Supabase")
+        try {
+          const playerId = await OneSignal.getUserId()
+          console.log("🆔 OneSignal: Player ID:", playerId)
+          if (playerId) {
+            await savePlayerId(playerId)
+            console.log("💾 OneSignal: Player ID salvato in Supabase")
+          }
+        } catch (error) {
+          console.error("❌ OneSignal: Errore nel salvataggio player ID:", error)
         }
       }
 
       // Mostra il dialog se l'utente NON è iscritto (né in DB né in OneSignal)
-      if (!hasSubscriptionInDB && !isSubscribedInOneSignal) {
+      const shouldShowDialog = !hasSubscriptionInDB && !isSubscribedInOneSignal
+      console.log("🔔 OneSignal: Devo mostrare il dialog?", shouldShowDialog)
+      console.log("🔔 OneSignal: hasSubscriptionInDB =", hasSubscriptionInDB, ", isSubscribedInOneSignal =", isSubscribedInOneSignal)
+
+      if (shouldShowDialog) {
+        console.log("✅ OneSignal: Mostro il dialog tra 1 secondo...")
         // Mostra il dialog subito dopo il login (1 secondo per dare tempo al rendering)
         setTimeout(() => {
+          console.log("🔔 OneSignal: Apertura dialog ora!")
           setShowPermissionDialog(true)
         }, 1000)
       } else if (isSubscribedInOneSignal) {
         // Se è iscritto in OneSignal, assicurati che il player ID sia salvato
-        const playerId = await OneSignal.getUserId()
-        if (playerId && !hasSubscriptionInDB) {
-          await savePlayerId(playerId)
+        try {
+          const playerId = await OneSignal.getUserId()
+          if (playerId && !hasSubscriptionInDB) {
+            await savePlayerId(playerId)
+          }
+        } catch (error) {
+          console.error("❌ OneSignal: Errore nel salvataggio player ID:", error)
         }
       }
 
@@ -371,6 +414,7 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   // Handler per quando OneSignal è pronto
   useEffect(() => {
     const handleOneSignalReady = () => {
+      console.log("✅ OneSignal: Evento 'onesignal-ready' ricevuto")
       setIsOneSignalReady(true)
       if (session?.user?.id && status === "authenticated") {
         setTimeout(() => initializeOneSignal(), 500)
@@ -382,19 +426,43 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
       // Controlla se OneSignal è già caricato e inizializzato
       if (window.OneSignal && window.OneSignalInitialized) {
+        console.log("✅ OneSignal: Già inizializzato, imposto ready")
         setIsOneSignalReady(true)
         if (session?.user?.id && status === "authenticated") {
           setTimeout(() => initializeOneSignal(), 500)
         }
       }
-    }
 
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("onesignal-ready", handleOneSignalReady)
+      // Fallback: Se dopo 5 secondi OneSignal non è ancora pronto ma l'utente è autenticato,
+      // controlla comunque se deve mostrare il dialog
+      const fallbackTimeout = setTimeout(async () => {
+        if (session?.user?.id && status === "authenticated" && !showPermissionDialog) {
+          console.log("⏰ OneSignal: Fallback timeout - controllo subscription direttamente")
+          const supabase = createSupabaseClient()
+          const { data: existingSubscription } = await supabase
+            .from("push_subscriptions")
+            .select("onesignal_player_id")
+            .eq("user_id", session.user.id)
+            .maybeSingle()
+
+          const hasSubscriptionInDB = !!existingSubscription?.onesignal_player_id
+          console.log("📱 OneSignal (Fallback): Utente iscritto in DB?", hasSubscriptionInDB)
+
+          if (!hasSubscriptionInDB) {
+            console.log("🔔 OneSignal (Fallback): Mostro dialog (utente non iscritto)")
+            setShowPermissionDialog(true)
+          }
+        }
+      }, 5000)
+
+      return () => {
+        if (typeof window !== "undefined") {
+          window.removeEventListener("onesignal-ready", handleOneSignalReady)
+        }
+        clearTimeout(fallbackTimeout)
       }
     }
-  }, [session, status])
+  }, [session, status, showPermissionDialog])
 
   // Controlla se l'origin è consentito prima di caricare lo script OneSignal
   const shouldLoadOneSignal = () => {
