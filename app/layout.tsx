@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { OneSignalProvider } from "@/components/onesignal-provider";
 import { Toaster } from "@/components/ui/toaster";
 import Navbar from "@/components/navbar";
 import BottomNav from "@/components/bottom-nav";
@@ -38,11 +39,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Navbar />
-          <main className="pb-16 md:pb-0">{children}</main>
-          <BottomNav />
-          <Toaster />
-          <Analytics />
+          <OneSignalProvider>
+            <Navbar />
+            <main className="pb-16 md:pb-0">{children}</main>
+            <BottomNav />
+            <Toaster />
+            <Analytics />
+          </OneSignalProvider>
         </Providers>
       </body>
     </html>
