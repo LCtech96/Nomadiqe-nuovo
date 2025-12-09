@@ -67,12 +67,15 @@ export async function POST(request: Request) {
 
         if (subError || !subscription?.onesignal_player_id) {
           // Utente non iscritto, marca come inviata per non riprovare
+          console.log(`⚠️ Utente ${notification.user_id} non iscritto alle notifiche push. Subscription:`, subscription, "Error:", subError)
           await supabase
             .from("pending_notifications")
             .update({ sent: true, sent_at: new Date().toISOString() })
             .eq("id", notification.id)
           continue
         }
+
+        console.log(`📤 Invio notifica a OneSignal per utente ${notification.user_id}, player ID: ${subscription.onesignal_player_id}`)
 
         // Invia notifica tramite OneSignal API
         const response = await fetch("https://onesignal.com/api/v1/notifications", {
@@ -99,6 +102,8 @@ export async function POST(request: Request) {
         })
 
         if (response.ok) {
+          const responseData = await response.json()
+          console.log(`✅ Notifica inviata con successo a OneSignal. Response:`, responseData)
           // Marca come inviata
           await supabase
             .from("pending_notifications")
@@ -107,7 +112,7 @@ export async function POST(request: Request) {
           processed++
         } else {
           const errorText = await response.text()
-          console.error(`OneSignal API error per notifica ${notification.id}: ${response.status} - ${errorText}`)
+          console.error(`❌ OneSignal API error per notifica ${notification.id}: Status ${response.status} - ${errorText}`)
           failed++
         }
       } catch (error: any) {
@@ -177,12 +182,15 @@ export async function GET(request: Request) {
 
           if (subError || !subscription?.onesignal_player_id) {
             // Utente non iscritto, marca come inviata per non riprovare
+            console.log(`⚠️ Utente ${notification.user_id} non iscritto alle notifiche push. Subscription:`, subscription, "Error:", subError)
             await supabase
               .from("pending_notifications")
               .update({ sent: true, sent_at: new Date().toISOString() })
               .eq("id", notification.id)
             continue
           }
+
+          console.log(`📤 Invio notifica a OneSignal per utente ${notification.user_id}, player ID: ${subscription.onesignal_player_id}`)
 
           // Invia notifica tramite OneSignal API
           const response = await fetch("https://onesignal.com/api/v1/notifications", {
@@ -209,6 +217,8 @@ export async function GET(request: Request) {
           })
 
           if (response.ok) {
+            const responseData = await response.json()
+            console.log(`✅ Notifica inviata con successo a OneSignal. Response:`, responseData)
             // Marca come inviata
             await supabase
               .from("pending_notifications")
@@ -217,7 +227,7 @@ export async function GET(request: Request) {
             processed++
           } else {
             const errorText = await response.text()
-            console.error(`OneSignal API error per notifica ${notification.id}: ${response.status} - ${errorText}`)
+            console.error(`❌ OneSignal API error per notifica ${notification.id}: Status ${response.status} - ${errorText}`)
             failed++
           }
         } catch (error: any) {
