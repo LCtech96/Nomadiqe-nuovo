@@ -36,7 +36,7 @@ Aggiungi queste righe al file `.env.local` nella root del progetto:
 ```env
 # OneSignal Configuration
 NEXT_PUBLIC_ONESIGNAL_APP_ID=3b54b91a-7afb-47a4-b50b-36294def8760
-ONESIGNAL_REST_API_KEY=os_v2_app_hnklsgt27nd2jnilgyuu334hmckhlirhztfev5euz6dgfv2afs7ndcjljzor3s3mm3q3lbg6ekmmqphe5s2inthdyvphcvirvnfbhoq
+ONESIGNAL_REST_API_KEY=LA_TUA_CHIAVE_ONESIGNAL_QUI
 ```
 
 #### B. Vercel Environment Variables (Produzione)
@@ -53,7 +53,7 @@ ONESIGNAL_REST_API_KEY=os_v2_app_hnklsgt27nd2jnilgyuu334hmckhlirhztfev5euz6dgfv2
 
    **Variabile 2:**
    - **Name**: `ONESIGNAL_REST_API_KEY`
-   - **Value**: `os_v2_app_hnklsgt27nd2jnilgyuu334hmckhlirhztfev5euz6dgfv2afs7ndcjljzor3s3mm3q3lbg6ekmmqphe5s2inthdyvphcvirvnfbhoq`
+   - **Value**: `LA_TUA_CHIAVE_ONESIGNAL_QUI`
    - **Environments**: ✅ Production, ✅ Preview, ✅ Development
 
 5. Clicca **Save** per ogni variabile
