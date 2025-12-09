@@ -48,6 +48,52 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
+      // Prima verifica se l'utente esiste nel database
+      const { data: userData, error: userCheckError } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle()
+
+      if (userCheckError || !userData) {
+        toast({
+          title: "Errore di accesso",
+          description: "Non esiste un account con questa email. Per favore registrati prima di accedere.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Verifica che l'utente abbia completato la prima verifica email
+      const { data: emailVerification } = await supabase
+        .from("email_verifications")
+        .select("first_verification_completed, second_verification_required, second_verification_completed")
+        .eq("user_id", userData.id)
+        .single()
+
+      if (!emailVerification || !emailVerification.first_verification_completed) {
+        toast({
+          title: "Registrazione non completata",
+          description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Se richiede seconda verifica, verifica che sia completata
+      if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
+        toast({
+          title: "Verifica email richiesta",
+          description: "Devi completare la seconda verifica email. Controlla la tua casella email per il codice di verifica.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Ora procedi con il login
       const result = await signIn("credentials", {
         email,
         password,
@@ -61,10 +107,10 @@ export default function SignInPage() {
         
         if (result.error === "CredentialsSignin") {
           errorMessage = "Email o password non corretti"
-          helpMessage = "Verifica di aver inserito le credenziali corrette. Se non hai un account, registrati."
+          helpMessage = "Verifica di aver inserito le credenziali corrette."
         } else if (result.error.includes("Invalid login credentials")) {
           errorMessage = "Email o password non corretti"
-          helpMessage = "Possibili cause:\n1. L'utente non esiste\n2. La password è errata\n3. L'email non è stata verificata"
+          helpMessage = "La password potrebbe essere errata."
         } else {
           errorMessage = result.error
         }

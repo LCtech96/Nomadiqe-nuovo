@@ -58,6 +58,124 @@ function VerifyEmailContent() {
     }
   }, [searchParams])
 
+  // Funzione helper per verificare se un dominio richiede seconda verifica
+  const requiresSecondVerification = (emailDomain: string): boolean => {
+    const trustedDomains = ['gmail.com', 'outlook.it', 'libero.it', 'hotmail.com']
+    return !trustedDomains.includes(emailDomain.toLowerCase())
+  }
+
+  // Funzione per creare profilo base e gestire seconda verifica
+  const handleFirstVerificationComplete = async (userEmail: string, userId: string) => {
+    // Crea o aggiorna il profilo base
+    const { data: existingProfile } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .maybeSingle()
+
+    if (!existingProfile) {
+      const emailParts = userEmail.split("@")
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          email: userEmail,
+          full_name: emailParts[0],
+          username: emailParts[0],
+        })
+
+      if (profileError) {
+        console.error("Error creating profile:", profileError)
+      }
+    }
+
+    // Estrai dominio email
+    const emailDomain = userEmail.split("@")[1] || ""
+    const needsSecondVerification = requiresSecondVerification(emailDomain)
+
+    // Crea o aggiorna record in email_verifications
+    const { data: emailVerification } = await supabase
+      .from("email_verifications")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (!emailVerification) {
+      // Crea nuovo record
+      const secondCode = needsSecondVerification 
+        ? Math.floor(100000 + Math.random() * 900000).toString()
+        : null
+      const expiresAt = needsSecondVerification
+        ? new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minuti
+        : null
+
+      const { error: insertError } = await supabase
+        .from("email_verifications")
+        .insert({
+          user_id: userId,
+          email: userEmail,
+          first_verification_completed: true,
+          first_verification_completed_at: new Date().toISOString(),
+          second_verification_required: needsSecondVerification,
+          second_verification_code: secondCode,
+          second_verification_code_expires_at: expiresAt,
+        })
+
+      if (insertError) {
+        console.error("Error creating email verification record:", insertError)
+      } else if (needsSecondVerification && secondCode) {
+        // Invia email con il secondo codice
+        try {
+          const response = await fetch("/api/send-second-verification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail, code: secondCode }),
+          })
+          
+          if (!response.ok) {
+            console.error("Failed to send second verification email")
+          }
+        } catch (error) {
+          console.error("Error calling send-second-verification API:", error)
+        }
+        
+        toast({
+          title: "Prima verifica completata",
+          description: "Ti abbiamo inviato una seconda email con un nuovo codice di verifica. Controlla la tua casella email.",
+        })
+        
+        // Reindirizza alla pagina di seconda verifica
+        router.push(`/auth/verify-email-second?email=${encodeURIComponent(userEmail)}&returnTo=/guide`)
+        return
+      }
+    } else {
+      // Aggiorna record esistente
+      const { error: updateError } = await supabase
+        .from("email_verifications")
+        .update({
+          first_verification_completed: true,
+          first_verification_completed_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+
+      if (updateError) {
+        console.error("Error updating email verification:", updateError)
+      }
+    }
+
+    // Registra referral se presente
+    await registerReferralIfExists()
+
+    // Se non serve seconda verifica, vai direttamente alla guida
+    if (!needsSecondVerification) {
+      toast({
+        title: "Successo",
+        description: "Email verificata con successo!",
+      })
+      router.push("/guide")
+    }
+  }
+
   const handleVerifyToken = async (token: string) => {
     setLoading(true)
     try {
@@ -73,17 +191,16 @@ function VerifyEmailContent() {
           variant: "destructive",
         })
       } else {
-        // User is already authenticated and has password from signUp
-        // No need to set password again
-        
-        // Registra referral se presente
-        await registerReferralIfExists()
-        
-        toast({
-          title: "Successo",
-          description: "Email verificata con successo!",
-        })
-        router.push("/guide")
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.email && user?.id) {
+          await handleFirstVerificationComplete(user.email, user.id)
+        } else {
+          toast({
+            title: "Errore",
+            description: "Impossibile recuperare i dati utente",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
       toast({
@@ -114,17 +231,16 @@ function VerifyEmailContent() {
           variant: "destructive",
         })
       } else {
-        // User is already authenticated and has password from signUp
-        // No need to set password again
-        
-        // Registra referral se presente
-        await registerReferralIfExists()
-        
-        toast({
-          title: "Successo",
-          description: "Email verificata con successo!",
-        })
-        router.push("/guide")
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.email && user?.id) {
+          await handleFirstVerificationComplete(user.email, user.id)
+        } else {
+          toast({
+            title: "Errore",
+            description: "Impossibile recuperare i dati utente",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
       toast({
