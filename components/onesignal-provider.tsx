@@ -123,21 +123,42 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
       console.log("✅ OneSignal: Inizializzazione completata con successo!")
 
-      // Controlla se l'utente è già iscritto
-      const isSubscribed = await OneSignal.isPushNotificationsEnabled()
-      console.log("📱 OneSignal: Utente iscritto?", isSubscribed)
+      // Controlla se l'utente è già iscritto in Supabase
+      const supabase = createSupabaseClient()
+      const { data: existingSubscription } = await supabase
+        .from("push_subscriptions")
+        .select("onesignal_player_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle()
 
-      if (!isSubscribed) {
-        // Mostra il dialog dopo 3 secondi
-        setTimeout(() => {
-          setShowPermissionDialog(true)
-        }, 3000)
-      } else {
+      const hasSubscriptionInDB = !!existingSubscription?.onesignal_player_id
+      console.log("📱 OneSignal: Utente iscritto in DB?", hasSubscriptionInDB)
+
+      // Controlla anche lo stato di OneSignal
+      const isSubscribedInOneSignal = await OneSignal.isPushNotificationsEnabled()
+      console.log("📱 OneSignal: Utente iscritto in OneSignal?", isSubscribedInOneSignal)
+
+      // Se l'utente è iscritto in OneSignal ma non in DB, salva il player ID
+      if (isSubscribedInOneSignal && !hasSubscriptionInDB) {
         const playerId = await OneSignal.getUserId()
         console.log("🆔 OneSignal: Player ID:", playerId)
         if (playerId) {
           await savePlayerId(playerId)
           console.log("💾 OneSignal: Player ID salvato in Supabase")
+        }
+      }
+
+      // Mostra il dialog se l'utente NON è iscritto (né in DB né in OneSignal)
+      if (!hasSubscriptionInDB && !isSubscribedInOneSignal) {
+        // Mostra il dialog subito dopo il login (1 secondo per dare tempo al rendering)
+        setTimeout(() => {
+          setShowPermissionDialog(true)
+        }, 1000)
+      } else if (isSubscribedInOneSignal) {
+        // Se è iscritto in OneSignal, assicurati che il player ID sia salvato
+        const playerId = await OneSignal.getUserId()
+        if (playerId && !hasSubscriptionInDB) {
+          await savePlayerId(playerId)
         }
       }
 
@@ -313,18 +334,37 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const handleSubscribe = async () => {
     try {
       const OneSignal = window.OneSignal
+      console.log("🔔 OneSignal: Richiesta permesso notifiche...")
+      
+      // Richiedi il permesso
       await OneSignal.registerForPushNotifications()
-      setShowPermissionDialog(false)
-
-      // Salva il player ID dopo la registrazione
-      setTimeout(async () => {
+      
+      // Attendi che OneSignal ottenga il player ID
+      let attempts = 0
+      const maxAttempts = 10
+      const checkPlayerId = async (): Promise<void> => {
         const playerId = await OneSignal.getUserId()
         if (playerId) {
+          console.log("✅ OneSignal: Player ID ottenuto:", playerId)
           await savePlayerId(playerId)
+          setShowPermissionDialog(false)
+          console.log("💾 OneSignal: Player ID salvato in Supabase")
+        } else if (attempts < maxAttempts) {
+          attempts++
+          console.log(`⏳ OneSignal: Attendo player ID... (tentativo ${attempts}/${maxAttempts})`)
+          setTimeout(checkPlayerId, 500)
+        } else {
+          console.error("❌ OneSignal: Impossibile ottenere player ID dopo", maxAttempts, "tentativi")
+          setShowPermissionDialog(false)
         }
-      }, 1000)
+      }
+      
+      // Inizia a controllare dopo 500ms
+      setTimeout(checkPlayerId, 500)
     } catch (error) {
-      console.error("Errore nella registrazione:", error)
+      console.error("❌ Errore nella registrazione:", error)
+      // Chiudi il dialog anche in caso di errore
+      setShowPermissionDialog(false)
     }
   }
 
@@ -436,21 +476,26 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
       )}
       {children}
       <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Abilita le notifiche</DialogTitle>
-            <DialogDescription>
-              Ricevi notifiche quando qualcuno ti invia un messaggio, mette like o commenta i tuoi post, anche quando
-              l'app è chiusa.
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Abilita le notifiche push
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Ricevi notifiche quando qualcuno ti invia un messaggio, mette like o commenta i tuoi post.
+              <br />
+              <br />
+              <strong>Le notifiche funzionano anche quando l'app è chiusa!</strong>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
               Non ora
             </Button>
-            <Button onClick={handleSubscribe}>
-              <Bell className="w-4 h-4 mr-2" />
-              Abilita notifiche
+            <Button onClick={handleSubscribe} className="flex items-center gap-2">
+              <Bell className="w-4 h-4" />
+              Consenti
             </Button>
           </DialogFooter>
         </DialogContent>
