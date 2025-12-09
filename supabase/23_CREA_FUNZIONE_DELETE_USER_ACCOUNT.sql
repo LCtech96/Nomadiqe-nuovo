@@ -96,7 +96,16 @@ BEGIN
   DELETE FROM public.posts WHERE author_id = user_id_to_delete;
   RAISE NOTICE 'Posts eliminate';
   
-  -- 15. Elimina bookings (se la tabella esiste)
+  -- 15. Elimina reviews PRIMA di eliminare properties (per evitare trigger che usano host_id)
+  -- Elimina reviews associate alle properties dell'utente
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'reviews') THEN
+    DELETE FROM public.reviews WHERE reviewer_id = user_id_to_delete OR property_id IN (
+      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
+    );
+    RAISE NOTICE 'Reviews eliminate';
+  END IF;
+  
+  -- 16. Elimina bookings PRIMA di eliminare properties
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
     DELETE FROM public.bookings WHERE traveler_id = user_id_to_delete OR property_id IN (
       SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
@@ -104,45 +113,102 @@ BEGIN
     RAISE NOTICE 'Bookings eliminate';
   END IF;
   
-  -- 16. Elimina properties (dove l'utente è owner)
-  DELETE FROM public.properties WHERE owner_id = user_id_to_delete;
-  RAISE NOTICE 'Properties eliminate';
+  -- 17. Elimina collaboration offers PRIMA di eliminare properties
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'collaboration_offers') THEN
+    DELETE FROM public.collaboration_offers WHERE host_id = user_id_to_delete OR property_id IN (
+      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
+    );
+    RAISE NOTICE 'Collaboration offers eliminate';
+  END IF;
   
-  -- 17. Elimina collaborations (se la tabella esiste)
+  -- 18. Elimina collaborations PRIMA di eliminare properties
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'collaborations') THEN
-    DELETE FROM public.collaborations WHERE host_id = user_id_to_delete OR creator_id = user_id_to_delete;
+    DELETE FROM public.collaborations WHERE host_id = user_id_to_delete OR creator_id = user_id_to_delete OR property_id IN (
+      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
+    );
     RAISE NOTICE 'Collaborations eliminate';
   END IF;
   
-  -- 18. Elimina notifications (se la tabella esiste)
+  -- 19. Elimina service requests PRIMA di eliminare properties - per Manager e Host
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'service_requests') THEN
+    DELETE FROM public.service_requests WHERE manager_id = user_id_to_delete OR host_id = user_id_to_delete OR property_id IN (
+      SELECT id FROM public.properties WHERE owner_id = user_id_to_delete
+    );
+    RAISE NOTICE 'Service requests eliminate';
+  END IF;
+  
+  -- 20. Elimina manager services (se la tabella esiste) - per Manager
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'manager_services') THEN
+    DELETE FROM public.manager_services WHERE manager_id = user_id_to_delete;
+    RAISE NOTICE 'Manager services eliminate';
+  END IF;
+  
+  -- 21. Elimina properties (dove l'utente è owner) - DOPO aver eliminato tutte le dipendenze
+  -- IMPORTANTE: Elimina properties DOPO aver eliminato tutte le dipendenze per evitare trigger che usano host_id
+  DELETE FROM public.properties WHERE owner_id = user_id_to_delete;
+  RAISE NOTICE 'Properties eliminate';
+  
+  -- 23. Elimina notifications (se la tabella esiste)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notifications') THEN
     DELETE FROM public.notifications WHERE user_id = user_id_to_delete OR related_user_id = user_id_to_delete;
     RAISE NOTICE 'Notifications eliminate';
   END IF;
   
-  -- 19. Elimina profile views (se la tabella esiste)
+  -- 24. Elimina profile views (se la tabella esiste)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'profile_views') THEN
     DELETE FROM public.profile_views WHERE profile_id = user_id_to_delete OR viewer_id = user_id_to_delete;
     RAISE NOTICE 'Profile views eliminate';
   END IF;
   
-  -- 20. Elimina referrals (se la tabella esiste)
+  -- 25. Elimina referrals (se la tabella esiste)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'referrals') THEN
     DELETE FROM public.referrals WHERE referrer_id = user_id_to_delete OR referred_id = user_id_to_delete;
     RAISE NOTICE 'Referrals eliminate';
   END IF;
   
-  -- 21. Elimina email verifications (se la tabella esiste)
+  -- 26. Elimina email verifications (se la tabella esiste)
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'email_verifications') THEN
     DELETE FROM public.email_verifications WHERE user_id = user_id_to_delete;
     RAISE NOTICE 'Email verifications eliminate';
   END IF;
   
-  -- 22. Elimina il profilo (questo triggererà CASCADE su altre tabelle se configurate)
+  -- 27. Elimina nuove tabelle del sistema XP (se esistono)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'xp_rate_limits') THEN
+    DELETE FROM public.xp_rate_limits WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'XP rate limits eliminate';
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_streaks') THEN
+    DELETE FROM public.user_streaks WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'User streaks eliminate';
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_badges') THEN
+    DELETE FROM public.user_badges WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'User badges eliminate';
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'external_shares') THEN
+    DELETE FROM public.external_shares WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'External shares eliminate';
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'host_referral_xp_bonus') THEN
+    DELETE FROM public.host_referral_xp_bonus WHERE referrer_host_id = user_id_to_delete OR referred_host_id = user_id_to_delete;
+    RAISE NOTICE 'Host referral XP bonus eliminate';
+  END IF;
+  
+  -- 27b. Elimina pending notifications (se la tabella esiste)
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'pending_notifications') THEN
+    DELETE FROM public.pending_notifications WHERE user_id = user_id_to_delete;
+    RAISE NOTICE 'Pending notifications eliminate';
+  END IF;
+  
+  -- 28. Elimina il profilo (questo triggererà CASCADE su altre tabelle se configurate)
   DELETE FROM public.profiles WHERE id = user_id_to_delete;
   RAISE NOTICE 'Profilo eliminato';
   
-  -- 23. Elimina l'utente da auth.users (questo è l'ultimo passo)
+  -- 29. Elimina l'utente da auth.users (questo è l'ultimo passo)
   -- Nota: Questo richiede privilegi elevati, quindi la funzione usa SECURITY DEFINER
   DELETE FROM auth.users WHERE id = user_id_to_delete;
   RAISE NOTICE 'Utente eliminato da auth.users';
