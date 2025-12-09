@@ -69,30 +69,10 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          // Verifica che l'utente abbia completato la prima verifica email
-          // Controlla se esiste un record in email_verifications con first_verification_completed = true
-          const { data: emailVerification } = await supabase
-            .from("email_verifications")
-            .select("first_verification_completed, second_verification_required, second_verification_completed")
-            .eq("user_id", data.user.id)
-            .single()
-
-          // Se non esiste il record di verifica, significa che l'utente non ha completato la registrazione
-          if (!emailVerification || !emailVerification.first_verification_completed) {
-            console.error("User has not completed first email verification")
-            return null
-          }
-
-          // Se richiede seconda verifica (domini personalizzati), verifica che sia completata
-          if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
-            console.error("User has not completed second email verification")
-            return null
-          }
-
-          // Ensure profile exists
+          // Ensure profile exists and get role
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("id, full_name, username")
+            .select("id, full_name, username, role")
             .eq("id", data.user.id)
             .single()
 
@@ -110,6 +90,32 @@ export const authOptions: NextAuthOptions = {
             if (insertError) {
               console.error("Profile creation error:", insertError)
               // Continue anyway - profile might be created later
+            }
+          }
+
+          // Se l'utente ha già completato l'onboarding (ha un ruolo), permette il login senza verificare email
+          // La verifica email è richiesta solo durante la registrazione iniziale
+          if (profile?.role) {
+            console.log("User has completed onboarding, allowing login without email verification")
+            // Utente ha completato l'onboarding, procedi con il login
+          } else {
+            // Utente non ha ancora completato l'onboarding, verifica che abbia completato la prima verifica email
+            const { data: emailVerification } = await supabase
+              .from("email_verifications")
+              .select("first_verification_completed, second_verification_required, second_verification_completed")
+              .eq("user_id", data.user.id)
+              .maybeSingle()
+
+            // Se non esiste il record di verifica, significa che l'utente non ha completato la registrazione
+            if (!emailVerification || !emailVerification.first_verification_completed) {
+              console.error("User has not completed first email verification and has no role")
+              return null
+            }
+
+            // Se richiede seconda verifica (domini personalizzati), verifica che sia completata
+            if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
+              console.error("User has not completed second email verification and has no role")
+              return null
             }
           }
 

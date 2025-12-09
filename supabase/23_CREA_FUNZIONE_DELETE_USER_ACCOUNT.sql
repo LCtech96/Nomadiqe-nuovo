@@ -149,8 +149,9 @@ BEGIN
   RAISE NOTICE 'Properties eliminate';
   
   -- 23. Elimina notifications (se la tabella esiste)
+  -- Nota: La tabella notifications ha solo user_id, non related_user_id
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'notifications') THEN
-    DELETE FROM public.notifications WHERE user_id = user_id_to_delete OR related_user_id = user_id_to_delete;
+    DELETE FROM public.notifications WHERE user_id = user_id_to_delete;
     RAISE NOTICE 'Notifications eliminate';
   END IF;
   

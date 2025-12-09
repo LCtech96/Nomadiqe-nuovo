@@ -51,7 +51,7 @@ export default function SignInPage() {
       // Prima verifica se l'utente esiste nel database
       const { data: userData, error: userCheckError } = await supabase
         .from("profiles")
-        .select("id, email")
+        .select("id, email, role")
         .eq("email", email)
         .maybeSingle()
 
@@ -65,32 +65,39 @@ export default function SignInPage() {
         return
       }
 
-      // Verifica che l'utente abbia completato la prima verifica email
-      const { data: emailVerification } = await supabase
-        .from("email_verifications")
-        .select("first_verification_completed, second_verification_required, second_verification_completed")
-        .eq("user_id", userData.id)
-        .single()
+      // Se l'utente ha già completato l'onboarding (ha un ruolo), permette il login senza verificare email
+      // La verifica email è richiesta solo durante la registrazione iniziale
+      if (userData.role) {
+        // Utente ha completato l'onboarding, procedi direttamente con il login
+        // Non richiedere la verifica email ogni volta
+      } else {
+        // Utente non ha ancora completato l'onboarding, verifica che abbia completato la prima verifica email
+        const { data: emailVerification } = await supabase
+          .from("email_verifications")
+          .select("first_verification_completed, second_verification_required, second_verification_completed")
+          .eq("user_id", userData.id)
+          .maybeSingle()
 
-      if (!emailVerification || !emailVerification.first_verification_completed) {
-        toast({
-          title: "Registrazione non completata",
-          description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
+        if (!emailVerification || !emailVerification.first_verification_completed) {
+          toast({
+            title: "Registrazione non completata",
+            description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
+            variant: "destructive",
+          })
+          setLoading(false)
+          return
+        }
 
-      // Se richiede seconda verifica, verifica che sia completata
-      if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
-        toast({
-          title: "Verifica email richiesta",
-          description: "Devi completare la seconda verifica email. Controlla la tua casella email per il codice di verifica.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
+        // Se richiede seconda verifica, verifica che sia completata
+        if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
+          toast({
+            title: "Verifica email richiesta",
+            description: "Devi completare la seconda verifica email. Controlla la tua casella email per il codice di verifica.",
+            variant: "destructive",
+          })
+          setLoading(false)
+          return
+        }
       }
 
       // Ora procedi con il login
