@@ -153,6 +153,24 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
+      // Rileva se siamo su mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      const isAndroid = /Android/i.test(navigator.userAgent)
+      
+      console.log("📱 FCM: Rilevamento dispositivo:", {
+        isMobile,
+        isIOS,
+        isAndroid,
+        userAgent: navigator.userAgent.substring(0, 50),
+      })
+
+      // Controlla se il browser supporta le notifiche push
+      if (!("Notification" in window)) {
+        console.warn("⚠️ FCM: Browser non supporta le notifiche push")
+        return
+      }
+
       // Controlla se l'utente è già iscritto in Supabase
       const supabase = createSupabaseClient()
       const { data: existingSubscription } = await supabase
@@ -166,10 +184,13 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
 
       // Se l'utente non è iscritto, mostra il dialog
       if (!hasSubscriptionInDB) {
-        console.log("🔔 FCM: Mostro dialog tra 1 secondo...")
+        console.log("🔔 FCM: Mostro dialog tra 1 secondo...", { isMobile, isIOS, isAndroid })
+        // Su mobile, aspetta un po' di più per assicurarsi che la pagina sia completamente caricata
+        const delay = isMobile ? 2000 : 1000
         setTimeout(() => {
+          console.log("🔔 FCM: Apertura dialog ora!", { isMobile })
           setShowPermissionDialog(true)
-        }, 1000)
+        }, delay)
       } else {
         // Se è già iscritto, verifica che il token sia ancora valido
         const currentToken = await getToken(messagingToUse, { vapidKey: VAPID_KEY })
@@ -217,11 +238,13 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log("🔔 FCM: Richiesta permesso notifiche...")
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+      console.log("🔔 FCM: Richiesta permesso notifiche...", { isMobile, isIOS })
 
       // Verifica che il service worker sia attivo
       const registration = await navigator.serviceWorker.ready
-      console.log("✅ FCM: Service Worker pronto:", registration.active?.state)
+      console.log("✅ FCM: Service Worker pronto:", registration.active?.state, { isMobile })
 
       // Richiedi permesso
       const permission = await Notification.requestPermission()
@@ -262,7 +285,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-w-[90vw] max-h-[90vh] overflow-y-auto z-[9999]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Bell className="w-5 h-5" />
@@ -273,13 +296,32 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
               <br />
               <br />
               <strong>Le notifiche funzionano anche quando l'app è chiusa!</strong>
+              {typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+                <>
+                  <br />
+                  <br />
+                  <span className="text-sm text-muted-foreground">
+                    💡 Su iOS, le notifiche push funzionano meglio quando aggiungi il sito alla home screen.
+                  </span>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowPermissionDialog(false)}>
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                console.log("❌ FCM: Utente ha rifiutato le notifiche")
+                setShowPermissionDialog(false)
+              }}
+              className="w-full sm:w-auto"
+            >
               Non ora
             </Button>
-            <Button onClick={handleSubscribe} className="flex items-center gap-2">
+            <Button 
+              onClick={handleSubscribe} 
+              className="flex items-center gap-2 w-full sm:w-auto"
+            >
               <Bell className="w-4 h-4" />
               Consenti
             </Button>
