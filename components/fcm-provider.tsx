@@ -35,33 +35,57 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       hasWindow: typeof window !== "undefined",
     })
 
-    // Rimuovi service worker OneSignal se presenti
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          if (registration.scope.includes("OneSignal") || registration.active?.scriptURL?.includes("OneSignal")) {
-            console.log("🗑️ FCM: Rimozione Service Worker OneSignal:", registration.scope)
-            registration.unregister()
-          }
-        })
-      })
-
-      // Registra il service worker FCM
-      console.log("🔧 FCM: Registrazione Service Worker...")
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then((registration) => {
-          console.log("✅ FCM: Service Worker registrato:", registration.scope)
-        })
-        .catch((error) => {
-          console.error("❌ FCM: Errore nella registrazione Service Worker:", error)
-        })
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return
     }
 
-    if (status === "authenticated" && session?.user?.id && typeof window !== "undefined") {
-      console.log("✅ FCM: Condizioni soddisfatte, inizializzo...")
-      setTimeout(() => initializeFCM(), 500)
-    } else {
+    // Rimuovi service worker OneSignal se presenti
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => {
+        if (registration.scope.includes("OneSignal") || registration.active?.scriptURL?.includes("OneSignal")) {
+          console.log("🗑️ FCM: Rimozione Service Worker OneSignal:", registration.scope)
+          registration.unregister()
+        }
+      })
+    })
+
+    // Registra il service worker FCM e aspetta che sia attivo
+    console.log("🔧 FCM: Registrazione Service Worker...")
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then(async (registration) => {
+        console.log("✅ FCM: Service Worker registrato:", registration.scope)
+        
+        // Aspetta che il service worker sia attivo
+        if (registration.installing) {
+          console.log("⏳ FCM: Service Worker in installazione...")
+          await new Promise((resolve) => {
+            registration.installing!.addEventListener("statechange", () => {
+              if (registration.installing?.state === "activated") {
+                console.log("✅ FCM: Service Worker attivato!")
+                resolve(undefined)
+              }
+            })
+          })
+        } else if (registration.waiting) {
+          console.log("⏳ FCM: Service Worker in attesa, attivazione...")
+          registration.waiting.postMessage({ type: "SKIP_WAITING" })
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+        } else if (registration.active) {
+          console.log("✅ FCM: Service Worker già attivo")
+        }
+
+        // Ora inizializza FCM se l'utente è autenticato
+        if (status === "authenticated" && session?.user?.id) {
+          console.log("✅ FCM: Condizioni soddisfatte, inizializzo...")
+          setTimeout(() => initializeFCM(), 500)
+        }
+      })
+      .catch((error) => {
+        console.error("❌ FCM: Errore nella registrazione Service Worker:", error)
+      })
+
+    if (status !== "authenticated" || !session?.user?.id) {
       console.log("⏳ FCM: In attesa di condizioni...", {
         status,
         hasUserId: !!session?.user?.id,
@@ -187,13 +211,21 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("🔔 FCM: Richiesta permesso notifiche...")
 
+      // Verifica che il service worker sia attivo
+      const registration = await navigator.serviceWorker.ready
+      console.log("✅ FCM: Service Worker pronto:", registration.active?.state)
+
       // Richiedi permesso
       const permission = await Notification.requestPermission()
       
       if (permission === "granted") {
         console.log("✅ FCM: Permesso concesso")
 
+        // Aspetta un attimo per assicurarsi che il service worker sia completamente attivo
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
         // Ottieni il token FCM
+        console.log("🔑 FCM: Richiesta token FCM...")
         const token = await getToken(messaging, { vapidKey: VAPID_KEY })
         
         if (token) {
@@ -201,7 +233,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
           await saveFCMToken(token)
           setShowPermissionDialog(false)
         } else {
-          console.error("❌ FCM: Impossibile ottenere token")
+          console.error("❌ FCM: Impossibile ottenere token (token vuoto)")
         }
       } else {
         console.log("❌ FCM: Permesso negato")
@@ -209,6 +241,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error("❌ FCM: Errore nella registrazione:", error)
+      console.error("❌ FCM: Dettagli errore:", {
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack,
+      })
       setShowPermissionDialog(false)
     }
   }
