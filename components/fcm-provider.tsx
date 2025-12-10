@@ -29,14 +29,50 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
   const [isFCMReady, setIsFCMReady] = useState(false)
 
   useEffect(() => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
     console.log("🔄 FCM: useEffect triggerato", {
       status,
       hasUserId: !!session?.user?.id,
       hasWindow: typeof window !== "undefined",
+      isIOS,
+      isMobile,
+      userAgent: navigator.userAgent,
     })
 
-    if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+    if (typeof window === "undefined") {
+      console.log("⏭️ FCM: window non disponibile (SSR)")
       return
+    }
+
+    if (!("serviceWorker" in navigator)) {
+      console.warn("⚠️ FCM: Service Worker non supportato su questo browser", {
+        isIOS,
+        userAgent: navigator.userAgent,
+      })
+      return
+    }
+
+    if (!("Notification" in window)) {
+      console.warn("⚠️ FCM: Notifiche non supportate su questo browser", {
+        isIOS,
+        userAgent: navigator.userAgent,
+      })
+      return
+    }
+
+    // Su iOS, verifica la versione (richiede iOS 16.4+)
+    if (isIOS) {
+      console.log("🍎 FCM: Rilevato iOS, verifica supporto...")
+      // iOS 16.4+ supporta le notifiche push web
+      // Ma spesso richiedono che il sito sia aggiunto alla home screen
+      const isStandalone = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches
+      console.log("🍎 FCM: iOS - Standalone mode:", isStandalone)
+      
+      if (!isStandalone) {
+        console.warn("⚠️ FCM: Su iOS, le notifiche push funzionano meglio quando il sito è aggiunto alla home screen")
+      }
     }
 
     // Rimuovi service worker OneSignal se presenti
@@ -99,18 +135,35 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
     try {
-      console.log("🔥 FCM: Inizializzazione in corso...")
+      console.log("🔥 FCM: Inizializzazione in corso...", { isIOS, isMobile })
       console.log("👤 FCM: User ID:", session.user.id)
 
       // Verifica che FCM sia supportato
+      console.log("🔍 FCM: Verifica supporto FCM...")
       const supported = await isSupported()
+      console.log("🔍 FCM: isSupported() risultato:", supported, { isIOS, isMobile })
+      
       if (!supported) {
-        console.warn("⚠️ FCM: Browser non supporta FCM")
+        console.warn("⚠️ FCM: Browser non supporta FCM", {
+          isIOS,
+          isMobile,
+          userAgent: navigator.userAgent,
+        })
+        
+        if (isIOS) {
+          console.warn("💡 FCM: Su iOS, le notifiche push richiedono:")
+          console.warn("   1. iOS 16.4 o superiore")
+          console.warn("   2. Safari (non altri browser)")
+          console.warn("   3. Sito aggiunto alla home screen (consigliato)")
+        }
         return
       }
 
-      console.log("✅ FCM: Browser supporta FCM")
+      console.log("✅ FCM: Browser supporta FCM", { isIOS, isMobile })
 
       // Ottieni il servizio messaging
       const messagingInstance = getMessaging()
@@ -300,9 +353,15 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
                 <>
                   <br />
                   <br />
-                  <span className="text-sm text-muted-foreground">
-                    💡 Su iOS, le notifiche push funzionano meglio quando aggiungi il sito alla home screen.
-                  </span>
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 text-sm">
+                    <strong>🍎 Per iOS:</strong>
+                    <br />
+                    • Richiede iOS 16.4 o superiore
+                    <br />
+                    • Funziona meglio se aggiungi il sito alla home screen
+                    <br />
+                    • Vai su "Condividi" → "Aggiungi alla schermata Home"
+                  </div>
                 </>
               )}
             </DialogDescription>
