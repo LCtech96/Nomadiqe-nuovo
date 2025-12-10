@@ -29,22 +29,25 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
   const [isFCMReady, setIsFCMReady] = useState(false)
 
   useEffect(() => {
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-    
     console.log("🔄 FCM: useEffect triggerato", {
       status,
       hasUserId: !!session?.user?.id,
       hasWindow: typeof window !== "undefined",
+    })
+
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      console.log("⏭️ FCM: window/navigator non disponibile (SSR)")
+      return
+    }
+
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    
+    console.log("🔄 FCM: Rilevamento dispositivo", {
       isIOS,
       isMobile,
       userAgent: navigator.userAgent,
     })
-
-    if (typeof window === "undefined") {
-      console.log("⏭️ FCM: window non disponibile (SSR)")
-      return
-    }
 
     if (!("serviceWorker" in navigator)) {
       console.warn("⚠️ FCM: Service Worker non supportato su questo browser", {
@@ -135,6 +138,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      console.warn("⚠️ FCM: window/navigator non disponibile")
+      return
+    }
+
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -202,6 +210,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         hasMessaging: !!messagingToUse,
         hasUserId: !!session?.user?.id,
       })
+      return
+    }
+
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      console.warn("⚠️ FCM: window/navigator non disponibile")
       return
     }
 
@@ -290,6 +303,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      console.error("❌ FCM: window/navigator non disponibile")
+      return
+    }
+
     try {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
@@ -349,7 +367,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
               <br />
               <br />
               <strong>Le notifiche funzionano anche quando l'app è chiusa!</strong>
-              {typeof window !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+              {typeof window !== "undefined" && typeof navigator !== "undefined" && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
                 <>
                   <br />
                   <br />
