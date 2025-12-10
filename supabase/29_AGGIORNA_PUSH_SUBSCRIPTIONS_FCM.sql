@@ -28,6 +28,10 @@ BEGIN
   END IF;
 END $$;
 
+-- Rendi onesignal_player_id nullable (per permettere solo FCM senza OneSignal)
+ALTER TABLE public.push_subscriptions 
+ALTER COLUMN onesignal_player_id DROP NOT NULL;
+
 -- Verifica
 SELECT 
     'COLONNE PUSH_SUBSCRIPTIONS' as info,

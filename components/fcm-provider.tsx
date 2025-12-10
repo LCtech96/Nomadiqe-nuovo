@@ -185,6 +185,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         {
           user_id: session.user.id,
           fcm_token: token,
+          onesignal_player_id: null, // Esplicitamente null per FCM-only
           updated_at: new Date().toISOString(),
         },
         {
