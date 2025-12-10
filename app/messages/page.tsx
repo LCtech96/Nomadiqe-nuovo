@@ -98,7 +98,12 @@ export default function MessagesPage() {
             .single()
 
           const newMessage: Message = {
-            ...payload.new,
+            id: payload.new.id,
+            sender_id: payload.new.sender_id,
+            receiver_id: payload.new.receiver_id,
+            content: payload.new.content,
+            read: payload.new.read ?? false,
+            created_at: payload.new.created_at,
             sender: sender || undefined,
           }
 
