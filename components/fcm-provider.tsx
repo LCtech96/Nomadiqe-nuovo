@@ -29,8 +29,25 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
   const [isFCMReady, setIsFCMReady] = useState(false)
 
   useEffect(() => {
-    // Registra il service worker
+    console.log("🔄 FCM: useEffect triggerato", {
+      status,
+      hasUserId: !!session?.user?.id,
+      hasWindow: typeof window !== "undefined",
+    })
+
+    // Rimuovi service worker OneSignal se presenti
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          if (registration.scope.includes("OneSignal") || registration.active?.scriptURL?.includes("OneSignal")) {
+            console.log("🗑️ FCM: Rimozione Service Worker OneSignal:", registration.scope)
+            registration.unregister()
+          }
+        })
+      })
+
+      // Registra il service worker FCM
+      console.log("🔧 FCM: Registrazione Service Worker...")
       navigator.serviceWorker
         .register("/firebase-messaging-sw.js")
         .then((registration) => {
@@ -42,12 +59,26 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (status === "authenticated" && session?.user?.id && typeof window !== "undefined") {
-      initializeFCM()
+      console.log("✅ FCM: Condizioni soddisfatte, inizializzo...")
+      setTimeout(() => initializeFCM(), 500)
+    } else {
+      console.log("⏳ FCM: In attesa di condizioni...", {
+        status,
+        hasUserId: !!session?.user?.id,
+      })
     }
   }, [session, status])
 
   const initializeFCM = async () => {
+    if (!session?.user?.id) {
+      console.warn("⚠️ FCM: Nessun user ID disponibile")
+      return
+    }
+
     try {
+      console.log("🔥 FCM: Inizializzazione in corso...")
+      console.log("👤 FCM: User ID:", session.user.id)
+
       // Verifica che FCM sia supportato
       const supported = await isSupported()
       if (!supported) {
@@ -55,7 +86,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      console.log("🔥 FCM: Inizializzazione in corso...")
+      console.log("✅ FCM: Browser supporta FCM")
 
       // Ottieni il servizio messaging
       const messagingInstance = getMessaging()
