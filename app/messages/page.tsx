@@ -383,6 +383,24 @@ export default function MessagesPage() {
         setMessages((prev) => [...prev, data as Message])
       }
 
+      // Invia notifica push immediatamente (non aspettare il cron job)
+      // Fallback silenzioso: se fallisce, il cron job lo gestirà
+      fetch("/api/notifications/send-fcm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedConversation,
+          type: "message",
+          data: {
+            sender_id: session.user.id,
+            content: messageContent,
+            message_id: data.id,
+          },
+        }),
+      }).catch((error) => {
+        console.error("Errore nell'invio notifica (non critico):", error)
+      })
+
       // Scroll automatico al nuovo messaggio (verrà gestito dal render)
     } catch (error: any) {
       console.error("❌ Errore completo:", error)
