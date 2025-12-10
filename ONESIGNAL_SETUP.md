@@ -142,6 +142,27 @@ Il sistema invia automaticamente notifiche push quando:
 
 ## 🔍 Troubleshooting
 
+### Errore: "Can only be used on: https://nomadiqe.com"
+
+**Problema:** OneSignal è configurato per funzionare solo su un dominio specifico.
+
+**Soluzione:** Devi aggiungere i domini autorizzati nel dashboard OneSignal:
+
+1. Vai su [OneSignal Dashboard](https://app.onesignal.com/)
+2. Seleziona la tua app
+3. Vai su **Settings** → **Platforms** → **Web Push**
+4. Nella sezione **Web Push Configuration**, trova **"Allowed Origins"** o **"Authorized Domains"**
+5. Aggiungi questi domini:
+   - `https://nomadiqe.com`
+   - `https://www.nomadiqe.com`
+   - `http://localhost:3000` (per sviluppo locale)
+   - `http://127.0.0.1:3000` (per sviluppo locale)
+   - Qualsiasi altro dominio di preview/staging che usi
+6. Clicca **Save**
+7. **Importante:** Potrebbe richiedere alcuni minuti per propagare le modifiche
+
+**Nota:** Se stai testando in produzione, assicurati che il dominio sia esattamente quello configurato (con o senza `www`).
+
 ### Le notifiche non arrivano
 
 1. **Verifica le variabili d'ambiente:**
@@ -165,6 +186,10 @@ Il sistema invia automaticamente notifiche push quando:
    - Controlla la tabella `push_subscriptions`
    - Dovresti vedere una riga con il tuo `user_id` e `onesignal_player_id`
 
+6. **Verifica i domini autorizzati:**
+   - Controlla che il dominio corrente sia nella lista dei domini autorizzati in OneSignal
+   - Vedi la sezione sopra per come aggiungere domini
+
 ### Il dialog non appare
 
 - Il dialog appare dopo 3 secondi solo se l'utente non è già iscritto
@@ -176,6 +201,7 @@ Il sistema invia automaticamente notifiche push quando:
 - **"OneSignal non configurato"**: Le variabili d'ambiente non sono impostate correttamente
 - **"Utente non iscritto"**: L'utente non ha ancora abilitato le notifiche
 - **"OneSignal API error"**: Problema con la REST API Key o con la richiesta a OneSignal
+- **"Can only be used on: https://nomadiqe.com"**: Il dominio corrente non è autorizzato. Vedi la sezione sopra per come risolvere
 
 ---
 

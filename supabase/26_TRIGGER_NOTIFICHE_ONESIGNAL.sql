@@ -77,22 +77,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.send_message_notification()
 RETURNS TRIGGER AS $$
 DECLARE
-  receiver_player_id TEXT;
   sender_name TEXT;
   message_preview TEXT;
 BEGIN
   -- Evita notifiche se il messaggio è dello stesso utente
   IF NEW.sender_id = NEW.receiver_id THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Ottieni il player ID del ricevente
-  SELECT onesignal_player_id INTO receiver_player_id
-  FROM public.push_subscriptions
-  WHERE user_id = NEW.receiver_id;
-  
-  -- Se l'utente non è iscritto alle notifiche, esci
-  IF receiver_player_id IS NULL THEN
     RETURN NEW;
   END IF;
   
@@ -144,7 +133,6 @@ CREATE OR REPLACE FUNCTION public.send_like_notification()
 RETURNS TRIGGER AS $$
 DECLARE
   post_author_id UUID;
-  author_player_id TEXT;
   liker_name TEXT;
 BEGIN
   -- Evita notifiche se il like è dell'autore stesso
@@ -161,16 +149,6 @@ BEGIN
   WHERE id = NEW.post_id;
   
   IF post_author_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Ottieni il player ID dell'autore
-  SELECT onesignal_player_id INTO author_player_id
-  FROM public.push_subscriptions
-  WHERE user_id = post_author_id;
-  
-  -- Se l'utente non è iscritto alle notifiche, esci
-  IF author_player_id IS NULL THEN
     RETURN NEW;
   END IF;
   
@@ -214,7 +192,6 @@ CREATE OR REPLACE FUNCTION public.send_comment_notification()
 RETURNS TRIGGER AS $$
 DECLARE
   post_author_id UUID;
-  author_player_id TEXT;
   commenter_name TEXT;
   comment_preview TEXT;
 BEGIN
@@ -232,16 +209,6 @@ BEGIN
   WHERE id = NEW.post_id;
   
   IF post_author_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Ottieni il player ID dell'autore
-  SELECT onesignal_player_id INTO author_player_id
-  FROM public.push_subscriptions
-  WHERE user_id = post_author_id;
-  
-  -- Se l'utente non è iscritto alle notifiche, esci
-  IF author_player_id IS NULL THEN
     RETURN NEW;
   END IF;
   
@@ -368,3 +335,4 @@ SELECT
 FROM information_schema.columns 
 WHERE table_schema = 'public' AND table_name = 'pending_notifications'
 ORDER BY ordinal_position;
+
