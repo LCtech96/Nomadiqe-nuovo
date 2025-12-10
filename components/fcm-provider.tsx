@@ -119,8 +119,8 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
 
       console.log("✅ FCM: Inizializzazione completata")
 
-      // Controlla se l'utente è già iscritto
-      await checkAndRequestPermission()
+      // Controlla se l'utente è già iscritto (passa messagingInstance direttamente)
+      await checkAndRequestPermission(messagingInstance)
 
       // Ascolta messaggi quando l'app è aperta
       onMessage(messagingInstance, (payload) => {
@@ -142,8 +142,15 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const checkAndRequestPermission = async () => {
-    if (!messaging || !session?.user?.id) return
+  const checkAndRequestPermission = async (messagingInstance?: any) => {
+    const messagingToUse = messagingInstance || messaging
+    if (!messagingToUse || !session?.user?.id) {
+      console.log("⏳ FCM: checkAndRequestPermission - in attesa di messaging o user ID", {
+        hasMessaging: !!messagingToUse,
+        hasUserId: !!session?.user?.id,
+      })
+      return
+    }
 
     try {
       // Controlla se l'utente è già iscritto in Supabase
@@ -165,7 +172,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         }, 1000)
       } else {
         // Se è già iscritto, verifica che il token sia ancora valido
-        const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY })
+        const currentToken = await getToken(messagingToUse, { vapidKey: VAPID_KEY })
         if (currentToken && currentToken !== existingSubscription.fcm_token) {
           // Token cambiato, aggiorna
           await saveFCMToken(currentToken)
