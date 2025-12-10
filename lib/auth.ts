@@ -72,7 +72,7 @@ export const authOptions: NextAuthOptions = {
           // Ensure profile exists and get role
           const { data: profile, error: profileError } = await supabase
             .from("profiles")
-            .select("id, full_name, username, role")
+            .select("id, full_name, username, role, onboarding_completed")
             .eq("id", data.user.id)
             .single()
 

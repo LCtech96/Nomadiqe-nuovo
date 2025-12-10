@@ -44,3 +44,6 @@ mcp.json
 # Test scripts (delete after use)
 test-mcp-connection.js
 
+
+.vercel
+.env*.local

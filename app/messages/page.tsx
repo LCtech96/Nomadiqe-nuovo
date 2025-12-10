@@ -181,7 +181,12 @@ export default function MessagesPage() {
             .single()
 
           const newMessage: Message = {
-            ...payload.new,
+            id: payload.new.id,
+            sender_id: payload.new.sender_id,
+            receiver_id: payload.new.receiver_id,
+            content: payload.new.content,
+            read: payload.new.read ?? false,
+            created_at: payload.new.created_at,
             receiver: receiver || undefined,
             sender: session.user ? {
               id: session.user.id,
@@ -345,9 +350,10 @@ export default function MessagesPage() {
     if (!session?.user?.id || !selectedConversation || !newMessage.trim()) return
 
     setSending(true)
+    const messageContent = newMessage.trim()
+    setNewMessage("") // Pulisci subito il campo per UX migliore
+    
     try {
-      const messageContent = newMessage.trim()
-      setNewMessage("") // Pulisci subito il campo per UX migliore
 
       const { data, error } = await supabase
         .from("messages")
