@@ -40,19 +40,21 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    // Salva userAgent in una variabile per evitare problemi TypeScript
+    const userAgent = navigator.userAgent
+    const isIOS = /iPhone|iPad|iPod/i.test(userAgent)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent)
     
     console.log("🔄 FCM: Rilevamento dispositivo", {
       isIOS,
       isMobile,
-      userAgent: navigator.userAgent,
+      userAgent: userAgent,
     })
 
     if (!("serviceWorker" in navigator)) {
       console.warn("⚠️ FCM: Service Worker non supportato su questo browser", {
         isIOS,
-        userAgent: navigator.userAgent,
+        userAgent: userAgent,
       })
       return
     }
@@ -60,7 +62,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     if (!("Notification" in window)) {
       console.warn("⚠️ FCM: Notifiche non supportate su questo browser", {
         isIOS,
-        userAgent: navigator.userAgent,
+        userAgent: userAgent,
       })
       return
     }
@@ -71,7 +73,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       // iOS 16.4+ supporta le notifiche push web
       // Ma spesso richiedono che il sito sia aggiunto alla home screen
       const isStandalone = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches
-      console.log("🍎 FCM: iOS - Standalone mode:", isStandalone)
+      console.log("🍎 FCM: iOS - Standalone mode:", isStandalone, "UserAgent:", userAgent)
       
       if (!isStandalone) {
         console.warn("⚠️ FCM: Su iOS, le notifiche push funzionano meglio quando il sito è aggiunto alla home screen")
