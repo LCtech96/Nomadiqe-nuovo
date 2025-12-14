@@ -47,13 +47,20 @@ export default function HomePage() {
 
     if (status === "authenticated" && session?.user?.id) {
       loadData()
+    } else if (status === "loading") {
+      // Mantieni loading durante il check di autenticazione
+      setLoading(true)
     }
   }, [status, session, router])
 
   const loadData = async () => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id) {
+      setLoading(false)
+      return
+    }
 
     try {
+      // Forza il refresh del profilo per evitare problemi di cache
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
@@ -70,11 +77,15 @@ export default function HomePage() {
         if (profileData.role) {
           await loadPosts()
         }
+      } else {
+        // Se il profilo non esiste, imposta profile a null per mostrare la selezione
+        setProfile(null)
       }
       // Se l'utente non ha ancora un ruolo, mostriamo la selezione dei ruoli
       // Non reindirizziamo all'onboarding, restiamo sulla home
     } catch (error) {
       console.error("Error loading data:", error)
+      setProfile(null)
     } finally {
       setLoading(false)
     }
@@ -89,12 +100,25 @@ export default function HomePage() {
 
     setSavingRole(true)
     try {
-      // Controlla se il profilo esiste
+      // Controlla se il profilo esiste e se ha già un ruolo
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, role")
         .eq("id", session.user.id)
         .maybeSingle()
+
+      // Se il profilo esiste e ha già un ruolo, non permettere il cambio
+      if (existingProfile?.role) {
+        toast({
+          title: "Attenzione",
+          description: `Hai già selezionato il ruolo ${existingProfile.role}. Il ruolo non può essere modificato.`,
+          variant: "destructive",
+        })
+        // Ricarica i dati per aggiornare l'interfaccia
+        await loadData()
+        setSavingRole(false)
+        return
+      }
 
       if (!existingProfile) {
         // Crea nuovo profilo
@@ -115,7 +139,7 @@ export default function HomePage() {
           throw insertError
         }
       } else {
-        // Aggiorna profilo esistente
+        // Aggiorna profilo esistente solo se non ha ancora un ruolo
         const updateData: any = {
           role: selectedRole,
         }
@@ -135,6 +159,9 @@ export default function HomePage() {
         title: "Successo",
         description: `Ruolo ${selectedRole} selezionato!`,
       })
+
+      // Ricarica i dati per aggiornare l'interfaccia
+      await loadData()
 
       // Reindirizza all'onboarding per completare il profilo
       router.push("/onboarding")
