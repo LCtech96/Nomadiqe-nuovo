@@ -37,10 +37,13 @@ export const authOptions: NextAuthOptions = {
             return null
           }
 
-          console.log("Attempting login for:", credentials.email)
+          // Normalizza l'email (lowercase e trim)
+          const normalizedEmail = credentials.email.toLowerCase().trim()
+          
+          console.log("Attempting login for:", normalizedEmail)
           
           const { data, error } = await supabase.auth.signInWithPassword({
-            email: credentials.email,
+            email: normalizedEmail,
             password: credentials.password,
           })
 
@@ -57,6 +60,8 @@ export const authOptions: NextAuthOptions = {
               console.error("1. User doesn't exist in Supabase")
               console.error("2. Password is incorrect")
               console.error("3. Email not verified (check Supabase settings)")
+            } else if (error.message.includes("Email not confirmed")) {
+              console.error("Email not verified - user needs to verify email first")
             }
             
             return null

@@ -48,25 +48,27 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
-      // Prima prova a fare il login con NextAuth (che usa Supabase Auth)
-      // Questo verifica se l'utente esiste in auth.users
+      // Normalizza l'email (lowercase e trim)
+      const normalizedEmail = email.toLowerCase().trim()
+
+      // Prova a fare il login con NextAuth (che usa Supabase Auth)
       const result = await signIn("credentials", {
-        email,
+        email: normalizedEmail,
         password,
         redirect: false,
       })
 
       if (result?.error) {
-        // Parse error message
+        // Parse error message con messaggi più specifici
         let errorMessage = "Credenziali non valide"
         let helpMessage = ""
         
         if (result.error === "CredentialsSignin") {
           errorMessage = "Email o password non corretti"
-          helpMessage = "Verifica di aver inserito le credenziali corrette."
+          helpMessage = "Verifica di aver inserito le credenziali corrette. Se hai dimenticato la password, usa 'Password dimenticata?'"
         } else if (result.error.includes("Invalid login credentials")) {
           errorMessage = "Email o password non corretti"
-          helpMessage = "La password potrebbe essere errata o l'account non esiste."
+          helpMessage = "Possibili cause:\n• La password è errata\n• L'account non esiste ancora\n• L'email non è stata verificata\n\nSe non hai un account, clicca su 'Registrati' per crearne uno nuovo."
         } else {
           errorMessage = result.error
         }
