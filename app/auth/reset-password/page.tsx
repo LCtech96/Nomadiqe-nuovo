@@ -67,9 +67,9 @@ function ResetPasswordContent() {
         } else if (lastError?.message?.includes("SMTP") || lastError?.message?.includes("email")) {
           errorMessage = "Errore di configurazione email."
           helpMessage = "Contatta il supporto se il problema persiste."
-        } else if (lastError?.message?.includes("not found") || lastError?.message?.includes("does not exist")) {
-          errorMessage = "Nessun account trovato con questa email."
-          helpMessage = "Verifica l'indirizzo email o registrati per creare un nuovo account."
+        } else if (lastError?.message?.includes("not found") || lastError?.message?.includes("does not exist") || lastError?.message?.includes("User not found")) {
+          errorMessage = "Nessun account trovato con questa email nel sistema di autenticazione."
+          helpMessage = "Il tuo account potrebbe esistere nel database ma non essere ancora configurato per l'autenticazione. Contatta il supporto per risolvere il problema."
         } else if (lastError?.message) {
           errorMessage = lastError.message
         } else {
