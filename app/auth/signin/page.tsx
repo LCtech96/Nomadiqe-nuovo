@@ -65,18 +65,20 @@ export default function SignInPage() {
         
         if (result.error === "CredentialsSignin") {
           errorMessage = "Email o password non corretti"
-          helpMessage = "Verifica di aver inserito le credenziali corrette. Se hai dimenticato la password, usa 'Password dimenticata?'"
+          helpMessage = `Possibili soluzioni:\n1. Verifica che email e password siano corrette\n2. Se hai dimenticato la password, clicca su "Password dimenticata?"\n3. Se non hai un account, clicca su "Registrati" per crearne uno nuovo`
         } else if (result.error.includes("Invalid login credentials")) {
           errorMessage = "Email o password non corretti"
-          helpMessage = "Possibili cause:\n• La password è errata\n• L'account non esiste ancora\n• L'email non è stata verificata\n\nSe non hai un account, clicca su 'Registrati' per crearne uno nuovo."
+          helpMessage = `L'account potrebbe non esistere o la password è errata.\n\nCosa fare:\n• Se hai dimenticato la password → Usa "Password dimenticata?"\n• Se non hai un account → Clicca su "Registrati"\n• Se sei sicuro delle credenziali → Verifica in Supabase Dashboard che l'utente esista`
         } else {
           errorMessage = result.error
+          helpMessage = "Se il problema persiste, prova a usare 'Password dimenticata?' o contatta il supporto."
         }
 
         toast({
           title: "Errore di accesso",
           description: errorMessage + (helpMessage ? `\n\n${helpMessage}` : ""),
           variant: "destructive",
+          duration: 8000, // Mostra il messaggio più a lungo
         })
         setLoading(false)
         return
