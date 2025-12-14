@@ -48,59 +48,8 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
-      // Prima verifica se l'utente esiste nel database
-      const { data: userData, error: userCheckError } = await supabase
-        .from("profiles")
-        .select("id, email, role, onboarding_completed")
-        .eq("email", email)
-        .maybeSingle()
-
-      if (userCheckError || !userData) {
-        toast({
-          title: "Errore di accesso",
-          description: "Non esiste un account con questa email. Per favore registrati prima di accedere.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), permette il login senza verificare email
-      // La verifica email è richiesta solo durante la registrazione iniziale
-      if (userData.role || userData.onboarding_completed) {
-        // Utente ha completato l'onboarding, procedi direttamente con il login
-        // Non richiedere la verifica email ogni volta
-      } else {
-        // Utente non ha ancora completato l'onboarding, verifica che abbia completato la prima verifica email
-        const { data: emailVerification } = await supabase
-          .from("email_verifications")
-          .select("first_verification_completed, second_verification_required, second_verification_completed")
-          .eq("user_id", userData.id)
-          .maybeSingle()
-
-        if (!emailVerification || !emailVerification.first_verification_completed) {
-          toast({
-            title: "Registrazione non completata",
-            description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
-            variant: "destructive",
-          })
-          setLoading(false)
-          return
-        }
-
-        // Se richiede seconda verifica, verifica che sia completata
-        if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
-          toast({
-            title: "Verifica email richiesta",
-            description: "Devi completare la seconda verifica email. Controlla la tua casella email per il codice di verifica.",
-            variant: "destructive",
-          })
-          setLoading(false)
-          return
-        }
-      }
-
-      // Ora procedi con il login
+      // Prima prova a fare il login con NextAuth (che usa Supabase Auth)
+      // Questo verifica se l'utente esiste in auth.users
       const result = await signIn("credentials", {
         email,
         password,
@@ -117,7 +66,7 @@ export default function SignInPage() {
           helpMessage = "Verifica di aver inserito le credenziali corrette."
         } else if (result.error.includes("Invalid login credentials")) {
           errorMessage = "Email o password non corretti"
-          helpMessage = "La password potrebbe essere errata."
+          helpMessage = "La password potrebbe essere errata o l'account non esiste."
         } else {
           errorMessage = result.error
         }
@@ -127,13 +76,46 @@ export default function SignInPage() {
           description: errorMessage + (helpMessage ? `\n\n${helpMessage}` : ""),
           variant: "destructive",
         })
-      } else if (result?.ok) {
+        setLoading(false)
+        return
+      }
+
+      // Se il login è riuscito, verifica se esiste il profilo
+      if (result?.ok) {
+        // Il login è andato a buon fine, ora verifica il profilo
+        const { data: userData, error: userCheckError } = await supabase
+          .from("profiles")
+          .select("id, email, role, onboarding_completed")
+          .eq("email", email.toLowerCase().trim())
+          .maybeSingle()
+
+        // Se il profilo non esiste, potrebbe essere un utente che non ha completato l'onboarding
+        // Ma il login è comunque valido, quindi procediamo
+        if (userCheckError && userCheckError.code !== "PGRST116" && userCheckError.code !== "PGRST301") {
+          console.error("Error checking profile:", userCheckError)
+        }
+
+        // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), procedi
+        if (userData && (userData.role || userData.onboarding_completed)) {
+          // Utente ha completato l'onboarding, procedi direttamente
+          toast({
+            title: "Accesso riuscito",
+            description: "Benvenuto su Nomadiqe!",
+          })
+          
+          // Redirect to homepage
+          window.location.href = "/home"
+          return
+        }
+
+        // Se l'utente non ha ancora un profilo o non ha completato l'onboarding
+        // ma il login è valido, reindirizza comunque alla home (dove potrà completare l'onboarding)
         toast({
           title: "Accesso riuscito",
           description: "Benvenuto su Nomadiqe!",
         })
         
-        // Redirect to homepage - user is already registered and has profile/role saved
+        // Redirect to homepage - l'utente potrà completare l'onboarding se necessario
         window.location.href = "/home"
       }
     } catch (error: any) {
