@@ -24,31 +24,63 @@ function ResetPasswordContent() {
     setLoading(true)
 
     try {
-      // Prova direttamente a inviare l'OTP - Supabase verificherà se l'utente esiste in auth.users
-      // Non blocchiamo se l'utente non esiste in profiles, perché potrebbe esistere solo in auth.users
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.toLowerCase().trim(),
+      const normalizedEmail = email.toLowerCase().trim()
+      let emailSent = false
+      let lastError: any = null
+
+      // Strategia 1: Prova con signInWithOtp (metodo più affidabile per OTP)
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
         options: {
           shouldCreateUser: false, // Non creare un nuovo utente
-          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(email.toLowerCase().trim())}`,
+          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(normalizedEmail)}`,
         },
       })
 
-      if (error) {
-        console.error("Reset password error:", error)
-        
-        // Messaggi di errore più specifici
-        let errorMessage = "Errore durante l'invio dell'email di recupero. Riprova."
-        if (error.message?.includes("email rate limit")) {
-          errorMessage = "Troppi tentativi. Aspetta qualche minuto prima di riprovare."
-        } else if (error.message?.includes("SMTP") || error.message?.includes("email")) {
-          errorMessage = "Errore di configurazione email. Contatta il supporto se il problema persiste."
+      if (!otpError) {
+        emailSent = true
+      } else {
+        console.error("signInWithOtp error:", otpError)
+        lastError = otpError
+
+        // Strategia 2: Fallback con resetPasswordForEmail (metodo alternativo)
+        // Questo potrebbe funzionare anche se signInWithOtp fallisce
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+          redirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(normalizedEmail)}`,
+        })
+
+        if (!resetError) {
+          emailSent = true
+        } else {
+          console.error("resetPasswordForEmail error:", resetError)
+          lastError = resetError
         }
-        
+      }
+
+      if (!emailSent) {
+        // Messaggi di errore più specifici
+        let errorMessage = "Errore durante l'invio dell'email di recupero."
+        let helpMessage = ""
+
+        if (lastError?.message?.includes("email rate limit") || lastError?.message?.includes("rate_limit")) {
+          errorMessage = "Troppi tentativi. Aspetta qualche minuto prima di riprovare."
+        } else if (lastError?.message?.includes("SMTP") || lastError?.message?.includes("email")) {
+          errorMessage = "Errore di configurazione email."
+          helpMessage = "Contatta il supporto se il problema persiste."
+        } else if (lastError?.message?.includes("not found") || lastError?.message?.includes("does not exist")) {
+          errorMessage = "Nessun account trovato con questa email."
+          helpMessage = "Verifica l'indirizzo email o registrati per creare un nuovo account."
+        } else if (lastError?.message) {
+          errorMessage = lastError.message
+        } else {
+          helpMessage = "L'account potrebbe non esistere. Se non hai un account, clicca su 'Registrati' per crearne uno nuovo."
+        }
+
         toast({
           title: "Errore",
-          description: errorMessage,
+          description: errorMessage + (helpMessage ? `\n\n${helpMessage}` : ""),
           variant: "destructive",
+          duration: 8000,
         })
         setLoading(false)
         return
