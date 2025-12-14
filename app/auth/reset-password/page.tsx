@@ -24,30 +24,13 @@ function ResetPasswordContent() {
     setLoading(true)
 
     try {
-      // Verifica prima se l'utente esiste
-      const { data: userCheck } = await supabase
-        .from("profiles")
-        .select("id, email")
-        .eq("email", email)
-        .maybeSingle()
-
-      if (!userCheck) {
-        toast({
-          title: "Email non trovata",
-          description: "Non esiste un account con questa email. Verifica l'indirizzo e riprova.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      // Usa signInWithOtp per inviare un codice OTP via email
-      // Questo metodo funziona meglio di resetPasswordForEmail per inviare codici OTP
+      // Prova direttamente a inviare l'OTP - Supabase verificherà se l'utente esiste in auth.users
+      // Non blocchiamo se l'utente non esiste in profiles, perché potrebbe esistere solo in auth.users
       const { error } = await supabase.auth.signInWithOtp({
-        email,
+        email: email.toLowerCase().trim(),
         options: {
           shouldCreateUser: false, // Non creare un nuovo utente
-          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(email)}`,
+          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(email.toLowerCase().trim())}`,
         },
       })
 
@@ -76,8 +59,8 @@ function ResetPasswordContent() {
         description: "Controlla la tua email (anche spam) per il codice di verifica a 6 cifre per reimpostare la password.",
       })
 
-      // Reindirizza alla pagina di verifica con l'email
-      router.push(`/auth/reset-password-verify?email=${encodeURIComponent(email)}`)
+      // Reindirizza alla pagina di verifica con l'email normalizzata
+      router.push(`/auth/reset-password-verify?email=${encodeURIComponent(email.toLowerCase().trim())}`)
     } catch (error) {
       toast({
         title: "Errore",
