@@ -27,7 +27,7 @@ interface Product {
 }
 
 export default function SupplierCatalogPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const params = useParams()
   const router = useRouter()
   const { toast } = useToast()
@@ -51,9 +51,19 @@ export default function SupplierCatalogPage() {
     imageFile: null as File | null,
   })
 
+  // Verifica autenticazione
   useEffect(() => {
-    loadProducts()
-  }, [serviceId])
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
+      return
+    }
+  }, [status, router])
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.id) {
+      loadProducts()
+    }
+  }, [serviceId, status, session])
 
   const loadProducts = async () => {
     try {
@@ -197,6 +207,8 @@ export default function SupplierCatalogPage() {
   }
 
   const handleEdit = (product: Product) => {
+    if (!session?.user?.id) return
+    
     setEditingProduct(product)
     setFormData({
       name: product.name,
@@ -212,6 +224,7 @@ export default function SupplierCatalogPage() {
   }
 
   const handleDelete = async (productId: string) => {
+    if (!session?.user?.id) return
     if (!confirm("Sei sicuro di voler eliminare questo prodotto?")) return
 
     try {
@@ -237,6 +250,8 @@ export default function SupplierCatalogPage() {
   }
 
   const toggleProductStatus = async (product: Product) => {
+    if (!session?.user?.id) return
+    
     try {
       const { error } = await supabase
         .from("supplier_products")
@@ -255,6 +270,20 @@ export default function SupplierCatalogPage() {
     }
   }
 
+  // Mostra loading durante il check di autenticazione
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Caricamento...</div>
+      </div>
+    )
+  }
+
+  // Se non autenticato, non mostrare nulla (il redirect è in corso)
+  if (status === "unauthenticated" || !session?.user?.id) {
+    return null
+  }
+
   return (
     <div className="min-h-screen p-8">
       <div className="container mx-auto max-w-6xl">
@@ -267,7 +296,7 @@ export default function SupplierCatalogPage() {
             <Button variant="outline" onClick={() => router.back()}>
               Indietro
             </Button>
-            {!showForm && (
+            {!showForm && session?.user?.id && (
               <Button onClick={() => setShowForm(true)}>
                 <Plus className="w-4 h-4 mr-2" />
                 Aggiungi prodotto
@@ -457,37 +486,39 @@ export default function SupplierCatalogPage() {
                     <span>{product.minimum_order}</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(product)}
-                    className="flex-1"
-                  >
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Modifica
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleProductStatus(product)}
-                  >
-                    {product.is_active ? "Disattiva" : "Attiva"}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleDelete(product.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                {session?.user?.id && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(product)}
+                      className="flex-1"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Modifica
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleProductStatus(product)}
+                    >
+                      {product.is_active ? "Disattiva" : "Attiva"}
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(product.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {products.length === 0 && !showForm && (
+        {products.length === 0 && !showForm && session?.user?.id && (
           <Card>
             <CardContent className="p-12 text-center">
               <p className="text-muted-foreground mb-4">Nessun prodotto nel catalogo</p>
