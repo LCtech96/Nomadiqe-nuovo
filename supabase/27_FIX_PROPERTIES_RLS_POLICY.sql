@@ -71,3 +71,4 @@ ORDER BY policyname;
 -- Senza WITH CHECK per INSERT, tutte le operazioni INSERT falliranno con:
 -- "new row violates row-level security policy"
 -- ============================================
+

@@ -20,3 +20,4 @@ CREATE POLICY "Users can update own properties" ON public.properties
 
 
 
+

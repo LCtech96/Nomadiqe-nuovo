@@ -108,3 +108,4 @@ Con la configurazione MCP, l'assistente può:
 *È già escluso dal `.gitignore` ma non contiene informazioni sensibili.*
 
 
+

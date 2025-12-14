@@ -68,24 +68,34 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // If user has a role, redirect to home (regardless of onboarding status)
-          // User can complete missing profile info from profile page
-          if (data.role) {
-            setSelectedRole(data.role)
+          // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
+          if (!data.role) {
             router.push("/home")
             return
           }
 
-          // If no role selected, start with role selection
-          setStep("role")
+          // Se l'utente ha già completato l'onboarding, reindirizza alla home
+          if (data.onboarding_completed) {
+            router.push("/home")
+            return
+          }
+
+          // Se l'utente ha un ruolo ma non ha completato l'onboarding, procedi con l'onboarding specifico
+          setSelectedRole(data.role)
+          if (data.role === "host") {
+            setStep("role-specific")
+          } else {
+            // Per altri ruoli, per ora reindirizza alla home
+            // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
+            router.push("/home")
+          }
         } else {
-          // Profile doesn't exist - start with role selection
-          setStep("role")
+          // Profile doesn't exist - redirect to home for role selection
+          router.push("/home")
         }
       } catch (error) {
         console.error("Error checking onboarding status:", error)
-        // If profile doesn't exist, just start with role selection
-        setStep("role")
+        router.push("/home")
       } finally {
         setCheckingOnboarding(false)
       }
@@ -107,73 +117,75 @@ export default function OnboardingPage() {
       // Check if profile exists
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, role")
         .eq("id", session.user.id)
         .maybeSingle()
 
-      // Prepare profile data for UPSERT
+      // Prepare profile data
       const profileData: any = {
-        id: session.user.id,
         role: selectedRole,
-        email: session.user.email || "", // Add email to satisfy NOT NULL constraint
       }
 
-      // If profile doesn't exist, add initial values
+      // Se il profilo non esiste, crealo con tutti i campi necessari
       if (!existingProfile) {
-        profileData.full_name = session.user.name || session.user.email?.split("@")[0] || ""
-        profileData.username = session.user.email?.split("@")[0] || ""
-      }
-
-      // UPSERT: creates if doesn't exist, updates if exists
-      // First try without onboarding_status (in case PostgREST cache hasn't updated)
-      let { error: upsertError } = await supabase
-        .from("profiles")
-        .upsert(profileData, { onConflict: "id" })
-
-      // If error is about onboarding_status column not found, try again without it
-      if (upsertError && upsertError.code === 'PGRST204' && upsertError.message?.includes('onboarding_status')) {
-        console.warn("onboarding_status column not in cache yet, saving without it for now")
-        // Remove onboarding_status and try again
-        const profileDataWithoutStatus = { ...profileData }
-        delete profileDataWithoutStatus.onboarding_status
-        const { error: retryError } = await supabase
-          .from("profiles")
-          .upsert(profileDataWithoutStatus, { onConflict: "id" })
-        
-        if (retryError) {
-          console.error("Upsert error (retry):", retryError)
-          throw retryError
+        const newProfileData: any = {
+          id: session.user.id,
+          email: session.user.email || "",
+          role: selectedRole,
+          full_name: session.user.name || session.user.email?.split("@")[0] || "",
+          username: session.user.email?.split("@")[0] || "",
         }
-      } else if (upsertError) {
-        console.error("Upsert error:", upsertError)
-        throw upsertError
-      }
-      // onboarding_status temporarily disabled due to PostgREST cache issue
 
-      // Mark onboarding as completed for non-host roles
-      if (selectedRole !== "host") {
-        await supabase
+        const { error: insertError } = await supabase
           .from("profiles")
-          .update({ onboarding_completed: true })
+          .insert(newProfileData)
+
+        if (insertError) {
+          console.error("Insert error:", insertError)
+          throw insertError
+        }
+      } else {
+        // Se il profilo esiste, aggiorna ruolo e onboarding_completed insieme
+        const updateData: any = {
+          role: selectedRole,
+        }
+        
+        // Per ruoli non-host, segna anche onboarding come completato
+        if (selectedRole !== "host") {
+          updateData.onboarding_completed = true
+        }
+        
+        console.log("Updating existing profile:", updateData)
+        const { data: updateResult, error: updateError } = await supabase
+          .from("profiles")
+          .update(updateData)
           .eq("id", session.user.id)
+          .select("role, onboarding_completed")
+
+        if (updateError) {
+          console.error("Update error:", updateError)
+          throw updateError
+        }
+        
+        console.log("Update successful:", updateResult)
       }
+      
+      // Non verifichiamo subito perché potrebbe essere un problema di cache del database
+      // Se l'UPDATE non ha dato errori, assumiamo che sia andato a buon fine
+
+      // Mostra un messaggio di successo
+      toast({
+        title: "Successo",
+        description: `Ruolo ${selectedRole} selezionato con successo!`,
+      })
 
       // If role is host, go to host-specific onboarding
       if (selectedRole === "host") {
         setStep("role-specific")
       } else {
-        // For other roles, redirect to home
-        try {
-          await supabase
-            .from("profiles")
-            .update({
-              onboarding_completed: true,
-            })
-            .eq("id", session.user.id)
-        } catch (err) {
-          console.warn("Could not update onboarding_completed:", err)
-        }
-        
+        // For other roles, stay on onboarding to complete profile info
+        // L'utente continuerà con l'onboarding per completare le informazioni del profilo
+        // Per ora reindirizziamo alla home, ma qui si potrebbe aggiungere più onboarding
         router.push("/home")
       }
     } catch (error: any) {
@@ -192,7 +204,13 @@ export default function OnboardingPage() {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
+  // Non mostriamo più la selezione dei ruoli qui - quella è sulla home
+  // Se l'utente arriva qui senza un ruolo, viene reindirizzato alla home
+  if (!selectedRole) {
+    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+  }
 
+  // Questa parte non dovrebbe più essere raggiunta, ma la lasciamo per sicurezza
   if (step === "role") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">

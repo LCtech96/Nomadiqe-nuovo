@@ -108,3 +108,4 @@ La colonna `location_data` sarà un JSONB con questa struttura:
 
 
 
+

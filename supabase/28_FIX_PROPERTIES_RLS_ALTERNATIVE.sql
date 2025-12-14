@@ -62,3 +62,4 @@ WHERE tablename = 'properties'
 -- In quel caso, potrebbe essere necessario configurare il client Supabase
 -- per usare correttamente il token di NextAuth.
 -- ============================================
+

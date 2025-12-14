@@ -181,3 +181,4 @@ Se nessuna soluzione funziona:
 - [ ] Testato "Rinvia il codice"
 - [ ] Verificato console browser per errori
 - [ ] Controllato Auth Logs su Supabase
+

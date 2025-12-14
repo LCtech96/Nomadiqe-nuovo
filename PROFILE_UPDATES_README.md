@@ -154,3 +154,4 @@ Testa le seguenti funzionalità:
 6. ✅ Per Host: verifica le 3 tab (Strutture, Collaborazioni, Post)
 7. ✅ Per Creator: verifica le statistiche dettagliate
 8. ✅ Verifica le griglie 3x3 in stile Instagram
+

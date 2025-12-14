@@ -13,3 +13,4 @@ SELECT
 FROM public.profiles 
 WHERE email = 'lucacorrao1996@gmail.com';
 
+

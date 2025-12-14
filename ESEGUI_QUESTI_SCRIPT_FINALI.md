@@ -129,3 +129,4 @@ Il deploy è già partito automaticamente. Aspetta 2-3 minuti.
 
 **Esegui gli script 13 e 14, aspetta il deploy, e testa dall'iPhone!** 🚀
 
+

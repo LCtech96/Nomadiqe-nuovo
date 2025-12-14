@@ -153,3 +153,4 @@ WHERE proname IN (
 )
 AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
 ORDER BY proname;
+

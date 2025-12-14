@@ -29,6 +29,7 @@ const SERVICE_TYPES = [
   "cooking",
   "driver",
   "translation",
+  "supplier",
 ] as const
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
@@ -42,7 +43,40 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   cooking: "Cucina",
   driver: "Autista",
   translation: "Traduzione",
+  supplier: "Fornitore",
 }
+
+// Competenze predefinite per gestione proprietà
+const PROPERTY_MANAGEMENT_SKILLS = [
+  "Gestione prenotazioni",
+  "Pulizie e manutenzione",
+  "Check-in/Check-out",
+  "Comunicazione ospiti",
+  "Marketing e promozione",
+  "Contabilità e fatturazione",
+  "Gestione emergenze",
+  "Rapporti con fornitori",
+  "Manutenzione preventiva",
+  "Gestione recensioni",
+] as const
+
+// Tipi di vettura per autista
+const VEHICLE_TYPES = [
+  "Auto",
+  "Furgone",
+  "Minivan",
+  "SUV",
+  "Motocicletta",
+  "Bicicletta",
+] as const
+
+// Opzioni distanza per autista
+const DISTANCE_OPTIONS = [
+  "< 50 km",
+  "50-100 km",
+  "100-200 km",
+  "> 200 km",
+] as const
 
 export default function NewServicePage() {
   const { data: session } = useSession()
@@ -57,10 +91,13 @@ export default function NewServicePage() {
     description: "",
     price_per_hour: "",
     price_per_service: "",
+    percentage_commission: "", // Per gestione proprietà
+    price_per_route: {} as Record<string, string>, // Per autista
+    vehicle_type: "", // Per autista
     availability_type: "flexible" as "flexible" | "seasonal" | "full-time",
     operating_cities: [] as string[],
     operating_countries: [] as string[],
-    skills: [] as string[],
+    skills: [] as string[], // Competenze ordinate per gestione proprietà
   })
 
   const [currentCity, setCurrentCity] = useState("")
@@ -80,23 +117,54 @@ export default function NewServicePage() {
 
     setLoading(true)
     try {
+      // Prepara i dati in base al tipo di servizio
+      const insertData: any = {
+        manager_id: session.user.id,
+        service_type: formData.service_type,
+        title: formData.title,
+        description: formData.description,
+        availability_type: formData.availability_type,
+        operating_cities: formData.operating_cities,
+        operating_countries: formData.operating_countries,
+        skills: formData.skills,
+        portfolio_images: [],
+      }
+
+      // Campi specifici per tipo di servizio
+      if (formData.service_type === "property_management") {
+        // Gestione proprietà: usa percentuale commissione, no prezzi
+        insertData.percentage_commission = formData.percentage_commission
+          ? parseFloat(formData.percentage_commission)
+          : null
+        insertData.price_per_hour = null
+        insertData.price_per_service = null
+      } else if (formData.service_type === "driver") {
+        // Autista: usa prezzo per tratta e tipo vettura
+        const pricePerRoute: Record<string, number> = {}
+        Object.entries(formData.price_per_route).forEach(([key, value]) => {
+          if (value && !isNaN(parseFloat(value))) {
+            pricePerRoute[key] = parseFloat(value)
+          }
+        })
+        insertData.price_per_route = Object.keys(pricePerRoute).length > 0 ? pricePerRoute : null
+        insertData.vehicle_type = formData.vehicle_type || null
+        insertData.price_per_hour = null
+        insertData.price_per_service = null
+      } else if (formData.service_type === "supplier") {
+        // Fornitore: non usa prezzi standard, usa catalogo prodotti
+        insertData.price_per_hour = null
+        insertData.price_per_service = null
+      } else {
+        // Altri servizi: usa i campi standard
+        insertData.price_per_hour = formData.price_per_hour ? parseFloat(formData.price_per_hour) : null
+        insertData.price_per_service = formData.price_per_service
+          ? parseFloat(formData.price_per_service)
+          : null
+      }
+
       const { data, error } = await supabase
         .from("manager_services")
-        .insert({
-          manager_id: session.user.id,
-          service_type: formData.service_type,
-          title: formData.title,
-          description: formData.description,
-          price_per_hour: formData.price_per_hour ? parseFloat(formData.price_per_hour) : null,
-          price_per_service: formData.price_per_service
-            ? parseFloat(formData.price_per_service)
-            : null,
-          availability_type: formData.availability_type,
-          operating_cities: formData.operating_cities,
-          operating_countries: formData.operating_countries,
-          skills: formData.skills,
-          portfolio_images: [],
-        })
+        .insert(insertData)
         .select()
         .single()
 
@@ -107,7 +175,12 @@ export default function NewServicePage() {
         description: "Servizio creato con successo!",
       })
 
-      router.push(`/dashboard/manager/services/${data.id}`)
+      // Se è un servizio fornitore, reindirizza alla pagina catalogo
+      if (formData.service_type === "supplier") {
+        router.push(`/dashboard/manager/services/${data.id}/catalog`)
+      } else {
+        router.push(`/dashboard/manager/services/${data.id}`)
+      }
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -167,6 +240,40 @@ export default function NewServicePage() {
     setFormData({
       ...formData,
       skills: formData.skills.filter((s) => s !== skill),
+    })
+  }
+
+  // Gestione competenze predefinite per gestione proprietà
+  const togglePropertyManagementSkill = (skill: string) => {
+    if (formData.skills.includes(skill)) {
+      setFormData({
+        ...formData,
+        skills: formData.skills.filter((s) => s !== skill),
+      })
+    } else {
+      setFormData({
+        ...formData,
+        skills: [...formData.skills, skill],
+      })
+    }
+  }
+
+  const moveSkill = (index: number, direction: "up" | "down") => {
+    const newSkills = [...formData.skills]
+    const newIndex = direction === "up" ? index - 1 : index + 1
+    if (newIndex >= 0 && newIndex < newSkills.length) {
+      [newSkills[index], newSkills[newIndex]] = [newSkills[newIndex], newSkills[index]]
+      setFormData({ ...formData, skills: newSkills })
+    }
+  }
+
+  const updatePricePerRoute = (distance: string, price: string) => {
+    setFormData({
+      ...formData,
+      price_per_route: {
+        ...formData.price_per_route,
+        [distance]: price,
+      },
     })
   }
 
@@ -249,35 +356,107 @@ export default function NewServicePage() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              {/* Campi prezzo condizionali in base al tipo di servizio */}
+              {formData.service_type === "property_management" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="price_per_hour">Prezzo per ora (€)</Label>
+                  <Label htmlFor="percentage_commission">Percentuale commissione richiesta idealmente (%)</Label>
                   <Input
-                    id="price_per_hour"
+                    id="percentage_commission"
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.price_per_hour}
-                    onChange={(e) => setFormData({ ...formData, price_per_hour: e.target.value })}
-                    placeholder="0.00"
+                    max="100"
+                    value={formData.percentage_commission}
+                    onChange={(e) => setFormData({ ...formData, percentage_commission: e.target.value })}
+                    placeholder="Es. 15.00"
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Inserisci la percentuale di commissione che desideri per la gestione della proprietà
+                  </p>
                 </div>
+              ) : formData.service_type === "driver" ? (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Tipo di vettura *</Label>
+                    <Select
+                      value={formData.vehicle_type}
+                      onValueChange={(value) => setFormData({ ...formData, vehicle_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipo di vettura" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VEHICLE_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Prezzo per tratta (€)</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Inserisci il prezzo per ogni fascia di distanza
+                    </p>
+                    <div className="space-y-3">
+                      {DISTANCE_OPTIONS.map((distance) => (
+                        <div key={distance} className="flex items-center gap-3">
+                          <Label className="w-32">{distance}</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={formData.price_per_route[distance] || ""}
+                            onChange={(e) => updatePricePerRoute(distance, e.target.value)}
+                            placeholder="0.00"
+                            className="flex-1"
+                          />
+                          <span className="text-sm text-muted-foreground">€</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : formData.service_type === "supplier" ? (
+                <div className="space-y-2">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      Dopo la creazione del servizio, potrai aggiungere i prodotti al catalogo.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_hour">Prezzo per ora (€)</Label>
+                    <Input
+                      id="price_per_hour"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_per_hour}
+                      onChange={(e) => setFormData({ ...formData, price_per_hour: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_service">Prezzo per servizio (€)</Label>
-                  <Input
-                    id="price_per_service"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price_per_service}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price_per_service: e.target.value })
-                    }
-                    placeholder="0.00"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_service">Prezzo per servizio (€)</Label>
+                    <Input
+                      id="price_per_service"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_per_service}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price_per_service: e.target.value })
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="cities">Città di operazione</Label>
@@ -359,45 +538,113 @@ export default function NewServicePage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="skills">Competenze</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="skills"
-                    value={currentSkill}
-                    onChange={(e) => setCurrentSkill(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addSkill()
-                      }
-                    }}
-                    placeholder="Aggiungi una competenza"
-                  />
-                  <Button type="button" onClick={addSkill}>
-                    Aggiungi
-                  </Button>
-                </div>
-                {formData.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {formData.skills.map((skill) => (
-                      <span
+              {/* Competenze - diverso per gestione proprietà */}
+              {formData.service_type === "property_management" ? (
+                <div className="space-y-2">
+                  <Label>Competenze</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Seleziona e ordina le tue competenze (l'ordine è importante)
+                  </p>
+                  <div className="space-y-2">
+                    {PROPERTY_MANAGEMENT_SKILLS.map((skill) => (
+                      <div
                         key={skill}
-                        className="px-3 py-1 bg-secondary rounded-full text-sm flex items-center gap-2"
+                        className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-muted"
+                        onClick={() => togglePropertyManagementSkill(skill)}
                       >
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => removeSkill(skill)}
-                          className="text-destructive hover:text-destructive/80"
-                        >
-                          ×
-                        </button>
-                      </span>
+                        <input
+                          type="checkbox"
+                          checked={formData.skills.includes(skill)}
+                          onChange={() => togglePropertyManagementSkill(skill)}
+                          className="w-4 h-4"
+                        />
+                        <span className="flex-1">{skill}</span>
+                      </div>
                     ))}
                   </div>
-                )}
-              </div>
+                  {formData.skills.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <Label>Ordine competenze (trascina per riordinare)</Label>
+                      <div className="space-y-2">
+                        {formData.skills.map((skill, index) => (
+                          <div
+                            key={skill}
+                            className="flex items-center gap-2 p-3 bg-secondary rounded-lg"
+                          >
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveSkill(index, "up")}
+                              disabled={index === 0}
+                            >
+                              ↑
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => moveSkill(index, "down")}
+                              disabled={index === formData.skills.length - 1}
+                            >
+                              ↓
+                            </Button>
+                            <span className="flex-1">{index + 1}. {skill}</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeSkill(skill)}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="skills">Competenze</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="skills"
+                      value={currentSkill}
+                      onChange={(e) => setCurrentSkill(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          addSkill()
+                        }
+                      }}
+                      placeholder="Aggiungi una competenza"
+                    />
+                    <Button type="button" onClick={addSkill}>
+                      Aggiungi
+                    </Button>
+                  </div>
+                  {formData.skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.skills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="px-3 py-1 bg-secondary rounded-full text-sm flex items-center gap-2"
+                        >
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => removeSkill(skill)}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <Button type="submit" disabled={loading} className="flex-1">
@@ -419,6 +666,7 @@ export default function NewServicePage() {
     </div>
   )
 }
+
 
 
 

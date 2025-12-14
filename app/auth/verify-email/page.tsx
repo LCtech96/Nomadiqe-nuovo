@@ -144,8 +144,8 @@ function VerifyEmailContent() {
           description: "Ti abbiamo inviato una seconda email con un nuovo codice di verifica. Controlla la tua casella email.",
         })
         
-        // Reindirizza alla pagina di seconda verifica
-        router.push(`/auth/verify-email-second?email=${encodeURIComponent(userEmail)}&returnTo=/guide`)
+        // Reindirizza alla pagina di seconda verifica, dopo reindirizzeremo all'onboarding se necessario
+        router.push(`/auth/verify-email-second?email=${encodeURIComponent(userEmail)}&returnTo=/onboarding`)
         return
       }
     } else {
@@ -166,13 +166,23 @@ function VerifyEmailContent() {
     // Registra referral se presente
     await registerReferralIfExists()
 
-    // Se non serve seconda verifica, vai direttamente alla guida
+    // Se non serve seconda verifica, controlla se l'utente ha già un ruolo
     if (!needsSecondVerification) {
+      // Controlla se l'utente ha già completato l'onboarding (ha un ruolo)
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle()
+
       toast({
         title: "Successo",
         description: "Email verificata con successo!",
       })
-      router.push("/guide")
+
+      // Sempre reindirizza alla home dopo la registrazione
+      // L'utente vedrà la selezione dei ruoli sulla home se non ne ha ancora uno
+      router.push("/home")
     }
   }
 

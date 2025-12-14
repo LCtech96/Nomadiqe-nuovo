@@ -227,3 +227,4 @@ Il sistema invia automaticamente notifiche push quando:
 **Tutto pronto! 🎉**
 
 Se hai problemi, controlla la console del browser e i log di Vercel per errori.
+

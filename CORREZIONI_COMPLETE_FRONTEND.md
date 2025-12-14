@@ -63,3 +63,4 @@ CREATE POLICY "Authenticated users can create posts" ON public.posts
 
 
 
+
