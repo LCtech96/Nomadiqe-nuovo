@@ -72,6 +72,12 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       payment_amount?: string
       description: string
     }>,
+    // Nuovi campi per KOL&BED
+    nights_per_collaboration: "",
+    required_videos: "",
+    required_posts: "",
+    required_stories: "",
+    kol_bed_months: [] as number[], // Mesi 1-12
   })
   const [currentNiche, setCurrentNiche] = useState("")
   const [loadingSavedState, setLoadingSavedState] = useState(true)
@@ -530,6 +536,25 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         if (offerError) throw offerError
       }
 
+      // Salva preferenze KOL&BED
+      const { error: preferencesError } = await supabase
+        .from("host_kol_bed_preferences")
+        .upsert({
+          host_id: session.user.id,
+          free_stay_nights: collaborationData.nights_per_collaboration ? parseInt(collaborationData.nights_per_collaboration) : 0,
+          nights_per_collaboration: collaborationData.nights_per_collaboration ? parseInt(collaborationData.nights_per_collaboration) : 0,
+          required_videos: collaborationData.required_videos ? parseInt(collaborationData.required_videos) : 0,
+          required_posts: collaborationData.required_posts ? parseInt(collaborationData.required_posts) : 0,
+          required_stories: collaborationData.required_stories ? parseInt(collaborationData.required_stories) : 0,
+          kol_bed_months: collaborationData.kol_bed_months.length > 0 ? collaborationData.kol_bed_months : [],
+          updated_at: new Date().toISOString(),
+        })
+
+      if (preferencesError) {
+        console.warn("Could not save KOL&BED preferences:", preferencesError)
+        // Non bloccare l'onboarding se questo fallisce
+      }
+
       // Mark onboarding as completed (without onboarding_status for now)
       const { error: updateError } = await supabase
         .from("profiles")
@@ -972,6 +997,110 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   ))}
                 </div>
               )}
+            </div>
+
+            {/* Nuovi campi KOL&BED */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h3 className="font-semibold mb-4 text-blue-900 dark:text-blue-100">Impostazioni KOL&BED</h3>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nights_per_collaboration">Notti per collaborazione FREE STAY</Label>
+                  <Input
+                    id="nights_per_collaboration"
+                    type="number"
+                    min="0"
+                    value={collaborationData.nights_per_collaboration}
+                    onChange={(e) =>
+                      setCollaborationData({ ...collaborationData, nights_per_collaboration: e.target.value })
+                    }
+                    placeholder="2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Numero di notti che offri per ogni collaborazione FREE STAY
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="required_videos">Video richiesti</Label>
+                    <Input
+                      id="required_videos"
+                      type="number"
+                      min="0"
+                      value={collaborationData.required_videos}
+                      onChange={(e) =>
+                        setCollaborationData({ ...collaborationData, required_videos: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="required_posts">Post richiesti</Label>
+                    <Input
+                      id="required_posts"
+                      type="number"
+                      min="0"
+                      value={collaborationData.required_posts}
+                      onChange={(e) =>
+                        setCollaborationData({ ...collaborationData, required_posts: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="required_stories">Storie richieste</Label>
+                    <Input
+                      id="required_stories"
+                      type="number"
+                      min="0"
+                      value={collaborationData.required_stories}
+                      onChange={(e) =>
+                        setCollaborationData({ ...collaborationData, required_stories: e.target.value })
+                      }
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Mesi in cui aderisci al programma KOL&BED</Label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {[
+                      { num: 1, name: "Gen" },
+                      { num: 2, name: "Feb" },
+                      { num: 3, name: "Mar" },
+                      { num: 4, name: "Apr" },
+                      { num: 5, name: "Mag" },
+                      { num: 6, name: "Giu" },
+                      { num: 7, name: "Lug" },
+                      { num: 8, name: "Ago" },
+                      { num: 9, name: "Set" },
+                      { num: 10, name: "Ott" },
+                      { num: 11, name: "Nov" },
+                      { num: 12, name: "Dic" },
+                    ].map((month) => (
+                      <Button
+                        key={month.num}
+                        type="button"
+                        variant={collaborationData.kol_bed_months.includes(month.num) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          const months = collaborationData.kol_bed_months.includes(month.num)
+                            ? collaborationData.kol_bed_months.filter((m) => m !== month.num)
+                            : [...collaborationData.kol_bed_months, month.num]
+                          setCollaborationData({ ...collaborationData, kol_bed_months: months })
+                        }}
+                      >
+                        {month.name}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Seleziona i mesi in cui sei disponibile per collaborazioni
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-4">

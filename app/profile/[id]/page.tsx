@@ -30,10 +30,12 @@ import {
   PieChart,
   BarChart3,
   Globe,
-  Briefcase
+  Briefcase,
+  Calendar
 } from "lucide-react"
 import SendMessageDialog from "@/components/send-message-dialog"
 import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
+import HostAvailabilityCalendar from "@/components/host-availability-calendar"
 import { useToast } from "@/hooks/use-toast"
 
 interface Post {
@@ -117,6 +119,8 @@ export default function PublicProfilePage() {
   const [shareLinkCopied, setShareLinkCopied] = useState<string | null>(null)
   const [showCatalogDialog, setShowCatalogDialog] = useState(false)
   const [selectedSupplierService, setSelectedSupplierService] = useState<string | null>(null)
+  const [showAvailabilityCalendar, setShowAvailabilityCalendar] = useState(false)
+  const [kolBedPreferences, setKolBedPreferences] = useState<any>(null)
   const [stats, setStats] = useState<Stats>({
     followers: 0,
     following: 0,
@@ -239,12 +243,23 @@ export default function PublicProfilePage() {
             }
           })
 
+        // Load KOL&BED preferences
+        const { data: prefsData } = await supabase
+          .from("host_kol_bed_preferences")
+          .select("*")
+          .eq("host_id", userId)
+          .maybeSingle()
+
         setProfile({
           ...data,
           properties: propertiesData || [],
           posts: postsData || [],
           collaborations: mappedCollaborations,
         })
+        
+        if (prefsData) {
+          setKolBedPreferences(prefsData)
+        }
       } else if (data.role === "manager") {
         // Load services for managers
         const { data: servicesData } = await supabase
@@ -615,42 +630,151 @@ export default function PublicProfilePage() {
               )}
             </TabsContent>
 
-            <TabsContent value="collaborazioni" className="mt-6">
-              {profile.collaborations && profile.collaborations.length > 0 ? (
-                <div className="grid grid-cols-3 gap-1 md:gap-2">
-                  {profile.collaborations.map((collab) => (
-                    <div
-                      key={collab.id}
-                      className="relative aspect-square group cursor-pointer"
-                      onClick={() => router.push(`/properties/${collab.property_id}`)}
-                    >
-                      {collab.property.images && collab.property.images.length > 0 ? (
-                        <Image
-                          src={collab.property.images[0]}
-                          alt={collab.property.title || collab.property.name}
-                          fill
-                          sizes="(max-width: 768px) 33vw, 200px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <Users className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <p className="text-white text-sm font-semibold px-2 text-center">
-                          {collab.property.title || collab.property.name}
-                        </p>
+            <TabsContent value="collaborazioni" className="mt-6 space-y-6">
+              {/* Impostazioni KOL&BED */}
+              {kolBedPreferences && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Impostazioni KOL&BED</CardTitle>
+                    <CardDescription>
+                      Informazioni sulle collaborazioni che questo host offre
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {kolBedPreferences.nights_per_collaboration > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <span className="font-medium">Notti per collaborazione FREE STAY:</span>
+                        <Badge variant="default" className="text-lg">
+                          {kolBedPreferences.nights_per_collaboration}
+                        </Badge>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Nessuna collaborazione attiva</p>
-                </div>
+                    )}
+
+                    {(kolBedPreferences.required_videos > 0 || 
+                      kolBedPreferences.required_posts > 0 || 
+                      kolBedPreferences.required_stories > 0) && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <p className="font-medium mb-2">Contenuti richiesti:</p>
+                        <div className="flex gap-4">
+                          {kolBedPreferences.required_videos > 0 && (
+                            <div>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_videos}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Video</p>
+                            </div>
+                          )}
+                          {kolBedPreferences.required_posts > 0 && (
+                            <div>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_posts}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Post</p>
+                            </div>
+                          )}
+                          {kolBedPreferences.required_stories > 0 && (
+                            <div>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_stories}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Storie</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {kolBedPreferences.kol_bed_months && kolBedPreferences.kol_bed_months.length > 0 && (
+                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <p className="font-medium mb-2">Mesi disponibili:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { num: 1, name: "Gen" },
+                            { num: 2, name: "Feb" },
+                            { num: 3, name: "Mar" },
+                            { num: 4, name: "Apr" },
+                            { num: 5, name: "Mag" },
+                            { num: 6, name: "Giu" },
+                            { num: 7, name: "Lug" },
+                            { num: 8, name: "Ago" },
+                            { num: 9, name: "Set" },
+                            { num: 10, name: "Ott" },
+                            { num: 11, name: "Nov" },
+                            { num: 12, name: "Dic" },
+                          ].map((month) => (
+                            <Badge
+                              key={month.num}
+                              variant={kolBedPreferences.kol_bed_months.includes(month.num) ? "default" : "outline"}
+                            >
+                              {month.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pulsante per vedere il calendario (solo per creator) */}
+                    {session?.user?.id && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowAvailabilityCalendar(true)}
+                        className="w-full"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Visualizza calendario disponibilità
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
               )}
+
+              {/* Calendario disponibilità */}
+              {showAvailabilityCalendar && profile.id && (
+                <HostAvailabilityCalendar
+                  hostId={profile.id}
+                  onClose={() => setShowAvailabilityCalendar(false)}
+                />
+              )}
+
+              {/* Collaborazioni attive */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Collaborazioni attive</h3>
+                {profile.collaborations && profile.collaborations.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-1 md:gap-2">
+                    {profile.collaborations.map((collab) => (
+                      <div
+                        key={collab.id}
+                        className="relative aspect-square group cursor-pointer"
+                        onClick={() => router.push(`/properties/${collab.property_id}`)}
+                      >
+                        {collab.property.images && collab.property.images.length > 0 ? (
+                          <Image
+                            src={collab.property.images[0]}
+                            alt={collab.property.title || collab.property.name}
+                            fill
+                            sizes="(max-width: 768px) 33vw, 200px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <Users className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                          <p className="text-white text-sm font-semibold px-2 text-center">
+                            {collab.property.title || collab.property.name}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">Nessuna collaborazione attiva</p>
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="post" className="mt-6">
