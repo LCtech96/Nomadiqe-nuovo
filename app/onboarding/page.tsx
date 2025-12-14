@@ -68,16 +68,27 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // Se l'utente ha già un ruolo, reindirizza sempre alla home
-          // Il ruolo non può essere cambiato, quindi non serve mostrare l'onboarding
-          if (data.role) {
+          // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
+          if (!data.role) {
             router.push("/home")
             return
           }
 
-          // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
-          router.push("/home")
-          return
+          // Se l'utente ha già completato l'onboarding, reindirizza alla home
+          if (data.onboarding_completed) {
+            router.push("/home")
+            return
+          }
+
+          // Se l'utente ha un ruolo ma non ha completato l'onboarding, procedi con l'onboarding specifico
+          setSelectedRole(data.role)
+          if (data.role === "host") {
+            setStep("role-specific")
+          } else {
+            // Per altri ruoli, per ora reindirizza alla home
+            // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
+            router.push("/home")
+          }
         } else {
           // Profile doesn't exist - redirect to home for role selection
           router.push("/home")
@@ -103,24 +114,16 @@ export default function OnboardingPage() {
 
     setLoading(true)
     try {
-      // Check if profile exists and if it already has a role
+      // Check if profile exists
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id, role")
         .eq("id", session.user.id)
         .maybeSingle()
 
-      // Se il profilo esiste e ha già un ruolo, non permettere il cambio
-      if (existingProfile?.role) {
-        toast({
-          title: "Attenzione",
-          description: `Hai già selezionato il ruolo ${existingProfile.role}. Il ruolo non può essere modificato.`,
-          variant: "destructive",
-        })
-        // Reindirizza alla home se ha già un ruolo
-        router.push("/home")
-        setLoading(false)
-        return
+      // Prepare profile data
+      const profileData: any = {
+        role: selectedRole,
       }
 
       // Se il profilo non esiste, crealo con tutti i campi necessari
@@ -142,7 +145,7 @@ export default function OnboardingPage() {
           throw insertError
         }
       } else {
-        // Se il profilo esiste ma non ha ancora un ruolo, aggiorna ruolo e onboarding_completed insieme
+        // Se il profilo esiste, aggiorna ruolo e onboarding_completed insieme
         const updateData: any = {
           role: selectedRole,
         }
@@ -201,13 +204,6 @@ export default function OnboardingPage() {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
-  // Se l'utente ha già un ruolo nel profilo, reindirizza alla home
-  // Il ruolo non può essere cambiato
-  if (profile?.role && profile.role !== selectedRole) {
-    router.push("/home")
-    return <div className="min-h-screen flex items-center justify-center">Reindirizzamento...</div>
-  }
-
   // Non mostriamo più la selezione dei ruoli qui - quella è sulla home
   // Se l'utente arriva qui senza un ruolo, viene reindirizzato alla home
   if (!selectedRole) {
@@ -215,12 +211,6 @@ export default function OnboardingPage() {
   }
 
   // Questa parte non dovrebbe più essere raggiunta, ma la lasciamo per sicurezza
-  // Se l'utente ha già un ruolo, non mostrare la selezione
-  if (step === "role" && profile?.role) {
-    router.push("/home")
-    return <div className="min-h-screen flex items-center justify-center">Reindirizzamento...</div>
-  }
-
   if (step === "role") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
