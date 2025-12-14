@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -94,6 +95,10 @@ export default function ProfilePage() {
   const [referralCode, setReferralCode] = useState<string | null>(null)
   const [referralLinkCopied, setReferralLinkCopied] = useState(false)
   const [referralLink, setReferralLink] = useState<string>("")
+  
+  // KOL&BED Preferences (per host)
+  const [kolBedPreferences, setKolBedPreferences] = useState<any>(null)
+  const [profileLinkCopied, setProfileLinkCopied] = useState(false)
   
   // Notifications
   const [notifications, setNotifications] = useState<any[]>([])
@@ -309,6 +314,19 @@ export default function ProfilePage() {
           .filter((c: Collaboration) => c.property && c.property.id)
         
         setCollaborations(mappedCollaborations)
+      }
+
+      // Load KOL&BED preferences (solo per host)
+      if (profileData?.role === "host") {
+        const { data: prefsData, error: prefsError } = await supabase
+          .from("host_kol_bed_preferences")
+          .select("*")
+          .eq("host_id", currentUserId)
+          .maybeSingle()
+
+        if (!prefsError && prefsData) {
+          setKolBedPreferences(prefsData)
+        }
       }
 
       // Load statistics (don't fail if error)
@@ -785,6 +803,37 @@ export default function ProfilePage() {
     }
   }
 
+  const handleShareProfile = async () => {
+    if (!profile?.username && !profile?.id) {
+      toast({
+        title: "Errore",
+        description: "Username non disponibile",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const shareUrl = profile.username 
+      ? `${window.location.origin}/profile/${profile.username}`
+      : `${window.location.origin}/profile/${profile.id}`
+    
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setProfileLinkCopied(true)
+      toast({
+        title: "Link profilo copiato!",
+        description: "Il link è stato copiato negli appunti",
+      })
+      setTimeout(() => setProfileLinkCopied(false), 2000)
+    } catch (error) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare il link",
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading || status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center pb-20">
@@ -1224,50 +1273,189 @@ export default function ProfilePage() {
           )}
 
           {activeTab === "collab" && profile?.role === "host" && (
-            <div>
-              {collaborations.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-muted-foreground">
-                    Nessuna collaborazione attiva. Le strutture sponsorizzate appariranno qui.
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Riceverai il 10% su ogni prenotazione proveniente dai tuoi link di condivisione.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-1 md:gap-4">
-                  {collaborations.map((collab) => (
-                    <Link
-                      key={collab.id}
-                      href={`/properties/${collab.property_id}`}
-                      className="relative aspect-square group cursor-pointer"
+            <div className="space-y-6">
+              {/* Link di condivisione profilo */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Share2 className="w-5 h-5" />
+                    Condividi il tuo profilo
+                  </CardTitle>
+                  <CardDescription>
+                    Copia e condividi il link del tuo profilo per far conoscere le tue strutture
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2">
+                    <Input
+                      value={profile?.username 
+                        ? `${window.location.origin}/profile/${profile.username}`
+                        : `${window.location.origin}/profile/${profile?.id}`
+                      }
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleShareProfile}
+                      variant={profileLinkCopied ? "default" : "outline"}
                     >
-                      {collab.property.images && collab.property.images.length > 0 ? (
+                      {profileLinkCopied ? (
                         <>
-                          <Image
-                            src={collab.property.images[0]}
-                            alt={collab.property.title}
-                            fill
-                            sizes="(max-width: 768px) 33vw, 200px"
-                            className="object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <span className="text-white text-sm font-semibold">
+                          <Check className="w-4 h-4 mr-2" />
+                          Copiato!
+                        </>
+                      ) : (
+                        <>
+                          <Share2 className="w-4 h-4 mr-2" />
+                          Copia link
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Impostazioni KOL&BED */}
+              {kolBedPreferences && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Le tue impostazioni KOL&BED</CardTitle>
+                    <CardDescription>
+                      Le impostazioni che hai configurato per le collaborazioni con i creator
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {kolBedPreferences.nights_per_collaboration > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                        <span className="font-medium">Notti per collaborazione FREE STAY:</span>
+                        <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                          {kolBedPreferences.nights_per_collaboration}
+                        </span>
+                      </div>
+                    )}
+
+                    {(kolBedPreferences.required_videos > 0 || 
+                      kolBedPreferences.required_posts > 0 || 
+                      kolBedPreferences.required_stories > 0) && (
+                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                        <p className="font-medium mb-2">Contenuti richiesti:</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {kolBedPreferences.required_videos > 0 && (
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_videos}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Video</p>
+                            </div>
+                          )}
+                          {kolBedPreferences.required_posts > 0 && (
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_posts}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Post</p>
+                            </div>
+                          )}
+                          {kolBedPreferences.required_stories > 0 && (
+                            <div className="text-center">
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                {kolBedPreferences.required_stories}
+                              </p>
+                              <p className="text-xs text-muted-foreground">Storie</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {kolBedPreferences.kol_bed_months && kolBedPreferences.kol_bed_months.length > 0 && (
+                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                        <p className="font-medium mb-2">Mesi disponibili per KOL&BED:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { num: 1, name: "Gen" },
+                            { num: 2, name: "Feb" },
+                            { num: 3, name: "Mar" },
+                            { num: 4, name: "Apr" },
+                            { num: 5, name: "Mag" },
+                            { num: 6, name: "Giu" },
+                            { num: 7, name: "Lug" },
+                            { num: 8, name: "Ago" },
+                            { num: 9, name: "Set" },
+                            { num: 10, name: "Ott" },
+                            { num: 11, name: "Nov" },
+                            { num: 12, name: "Dic" },
+                          ].map((month) => (
+                            <Badge
+                              key={month.num}
+                              variant={kolBedPreferences.kol_bed_months.includes(month.num) ? "default" : "outline"}
+                              className="px-3 py-1"
+                            >
+                              {month.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/dashboard/host")}
+                      className="w-full"
+                    >
+                      Modifica impostazioni
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Collaborazioni attive */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Collaborazioni attive</h3>
+                {collaborations.length === 0 ? (
+                  <div className="text-center py-12 border rounded-lg">
+                    <p className="text-muted-foreground">
+                      Nessuna collaborazione attiva. Le strutture sponsorizzate appariranno qui.
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Riceverai il 10% su ogni prenotazione proveniente dai tuoi link di condivisione.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-1 md:gap-4">
+                    {collaborations.map((collab) => (
+                      <Link
+                        key={collab.id}
+                        href={`/properties/${collab.property_id}`}
+                        className="relative aspect-square group cursor-pointer"
+                      >
+                        {collab.property.images && collab.property.images.length > 0 ? (
+                          <>
+                            <Image
+                              src={collab.property.images[0]}
+                              alt={collab.property.title}
+                              fill
+                              sizes="(max-width: 768px) 33vw, 200px"
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <span className="text-white text-sm font-semibold">
+                                {collab.property.title}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full h-full bg-muted flex items-center justify-center">
+                            <span className="text-muted-foreground text-sm text-center p-4">
                               {collab.property.title}
                             </span>
                           </div>
-                        </>
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <span className="text-muted-foreground text-sm text-center p-4">
-                            {collab.property.title}
-                          </span>
-                        </div>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
