@@ -126,3 +126,4 @@ Se dopo aver salvato ancora non ricevi email:
 
 **In sintesi: Se non vedi le opzioni SSL/TLS, non è un problema. Con porta 587, Supabase usa automaticamente TLS. Salva le impostazioni e testa!** ✅
 
+

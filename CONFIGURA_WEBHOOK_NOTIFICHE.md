@@ -136,3 +136,4 @@ Questa soluzione chiama immediatamente l'API quando viene inserita una notifica,
 
 Se hai problemi, controlla i log di Vercel e Supabase per errori.
 
+

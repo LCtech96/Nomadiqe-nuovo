@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Profile } from "@/types/user"
@@ -36,6 +36,8 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [postToEdit, setPostToEdit] = useState<any>(null)
+  const [selectedRole, setSelectedRole] = useState<string | null>(null)
+  const [savingRole, setSavingRole] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -58,17 +60,93 @@ export default function HomePage() {
         .eq("id", session.user.id)
         .maybeSingle()
 
-      if (error || !profileData) {
-        router.push("/onboarding")
-        return
+      if (error && error.code !== "PGRST116" && error.code !== "PGRST301") {
+        console.error("Error loading profile:", error)
       }
 
-      setProfile(profileData)
-      await loadPosts()
+      if (profileData) {
+        setProfile(profileData)
+        // Se l'utente ha un ruolo, carica i post
+        if (profileData.role) {
+          await loadPosts()
+        }
+      }
+      // Se l'utente non ha ancora un ruolo, mostriamo la selezione dei ruoli
+      // Non reindirizziamo all'onboarding, restiamo sulla home
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRoleSelect = (role: string) => {
+    setSelectedRole(role)
+  }
+
+  const handleRoleSubmit = async () => {
+    if (!session?.user?.id || !selectedRole) return
+
+    setSavingRole(true)
+    try {
+      // Controlla se il profilo esiste
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", session.user.id)
+        .maybeSingle()
+
+      if (!existingProfile) {
+        // Crea nuovo profilo
+        const newProfileData: any = {
+          id: session.user.id,
+          email: session.user.email || "",
+          role: selectedRole,
+          full_name: session.user.name || session.user.email?.split("@")[0] || "",
+          username: session.user.email?.split("@")[0] || "",
+        }
+
+        const { error: insertError } = await supabase
+          .from("profiles")
+          .insert(newProfileData)
+
+        if (insertError) {
+          console.error("Insert error:", insertError)
+          throw insertError
+        }
+      } else {
+        // Aggiorna profilo esistente
+        const updateData: any = {
+          role: selectedRole,
+        }
+
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", session.user.id)
+
+        if (updateError) {
+          console.error("Update error:", updateError)
+          throw updateError
+        }
+      }
+
+      toast({
+        title: "Successo",
+        description: `Ruolo ${selectedRole} selezionato!`,
+      })
+
+      // Reindirizza all'onboarding per completare il profilo
+      router.push("/onboarding")
+    } catch (error: any) {
+      console.error("Error saving role:", error)
+      toast({
+        title: "Errore",
+        description: error.message || "Si è verificato un errore durante il salvataggio. Riprova.",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingRole(false)
     }
   }
 
@@ -232,8 +310,96 @@ export default function HomePage() {
     return <div className="min-h-screen flex items-center justify-center"><div>Caricamento...</div></div>
   }
 
-  if (!profile || !session) {
+  if (!session) {
     return null
+  }
+
+  // Se l'utente non ha ancora un ruolo, mostra la selezione dei ruoli
+  if (!profile?.role) {
+    return (
+      <div className="min-h-screen bg-background pb-20 md:pb-32">
+        <div className="container mx-auto p-4 max-w-2xl">
+          <Card className="mt-8">
+            <CardContent className="p-6">
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Benvenuto su Nomadiqe!</h1>
+              <p className="text-muted-foreground mb-6">
+                Scegli come vuoi utilizzare Nomadiqe per iniziare
+              </p>
+              
+              <div className="grid md:grid-cols-2 gap-4 mb-6">
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    selectedRole === "traveler" ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => handleRoleSelect("traveler")}
+                >
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-1">Traveler</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Viaggia e scopri</p>
+                    <p className="text-xs text-muted-foreground">
+                      Cerca e prenota alloggi, connettiti con altri viaggiatori
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    selectedRole === "host" ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => handleRoleSelect("host")}
+                >
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-1">Host</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Pubblica la tua struttura</p>
+                    <p className="text-xs text-muted-foreground">
+                      Pubblica proprietà e collabora con creator
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    selectedRole === "creator" ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => handleRoleSelect("creator")}
+                >
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-1">Creator</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Crea e collabora</p>
+                    <p className="text-xs text-muted-foreground">
+                      Collabora con host per creare contenuti
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card
+                  className={`cursor-pointer transition-all ${
+                    selectedRole === "manager" ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => handleRoleSelect("manager")}
+                >
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-1">Manager</h3>
+                    <p className="text-sm text-muted-foreground mb-2">Offri servizi</p>
+                    <p className="text-xs text-muted-foreground">
+                      Offri servizi di gestione, pulizie e altro
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <Button
+                onClick={handleRoleSubmit}
+                className="w-full"
+                disabled={!selectedRole || savingRole}
+              >
+                {savingRole ? "Salvataggio..." : "Continua"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   const handleEditPost = (post: any) => {

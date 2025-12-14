@@ -40,3 +40,4 @@ WHERE table_schema = 'public'
   AND table_name IN ('push_subscriptions', 'pending_notifications')
 ORDER BY table_name;
 
+

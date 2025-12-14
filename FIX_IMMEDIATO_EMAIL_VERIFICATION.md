@@ -174,3 +174,4 @@ Dopo aver configurato tutto:
 
 **Se ancora non funziona, prova SOLUZIONE 3 (disabilita verifica) per testare l'app, poi configura Resend correttamente.**
 
+

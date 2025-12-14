@@ -61,3 +61,4 @@ FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'messages'
 ORDER BY policyname;
 
+

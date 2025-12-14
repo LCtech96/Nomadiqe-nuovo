@@ -169,7 +169,15 @@ function VerifyEmailSecondContent() {
         description: "Seconda verifica email completata con successo!",
       })
 
-      // Reindirizza alla pagina da cui proveniva (o alla home)
+      // Controlla se l'utente ha già un ruolo
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      // Sempre reindirizza alla home dopo la verifica
+      // L'utente vedrà la selezione dei ruoli sulla home se non ne ha ancora uno
       const returnTo = searchParams.get("returnTo") || "/home"
       router.push(returnTo)
     } catch (error) {
@@ -428,3 +436,4 @@ export default function VerifyEmailSecondPage() {
     </Suspense>
   )
 }
+

@@ -118,3 +118,4 @@ EMAIL_FROM=[your_email]
 ---
 
 **Pronto per il deploy** ✅
+

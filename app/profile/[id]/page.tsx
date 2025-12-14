@@ -29,9 +29,11 @@ import {
   TrendingUp,
   PieChart,
   BarChart3,
-  Globe
+  Globe,
+  Briefcase
 } from "lucide-react"
 import SendMessageDialog from "@/components/send-message-dialog"
+import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 interface Post {
@@ -69,6 +71,18 @@ interface Stats {
   totalInteractions?: number
 }
 
+interface ManagerService {
+  id: string
+  service_type: string
+  title: string
+  description: string | null
+  price_per_hour: number | null
+  price_per_service: number | null
+  percentage_commission: number | null
+  price_per_route: Record<string, number> | null
+  vehicle_type: string | null
+}
+
 interface PublicProfile {
   id: string
   username: string | null
@@ -86,6 +100,7 @@ interface PublicProfile {
   properties?: Property[]
   posts?: Post[]
   collaborations?: Collaboration[]
+  services?: ManagerService[]
   stats?: Stats
 }
 
@@ -100,6 +115,8 @@ export default function PublicProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false)
   const [followingLoading, setFollowingLoading] = useState(false)
   const [shareLinkCopied, setShareLinkCopied] = useState<string | null>(null)
+  const [showCatalogDialog, setShowCatalogDialog] = useState(false)
+  const [selectedSupplierService, setSelectedSupplierService] = useState<string | null>(null)
   const [stats, setStats] = useState<Stats>({
     followers: 0,
     following: 0,
@@ -227,6 +244,20 @@ export default function PublicProfilePage() {
           properties: propertiesData || [],
           posts: postsData || [],
           collaborations: mappedCollaborations,
+        })
+      } else if (data.role === "manager") {
+        // Load services for managers
+        const { data: servicesData } = await supabase
+          .from("manager_services")
+          .select("*")
+          .eq("manager_id", userId)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+
+        setProfile({
+          ...data,
+          posts: postsData || [],
+          services: servicesData || [],
         })
       } else {
         setProfile({
@@ -896,8 +927,135 @@ export default function PublicProfilePage() {
           </Tabs>
         )}
 
+        {/* MANAGER PROFILE */}
+        {profile.role === "manager" && (
+          <Tabs defaultValue="servizi" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="servizi">Servizi</TabsTrigger>
+              <TabsTrigger value="post">Post</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="servizi" className="mt-6">
+              {profile.services && profile.services.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {profile.services.map((service) => (
+                    <Card
+                      key={service.id}
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => {
+                        if (service.service_type === "supplier") {
+                          setSelectedSupplierService(service.id)
+                          setShowCatalogDialog(true)
+                        }
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold text-lg mb-2">{service.title}</h3>
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                          {service.description || "Nessuna descrizione"}
+                        </p>
+                        <div className="space-y-1">
+                          {service.service_type === "property_management" && service.percentage_commission && (
+                            <p className="text-sm">
+                              <span className="font-semibold">{service.percentage_commission}%</span>
+                              <span className="text-muted-foreground"> commissione</span>
+                            </p>
+                          )}
+                          {service.service_type === "driver" && (
+                            <>
+                              {service.vehicle_type && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Vettura: </span>
+                                  <span className="font-semibold">{service.vehicle_type}</span>
+                                </p>
+                              )}
+                              {service.price_per_route && Object.keys(service.price_per_route).length > 0 && (
+                                <div className="text-sm">
+                                  <span className="text-muted-foreground">Prezzi: </span>
+                                  <span className="font-semibold">
+                                    €{Object.values(service.price_per_route)[0]} - €
+                                    {Object.values(service.price_per_route)[Object.values(service.price_per_route).length - 1]}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {service.price_per_hour && (
+                            <p className="text-sm">
+                              <span className="font-semibold">€{service.price_per_hour}</span>
+                              <span className="text-muted-foreground">/ora</span>
+                            </p>
+                          )}
+                          {service.price_per_service && (
+                            <p className="text-sm">
+                              <span className="font-semibold">€{service.price_per_service}</span>
+                              <span className="text-muted-foreground">/servizio</span>
+                            </p>
+                          )}
+                          {service.service_type === "supplier" && (
+                            <p className="text-sm text-primary font-semibold">
+                              🛍️ Clicca per vedere il catalogo
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Briefcase className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">Nessun servizio disponibile</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="post" className="mt-6">
+              {profile.posts && profile.posts.length > 0 ? (
+                <div className="grid grid-cols-3 gap-1 md:gap-2">
+                  {profile.posts.map((post) => (
+                    <Link
+                      key={post.id}
+                      href={`/posts/${post.id}`}
+                      className="relative aspect-square group"
+                    >
+                      {post.images && post.images.length > 0 ? (
+                        <>
+                          <Image
+                            src={post.images[0]}
+                            alt="Post"
+                            fill
+                            sizes="(max-width: 768px) 33vw, 200px"
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
+                            <div className="flex items-center gap-1 text-white">
+                              <Heart className="w-5 h-5 fill-white" />
+                              <span className="font-semibold">{post.likes_count || 0}</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center p-2">
+                          <span className="text-muted-foreground text-xs text-center line-clamp-3">
+                            {post.content}
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Nessun post pubblicato</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
+
         {/* TRAVELER/OTHER PROFILE */}
-        {profile.role !== "host" && profile.role !== "creator" && (
+        {profile.role !== "host" && profile.role !== "creator" && profile.role !== "manager" && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-4">Post</h2>
             {profile.posts && profile.posts.length > 0 ? (
@@ -951,6 +1109,15 @@ export default function PublicProfilePage() {
           receiverId={profile.id}
           receiverName={profile.username || profile.full_name || "Utente"}
           receiverRole={profile.role || undefined}
+        />
+      )}
+
+      {/* Supplier Catalog Dialog */}
+      {selectedSupplierService && (
+        <SupplierCatalogDialog
+          open={showCatalogDialog}
+          onOpenChange={setShowCatalogDialog}
+          serviceId={selectedSupplierService}
         />
       )}
     </div>

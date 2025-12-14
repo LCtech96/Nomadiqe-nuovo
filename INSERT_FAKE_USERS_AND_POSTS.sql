@@ -136,3 +136,4 @@ SELECT COUNT(*) as total_posts
 FROM public.posts;
 
 
+

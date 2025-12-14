@@ -12,3 +12,4 @@ FROM pg_policies
 WHERE schemaname = 'public' AND tablename = 'posts'
 ORDER BY policyname;
 
+
