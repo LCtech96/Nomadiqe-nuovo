@@ -7,6 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import Link from "next/link"
@@ -121,6 +129,9 @@ export default function PublicProfilePage() {
   const [selectedSupplierService, setSelectedSupplierService] = useState<string | null>(null)
   const [showAvailabilityCalendar, setShowAvailabilityCalendar] = useState(false)
   const [kolBedPreferences, setKolBedPreferences] = useState<any>(null)
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const [interactionBlocked, setInteractionBlocked] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
   const [stats, setStats] = useState<Stats>({
     followers: 0,
     following: 0,
@@ -133,19 +144,97 @@ export default function PublicProfilePage() {
   useEffect(() => {
     if (params.id) {
       loadProfile(params.id as string)
-      trackProfileView(params.id as string)
     }
   }, [params.id])
 
-  const trackProfileView = async (userId: string) => {
-    if (!session?.user?.id || session.user.id === userId) return
+  // Gestisci interazioni per utenti non autenticati
+  useEffect(() => {
+    const isUnauthenticated = !session || !session.user
+
+    if (isUnauthenticated && profile && !loading) {
+      let initialScrollY = window.scrollY
+      let scrollThreshold = 50 // Permetti scroll fino a 50px prima di bloccare
+
+      const handleScroll = () => {
+        const currentScrollY = window.scrollY
+        const scrollDelta = Math.abs(currentScrollY - initialScrollY)
+
+        if (scrollDelta > scrollThreshold && !hasInteracted) {
+          setHasInteracted(true)
+          setShowAuthDialog(true)
+          setInteractionBlocked(true)
+          // Blocca lo scroll
+          document.body.style.overflow = "hidden"
+          window.scrollTo(0, initialScrollY) // Torna alla posizione iniziale
+        }
+      }
+
+      // Blocca click su elementi interattivi
+      const handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement
+        // Permetti click solo su elementi non interattivi (immagini, testo)
+        if (
+          target.tagName === "BUTTON" ||
+          target.tagName === "A" ||
+          target.closest("button") ||
+          target.closest("a") ||
+          target.closest('[role="button"]') ||
+          target.closest(".cursor-pointer") ||
+          target.closest('[onclick]')
+        ) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (!hasInteracted) {
+            setHasInteracted(true)
+            setShowAuthDialog(true)
+            setInteractionBlocked(true)
+            document.body.style.overflow = "hidden"
+          }
+        }
+      }
+
+      // Blocca anche i tab (navigazione da tastiera)
+      const handleTab = (e: KeyboardEvent) => {
+        if (e.key === "Tab" && !hasInteracted) {
+          e.preventDefault()
+          setHasInteracted(true)
+          setShowAuthDialog(true)
+          setInteractionBlocked(true)
+          document.body.style.overflow = "hidden"
+        }
+      }
+
+      // Aggiungi listener con piccolo delay per permettere la visualizzazione iniziale
+      const timeoutId = setTimeout(() => {
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        document.addEventListener("click", handleClick, true)
+        document.addEventListener("keydown", handleTab, true)
+      }, 1000) // 1 secondo di delay per permettere la visualizzazione
+
+      return () => {
+        clearTimeout(timeoutId)
+        window.removeEventListener("scroll", handleScroll)
+        document.removeEventListener("click", handleClick, true)
+        document.removeEventListener("keydown", handleTab, true)
+        document.body.style.overflow = ""
+      }
+    } else {
+      // Se autenticato, rimuovi blocchi
+      setInteractionBlocked(false)
+      setHasInteracted(false)
+      document.body.style.overflow = ""
+    }
+  }, [session, profile, loading, hasInteracted])
+
+  const trackProfileView = async (profileId: string) => {
+    if (!session?.user?.id || session.user.id === profileId) return
     
     try {
       // Registra una view del profilo
       await supabase
         .from("profile_views")
         .insert({
-          profile_id: userId,
+          profile_id: profileId,
           viewer_id: session.user.id
         })
     } catch (error) {
@@ -153,24 +242,80 @@ export default function PublicProfilePage() {
     }
   }
 
-  const loadProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single()
+  // Helper function to check if string is a UUID
+  const isUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
+  }
 
-      if (error) throw error
+  const loadProfile = async (identifier: string) => {
+    try {
+      setLoading(true)
+      
+      // Try to load by ID first if it looks like a UUID, otherwise try username
+      let data = null
+      let error = null
+
+      if (isUUID(identifier)) {
+        // It's a UUID, search by ID
+        const result = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", identifier)
+          .maybeSingle()
+        
+        data = result.data
+        error = result.error
+      } else {
+        // It's likely a username, search by username
+        const result = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("username", identifier.toLowerCase().trim())
+          .maybeSingle()
+        
+        data = result.data
+        error = result.error
+      }
+
+      // If not found by username and it's not a UUID, try by ID as fallback
+      if (!data && !isUUID(identifier)) {
+        const result = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", identifier)
+          .maybeSingle()
+        
+        data = result.data
+        error = result.error
+      }
+
+      if (error && error.code !== "PGRST116") {
+        throw error
+      }
+
+      if (!data) {
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
+      // Use the actual profile ID for all subsequent queries
+      const profileId = data.id
+
+      // Track profile view (only if user is logged in and viewing someone else's profile)
+      if (session?.user?.id && session.user.id !== profileId) {
+        trackProfileView(profileId)
+      }
 
       // Load stats
-      await loadStats(userId)
+      await loadStats(profileId)
 
       // Load posts
       const { data: postsData } = await supabase
         .from("posts")
         .select("*")
-        .eq("author_id", userId)
+        .eq("author_id", profileId)
         .order("created_at", { ascending: false })
 
       if (data.role === "creator") {
@@ -178,7 +323,7 @@ export default function PublicProfilePage() {
         const { data: socialData } = await supabase
           .from("social_accounts")
           .select("*")
-          .eq("user_id", userId)
+          .eq("user_id", profileId)
 
         // Load collaborations
         const { data: collabsData } = await supabase
@@ -189,7 +334,7 @@ export default function PublicProfilePage() {
             status,
             property:properties(id, title, images, location_data)
           `)
-          .eq("creator_id", userId)
+          .eq("creator_id", profileId)
           .in("status", ["approved", "completed"])
 
         const mappedCollaborations = (collabsData || [])
@@ -215,7 +360,7 @@ export default function PublicProfilePage() {
         const { data: propertiesData } = await supabase
           .from("properties")
           .select("*")
-          .eq("owner_id", userId)
+          .eq("owner_id", profileId)
           .eq("is_active", true)
           .order("created_at", { ascending: false })
 
@@ -228,7 +373,7 @@ export default function PublicProfilePage() {
             status,
             property:properties(id, title, images, location_data)
           `)
-          .eq("host_id", userId)
+          .eq("host_id", profileId)
           .in("status", ["approved", "completed"])
 
         const mappedCollaborations = (collabsData || [])
@@ -247,7 +392,7 @@ export default function PublicProfilePage() {
         const { data: prefsData } = await supabase
           .from("host_kol_bed_preferences")
           .select("*")
-          .eq("host_id", userId)
+          .eq("host_id", profileId)
           .maybeSingle()
 
         setProfile({
@@ -265,7 +410,7 @@ export default function PublicProfilePage() {
         const { data: servicesData } = await supabase
           .from("manager_services")
           .select("*")
-          .eq("manager_id", userId)
+          .eq("manager_id", profileId)
           .eq("is_active", true)
           .order("created_at", { ascending: false })
 
@@ -474,7 +619,60 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
+      {/* Overlay per bloccare interazioni quando non autenticato */}
+      {!session && interactionBlocked && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
+          onClick={() => setShowAuthDialog(true)}
+        />
+      )}
+
+      {/* Dialog per richiedere registrazione/login */}
+      <Dialog open={showAuthDialog} onOpenChange={(open) => {
+        setShowAuthDialog(open)
+        if (!open && !session) {
+          // Se chiude il dialog senza autenticarsi, riabilita il blocco dopo un po'
+          setTimeout(() => {
+            setInteractionBlocked(true)
+            document.body.style.overflow = "hidden"
+          }, 100)
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Registrati o Accedi</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              Per interagire con questo profilo, vedere tutti i contenuti e accedere alle funzionalità complete, 
+              devi essere registrato. Crea un account gratuito o accedi se ne hai già uno.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAuthDialog(false)
+                router.push("/auth/signup")
+              }}
+              className="w-full sm:w-auto"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Registrati Gratis
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAuthDialog(false)
+                router.push("/auth/signin")
+              }}
+              className="w-full sm:w-auto"
+            >
+              <UserCheck className="w-4 h-4 mr-2" />
+              Accedi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Back Button */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-3">
@@ -488,6 +686,23 @@ export default function PublicProfilePage() {
             Indietro
           </Button>
         </div>
+        
+        {/* Banner per utenti non autenticati */}
+        {!session && (
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 text-center">
+            <p className="text-sm font-medium">
+              👀 Stai visualizzando questo profilo come ospite. 
+              <Button
+                variant="link"
+                className="text-white underline p-0 ml-1 h-auto font-bold"
+                onClick={() => setShowAuthDialog(true)}
+              >
+                Registrati o accedi
+              </Button>
+              {" "}per interagire e vedere tutti i contenuti!
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="container mx-auto p-4 max-w-4xl">
@@ -548,7 +763,7 @@ export default function PublicProfilePage() {
                   </div>
                 </div>
 
-                {session && session.user.id !== profile.id && (
+                {session?.user?.id && session.user.id !== profile.id && (
                   <div className="flex gap-2 mt-4">
                     <Button
                       variant={isFollowing ? "outline" : "default"}
@@ -571,11 +786,26 @@ export default function PublicProfilePage() {
                     <Button
                       variant="outline"
                       className="flex-1 md:flex-none"
-                      onClick={() => setShowMessageDialog(true)}
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        setShowMessageDialog(true)
+                      }}
                     >
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Messaggio
                     </Button>
+                  </div>
+                )}
+                
+                {/* Messaggio per utenti non autenticati */}
+                {!session && (
+                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
+                      👆 <strong>Registrati o accedi</strong> per interagire con questo profilo e vedere tutti i contenuti
+                    </p>
                   </div>
                 )}
               </div>
@@ -599,7 +829,13 @@ export default function PublicProfilePage() {
                     <div
                       key={property.id}
                       className="relative aspect-square group cursor-pointer"
-                      onClick={() => router.push(`/properties/${property.id}`)}
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        router.push(`/properties/${property.id}`)
+                      }}
                     >
                       {property.images && property.images.length > 0 ? (
                         <Image
@@ -713,17 +949,21 @@ export default function PublicProfilePage() {
                       </div>
                     )}
 
-                    {/* Pulsante per vedere il calendario (solo per creator) */}
-                    {session?.user?.id && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowAvailabilityCalendar(true)}
-                        className="w-full"
-                      >
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Visualizza calendario disponibilità
-                      </Button>
-                    )}
+                    {/* Pulsante per vedere il calendario */}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        setShowAvailabilityCalendar(true)
+                      }}
+                      className="w-full"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Visualizza calendario disponibilità
+                    </Button>
                   </CardContent>
                 </Card>
               )}
@@ -745,7 +985,13 @@ export default function PublicProfilePage() {
                       <div
                         key={collab.id}
                         className="relative aspect-square group cursor-pointer"
-                        onClick={() => router.push(`/properties/${collab.property_id}`)}
+                        onClick={() => {
+                          if (!session?.user?.id) {
+                            setShowAuthDialog(true)
+                            return
+                          }
+                          router.push(`/properties/${collab.property_id}`)
+                        }}
                       >
                         {collab.property.images && collab.property.images.length > 0 ? (
                           <Image
@@ -781,10 +1027,16 @@ export default function PublicProfilePage() {
               {profile.posts && profile.posts.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 md:gap-2">
                   {profile.posts.map((post) => (
-                    <Link
+                    <div
                       key={post.id}
-                      href={`/posts/${post.id}`}
-                      className="relative aspect-square group"
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        router.push(`/posts/${post.id}`)
+                      }}
+                      className="relative aspect-square group cursor-pointer"
                     >
                       {post.images && post.images.length > 0 ? (
                         <>
@@ -809,7 +1061,7 @@ export default function PublicProfilePage() {
                           </span>
                         </div>
                       )}
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -1011,10 +1263,16 @@ export default function PublicProfilePage() {
               {profile.posts && profile.posts.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 md:gap-2">
                   {profile.posts.map((post) => (
-                    <Link
+                    <div
                       key={post.id}
-                      href={`/posts/${post.id}`}
-                      className="relative aspect-square group"
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        router.push(`/posts/${post.id}`)
+                      }}
+                      className="relative aspect-square group cursor-pointer"
                     >
                       {post.images && post.images.length > 0 ? (
                         <>
@@ -1039,7 +1297,7 @@ export default function PublicProfilePage() {
                           </span>
                         </div>
                       )}
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -1138,10 +1396,16 @@ export default function PublicProfilePage() {
               {profile.posts && profile.posts.length > 0 ? (
                 <div className="grid grid-cols-3 gap-1 md:gap-2">
                   {profile.posts.map((post) => (
-                    <Link
+                    <div
                       key={post.id}
-                      href={`/posts/${post.id}`}
-                      className="relative aspect-square group"
+                      onClick={() => {
+                        if (!session?.user?.id) {
+                          setShowAuthDialog(true)
+                          return
+                        }
+                        router.push(`/posts/${post.id}`)
+                      }}
+                      className="relative aspect-square group cursor-pointer"
                     >
                       {post.images && post.images.length > 0 ? (
                         <>
@@ -1166,7 +1430,7 @@ export default function PublicProfilePage() {
                           </span>
                         </div>
                       )}
-                    </Link>
+                    </div>
                   ))}
                 </div>
               ) : (
