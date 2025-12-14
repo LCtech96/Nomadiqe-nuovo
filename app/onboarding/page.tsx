@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole, Profile } from "@/types/user"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
+import ManagerOnboarding from "@/components/onboarding/manager-onboarding"
 
 type OnboardingStep = "role" | "role-specific"
 
@@ -84,6 +85,8 @@ export default function OnboardingPage() {
           setSelectedRole(data.role)
           if (data.role === "host") {
             setStep("role-specific")
+          } else if (data.role === "manager") {
+            setStep("role-specific")
           } else {
             // Per altri ruoli, per ora reindirizza alla home
             // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
@@ -150,8 +153,9 @@ export default function OnboardingPage() {
           role: selectedRole,
         }
         
-        // Per ruoli non-host, segna anche onboarding come completato
-        if (selectedRole !== "host") {
+        // Per ruoli non-host e non-manager, segna anche onboarding come completato
+        // Manager e Host hanno onboarding specifici
+        if (selectedRole !== "host" && selectedRole !== "manager") {
           updateData.onboarding_completed = true
         }
         
@@ -179,8 +183,8 @@ export default function OnboardingPage() {
         description: `Ruolo ${selectedRole} selezionato con successo!`,
       })
 
-      // If role is host, go to host-specific onboarding
-      if (selectedRole === "host") {
+      // If role is host or manager, go to role-specific onboarding
+      if (selectedRole === "host" || selectedRole === "manager") {
         setStep("role-specific")
       } else {
         // For other roles, stay on onboarding to complete profile info
@@ -322,6 +326,28 @@ export default function OnboardingPage() {
         <HostOnboarding
           onComplete={() => {
             router.push("/home")
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Manager-specific onboarding
+  if (step === "role-specific" && selectedRole === "manager") {
+    return (
+      <div className="min-h-screen">
+        {profile?.role === "manager" && (
+          <div className="container mx-auto p-4 max-w-4xl">
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ✓ Sei già registrato come <strong>Manager</strong>. Completa l'onboarding per iniziare a offrire i tuoi servizi.
+              </p>
+            </div>
+          </div>
+        )}
+        <ManagerOnboarding
+          onComplete={() => {
+            router.push("/dashboard/manager")
           }}
         />
       </div>
