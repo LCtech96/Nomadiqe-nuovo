@@ -24,63 +24,48 @@ function ResetPasswordContent() {
     setLoading(true)
 
     try {
-      const normalizedEmail = email.toLowerCase().trim()
-      let emailSent = false
-      let lastError: any = null
+      // Verifica prima se l'utente esiste
+      const { data: userCheck } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .eq("email", email)
+        .maybeSingle()
 
-      // Strategia 1: Prova con signInWithOtp (metodo più affidabile per OTP)
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
+      if (!userCheck) {
+        toast({
+          title: "Email non trovata",
+          description: "Non esiste un account con questa email. Verifica l'indirizzo e riprova.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Usa signInWithOtp per inviare un codice OTP via email
+      // Questo metodo funziona meglio di resetPasswordForEmail per inviare codici OTP
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
         options: {
           shouldCreateUser: false, // Non creare un nuovo utente
-          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(normalizedEmail)}`,
+          emailRedirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(email)}`,
         },
       })
 
-      if (!otpError) {
-        emailSent = true
-      } else {
-        console.error("signInWithOtp error:", otpError)
-        lastError = otpError
-
-        // Strategia 2: Fallback con resetPasswordForEmail (metodo alternativo)
-        // Questo potrebbe funzionare anche se signInWithOtp fallisce
-        const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-          redirectTo: `${window.location.origin}/auth/reset-password-verify?email=${encodeURIComponent(normalizedEmail)}`,
-        })
-
-        if (!resetError) {
-          emailSent = true
-        } else {
-          console.error("resetPasswordForEmail error:", resetError)
-          lastError = resetError
-        }
-      }
-
-      if (!emailSent) {
+      if (error) {
+        console.error("Reset password error:", error)
+        
         // Messaggi di errore più specifici
-        let errorMessage = "Errore durante l'invio dell'email di recupero."
-        let helpMessage = ""
-
-        if (lastError?.message?.includes("email rate limit") || lastError?.message?.includes("rate_limit")) {
+        let errorMessage = "Errore durante l'invio dell'email di recupero. Riprova."
+        if (error.message?.includes("email rate limit")) {
           errorMessage = "Troppi tentativi. Aspetta qualche minuto prima di riprovare."
-        } else if (lastError?.message?.includes("SMTP") || lastError?.message?.includes("email")) {
-          errorMessage = "Errore di configurazione email."
-          helpMessage = "Contatta il supporto se il problema persiste."
-        } else if (lastError?.message?.includes("not found") || lastError?.message?.includes("does not exist") || lastError?.message?.includes("User not found")) {
-          errorMessage = "Nessun account trovato con questa email nel sistema di autenticazione."
-          helpMessage = "Il tuo account potrebbe esistere nel database ma non essere ancora configurato per l'autenticazione. Contatta il supporto per risolvere il problema."
-        } else if (lastError?.message) {
-          errorMessage = lastError.message
-        } else {
-          helpMessage = "L'account potrebbe non esistere. Se non hai un account, clicca su 'Registrati' per crearne uno nuovo."
+        } else if (error.message?.includes("SMTP") || error.message?.includes("email")) {
+          errorMessage = "Errore di configurazione email. Contatta il supporto se il problema persiste."
         }
-
+        
         toast({
           title: "Errore",
-          description: errorMessage + (helpMessage ? `\n\n${helpMessage}` : ""),
+          description: errorMessage,
           variant: "destructive",
-          duration: 8000,
         })
         setLoading(false)
         return
@@ -91,8 +76,8 @@ function ResetPasswordContent() {
         description: "Controlla la tua email (anche spam) per il codice di verifica a 6 cifre per reimpostare la password.",
       })
 
-      // Reindirizza alla pagina di verifica con l'email normalizzata
-      router.push(`/auth/reset-password-verify?email=${encodeURIComponent(email.toLowerCase().trim())}`)
+      // Reindirizza alla pagina di verifica con l'email
+      router.push(`/auth/reset-password-verify?email=${encodeURIComponent(email)}`)
     } catch (error) {
       toast({
         title: "Errore",
