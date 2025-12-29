@@ -7,6 +7,7 @@ export const POINTS_CONFIG = {
   post: 15,
   check_in: 10,
   review: 25,
+  like: 2,
 } as const
 
 export const DAILY_LIMITS = {
@@ -149,6 +150,7 @@ export async function awardPoints(
           post: "Post pubblicato",
           check_in: "Check-in giornaliero",
           review: "Recensione pubblicata",
+          like: "Like messo a un post",
         }
         
         const nextStepsMap: Record<keyof typeof POINTS_CONFIG, string[]> = {
@@ -158,6 +160,7 @@ export async function awardPoints(
           post: ["Continua a condividere contenuti", "Interagisci con altri post"],
           check_in: ["Torna domani per altri punti", "Continua a essere attivo"],
           review: ["Scrivi altre recensioni", "Condividi le tue esperienze"],
+          like: ["Metti like ad altri post interessanti", "Scrivi un commento per condividere la tua opinione", "Esplora altri contenuti"],
         }
         
         await sendActionMessage(

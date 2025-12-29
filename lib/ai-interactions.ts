@@ -78,14 +78,28 @@ export async function sendLikeMessage(userId: string) {
       "Interagisci con altri contenuti",
     ]
 
-    // I like danno 2 XP (dal trigger SQL), ma non punti nel sistema points
-    // Quindi non passiamo pointsEarned, ma comunque inviamo il messaggio
+    // Assegna punti per il like (accumulabile e irreversibile)
+    let pointsEarned: number | undefined = undefined
+    try {
+      const { awardPoints } = await import("./points")
+      const awarded = await awardPoints(userId, "like", "Like messo a un post")
+      if (awarded) {
+        // Recupera il valore dei punti assegnati
+        const { POINTS_CONFIG } = await import("./points")
+        pointsEarned = POINTS_CONFIG.like
+      }
+    } catch (pointsError) {
+      // Non bloccare se l'assegnazione punti fallisce
+      console.warn("Errore nell'assegnazione punti per like (non critico):", pointsError)
+    }
+
+    // Invia messaggio AI con informazioni sui punti guadagnati
     await sendActionMessage(
       userId,
       "like",
       "Like messo a un post",
       role,
-      undefined, // Non ci sono punti nel sistema points, solo XP
+      pointsEarned,
       suggestions
     )
 
