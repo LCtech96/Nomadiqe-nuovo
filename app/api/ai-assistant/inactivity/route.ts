@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { generateWelcomeMessage, type WelcomeMessageParams } from "@/lib/ai-assistant"
+import { generateInactivityMessage, type InactivityMessageParams } from "@/lib/ai-assistant"
 
 // Crea un client Supabase con service role key per bypassare RLS
-// Questo permette di inserire messaggi con sender_id speciale dell'assistente AI
 function createSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,7 +23,7 @@ function createSupabaseAdminClient() {
 
 export async function POST(request: Request) {
   try {
-    const { userId, role, username, fullName } = await request.json() as WelcomeMessageParams & { userId: string }
+    const { userId, role, username, fullName, hoursInactive } = await request.json() as InactivityMessageParams & { userId: string }
 
     if (!userId || !role) {
       return NextResponse.json(
@@ -33,42 +32,40 @@ export async function POST(request: Request) {
       )
     }
 
-    // Genera il messaggio di benvenuto
-    const messageContent = await generateWelcomeMessage({
+    // Genera il messaggio di sollecito per inattività
+    const messageContent = await generateInactivityMessage({
       userId,
       role,
       username,
       fullName,
+      hoursInactive: hoursInactive || 1,
     })
 
-    // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
+    // Usa admin client per bypassare RLS
     const supabase = createSupabaseAdminClient()
-    
-    // ID speciale per l'assistente AI (deve essere creato tramite SQL trigger)
-    const AI_ASSISTANT_ID = "00000000-0000-0000-0000-000000000000"
-    
-    // Verifica se esiste già un messaggio di benvenuto per questo utente (evita duplicati)
-    // Controlla se esiste già un messaggio di benvenuto nella chat con questo utente
-    const { data: existingWelcome } = await supabase
+
+    // Verifica se esiste già un messaggio di sollecito recente (evita spam)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { data: existingReminder } = await supabase
       .from("messages")
       .select("id")
       .eq("is_ai_message", true)
       .is("sender_id", null)
       .eq("receiver_id", userId)
+      .gte("created_at", oneHourAgo)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    if (existingWelcome) {
+    if (existingReminder) {
       return NextResponse.json({
         success: true,
-        message: "Messaggio di benvenuto già inviato a questo utente",
-        messageId: existingWelcome.id,
+        message: "Messaggio di sollecito già inviato recentemente",
+        messageId: existingReminder.id,
       })
     }
 
-    // Inserisci il messaggio nella tabella messages
-    // Usa is_ai_message = true e sender_id NULL per identificare messaggi AI
-    // (Richiede che sia stato eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql)
+    // Inserisci il messaggio
     const { data: message, error: messageError } = await supabase
       .from("messages")
       .insert({
@@ -83,29 +80,32 @@ export async function POST(request: Request) {
 
     if (messageError) {
       console.error("Errore nell'inserimento del messaggio:", messageError)
-      // Se fallisce, potrebbe essere perché il profilo AI non esiste ancora
-      // In questo caso, il trigger SQL dovrebbe gestirlo
       return NextResponse.json({
         success: false,
         error: "Impossibile salvare il messaggio",
         details: messageError.message,
-        note: "Assicurati di aver eseguito supabase/36_CREA_ASSISTENTE_AI_TRIGGER.sql",
+        note: "Assicurati di aver eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql per abilitare i messaggi AI",
       }, { status: 500 })
     }
 
     // Crea notifica per l'utente
     try {
+      const notificationMessage = messageContent
+        ? messageContent.substring(0, 100) + (messageContent.length > 100 ? "..." : "")
+        : "L'assistente AI ti ha scritto"
+      
       const { error: notifError } = await supabase
         .from("pending_notifications")
         .insert({
           user_id: userId,
           notification_type: "message",
-          title: "🤖 Benvenuto su Nomadiqe!",
-          message: "L'assistente AI ti ha inviato un messaggio di benvenuto",
+          title: "🤖 Torna su Nomadiqe!",
+          message: notificationMessage,
           url: "/messages",
           data: {
             type: "ai_assistant_message",
             message_id: message.id,
+            action: "inactivity_reminder",
           },
         })
 
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       content: messageContent,
     })
   } catch (error: any) {
-    console.error("Errore nell'API welcome:", error)
+    console.error("Errore nell'API inactivity:", error)
     return NextResponse.json(
       { error: error.message || "Errore sconosciuto" },
       { status: 500 }

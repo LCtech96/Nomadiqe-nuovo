@@ -175,6 +175,14 @@ export default function HomePage() {
 
         // Update like count
         await supabase.rpc("increment_post_likes", { post_id: postId })
+        
+        // Invia messaggio AI per il like (non bloccare se fallisce)
+        try {
+          const { sendLikeMessage } = await import("@/lib/ai-interactions")
+          await sendLikeMessage(session.user.id)
+        } catch (aiError) {
+          console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
+        }
       }
 
       // Reload posts
@@ -232,6 +240,14 @@ export default function HomePage() {
       setNewComment("")
       await loadComments(postId)
       await loadPosts()
+      
+      // Invia messaggio AI per il commento (non bloccare se fallisce)
+      try {
+        const { sendCommentMessage } = await import("@/lib/ai-interactions")
+        await sendCommentMessage(session.user.id)
+      } catch (aiError) {
+        console.warn("Errore nell'invio del messaggio AI per commento (non critico):", aiError)
+      }
     } catch (error: any) {
       toast({
         title: "Errore",

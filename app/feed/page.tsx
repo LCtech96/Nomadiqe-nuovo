@@ -170,6 +170,14 @@ export default function FeedPage() {
             row_id: postId,
           }),
         })
+        
+        // Invia messaggio AI per il like (non bloccare se fallisce)
+        try {
+          const { sendLikeMessage } = await import("@/lib/ai-interactions")
+          await sendLikeMessage(session.user.id)
+        } catch (aiError) {
+          console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
+        }
       }
 
       loadPosts()
