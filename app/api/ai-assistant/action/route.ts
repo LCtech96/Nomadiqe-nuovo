@@ -75,19 +75,25 @@ export async function POST(request: Request) {
     // Crea notifica per l'utente
     try {
       // Assicurati che notificationMessage non sia mai null o vuoto
-      let notificationMessage = "Nuovo messaggio dall'assistente AI" // Fallback di default
+      let notificationMessage: string = "Nuovo messaggio dall'assistente AI" // Fallback garantito
       
-      if (messageContent && messageContent.trim().length > 0) {
-        notificationMessage = messageContent.substring(0, 100).trim()
-        if (messageContent.length > 100) {
-          notificationMessage += "..."
+      if (messageContent && typeof messageContent === 'string' && messageContent.trim().length > 0) {
+        const trimmed = messageContent.substring(0, 100).trim()
+        if (trimmed.length > 0) {
+          notificationMessage = trimmed
+          if (messageContent.length > 100) {
+            notificationMessage += "..."
+          }
         }
       }
       
-      // Verifica finale che notificationMessage non sia vuoto
-      if (!notificationMessage || notificationMessage.trim().length === 0) {
+      // Verifica finale garantita - notificationMessage NON può essere null/undefined/vuoto
+      if (!notificationMessage || typeof notificationMessage !== 'string' || notificationMessage.trim().length === 0) {
         notificationMessage = "Nuovo messaggio dall'assistente AI"
       }
+      
+      // Garantisci che notificationMessage sia una stringa non vuota prima di inserire
+      const finalNotificationMessage = String(notificationMessage).trim() || "Nuovo messaggio dall'assistente AI"
       
       const { error: notifError } = await supabase
         .from("pending_notifications")
@@ -95,7 +101,7 @@ export async function POST(request: Request) {
           user_id: params.userId,
           notification_type: "message",
           title: "🤖 Nuovo messaggio dall'assistente",
-          message: notificationMessage,
+          message: finalNotificationMessage,
           url: "/messages",
           data: {
             type: "ai_assistant_message",
@@ -106,6 +112,8 @@ export async function POST(request: Request) {
 
       if (notifError) {
         console.error("Errore nella creazione della notifica:", notifError)
+        console.error("notificationMessage value:", finalNotificationMessage)
+        console.error("messageContent original:", messageContent)
       }
     } catch (notifErr) {
       console.error("Errore notifica:", notifErr)
