@@ -65,7 +65,8 @@ const POINTS_INFO = `Guadagni punti completando azioni:
 - Creazione post: 15 punti (max 5 al giorno)
 - Check-in giornaliero: 10 punti (1 al giorno)
 - Prenotazione: 50 punti
-- Recensione: 25 punti`
+- Recensione: 25 punti
+- Like: 2 punti per ogni like`
 
 export async function generateWelcomeMessage(params: WelcomeMessageParams): Promise<string> {
   const { role, username, fullName } = params
