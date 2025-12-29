@@ -659,6 +659,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   // Step 1: Profile
   if (step === "profile") {
     return (
+      <>
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>

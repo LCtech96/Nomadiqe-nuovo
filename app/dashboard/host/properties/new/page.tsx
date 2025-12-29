@@ -289,6 +289,7 @@ export default function NewPropertyPage() {
   }
 
   return (
+    <>
     <div className="min-h-screen p-8">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8">
