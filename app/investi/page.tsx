@@ -19,7 +19,6 @@ const investmentLevels = [
     name: "Rock",
     min: 100,
     max: 500,
-    icon: "🪨",
     color: "from-gray-500 to-gray-700",
     description: "Perfetto per iniziare il tuo percorso di investimento"
   },
@@ -28,7 +27,6 @@ const investmentLevels = [
     name: "Emerald",
     min: 1000,
     max: 5000,
-    icon: "💚",
     color: "from-green-500 to-emerald-600",
     description: "Un investimento più sostanzioso con maggiori vantaggi"
   },
@@ -37,7 +35,6 @@ const investmentLevels = [
     name: "Diamond",
     min: 10000,
     max: 50000,
-    icon: "💎",
     color: "from-cyan-400 to-blue-600",
     description: "Per investitori seri che credono nel futuro di Nomadiqe"
   },
@@ -46,7 +43,6 @@ const investmentLevels = [
     name: "Vibranium",
     min: 100000,
     max: null,
-    icon: "⚡",
     color: "from-purple-500 to-pink-600",
     description: "Il livello più alto per partner strategici"
   }
