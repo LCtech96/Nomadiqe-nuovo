@@ -95,7 +95,6 @@ export default function InvestiPage() {
           {investmentLevels.map((level) => (
             <Card key={level.id} className={`bg-gradient-to-br ${level.color} text-white border-0 hover:shadow-2xl transition-shadow`}>
               <CardHeader>
-                <div className="text-4xl mb-2">{level.icon}</div>
                 <CardTitle className="text-2xl">{level.name}</CardTitle>
                 <CardDescription className="text-white/80">
                   {level.description}
