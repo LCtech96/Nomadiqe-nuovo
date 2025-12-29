@@ -173,6 +173,9 @@ export const authOptions: NextAuthOptions = {
               } catch (pointsError) {
                 console.warn("Could not award sign up points:", pointsError)
               }
+              
+              // Messaggio di benvenuto verrà inviato quando l'utente completa l'onboarding (assegnazione ruolo)
+              // via trigger SQL o quando chiama l'API welcome
             }
           }
         }

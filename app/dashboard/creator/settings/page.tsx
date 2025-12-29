@@ -76,15 +76,22 @@ interface Post {
 }
 
 interface Analytics {
-  profileViews: number
-  totalFollowers: number
-  totalFollowing: number
-  totalPosts: number
-  totalLikes: number
-  totalComments: number
-  totalInteractions: number
-  engagementRate: number
-  totalReach: number
+  profileViews: number | null
+  totalFollowers: number | null
+  totalFollowing: number | null
+  totalPosts: number | null
+  totalLikes: number | null
+  totalComments: number | null
+  totalInteractions: number | null
+  engagementRate: number | null
+  totalReach: number | null
+  showProfileViews: boolean
+  showFollowers: boolean
+  showFollowing: boolean
+  showPosts: boolean
+  showInteractions: boolean
+  showEngagementRate: boolean
+  showReach: boolean
 }
 
 export default function CreatorSettingsPage() {
@@ -99,15 +106,32 @@ export default function CreatorSettingsPage() {
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [posts, setPosts] = useState<Post[]>([])
   const [analytics, setAnalytics] = useState<Analytics>({
-    profileViews: 0,
-    totalFollowers: 0,
-    totalFollowing: 0,
-    totalPosts: 0,
-    totalLikes: 0,
-    totalComments: 0,
-    totalInteractions: 0,
-    engagementRate: 0,
-    totalReach: 0,
+    profileViews: null,
+    totalFollowers: null,
+    totalFollowing: null,
+    totalPosts: null,
+    totalLikes: null,
+    totalComments: null,
+    totalInteractions: null,
+    engagementRate: null,
+    totalReach: null,
+    showProfileViews: true,
+    showFollowers: true,
+    showFollowing: true,
+    showPosts: true,
+    showInteractions: true,
+    showEngagementRate: true,
+    showReach: true,
+  })
+  const [analyticsInputs, setAnalyticsInputs] = useState({
+    profileViews: "",
+    totalFollowers: "",
+    totalFollowing: "",
+    totalPosts: "",
+    totalLikes: "",
+    totalComments: "",
+    totalReach: "",
+    engagementRate: "",
   })
 
   useEffect(() => {
@@ -156,8 +180,8 @@ export default function CreatorSettingsPage() {
 
       setPosts(postsData || [])
 
-      // Load analytics
-      await loadAnalytics()
+      // Load manual analytics
+      await loadManualAnalytics()
     } catch (error: any) {
       console.error("Error loading data:", error)
       toast({
@@ -170,60 +194,105 @@ export default function CreatorSettingsPage() {
     }
   }
 
-  const loadAnalytics = async () => {
+  const loadManualAnalytics = async () => {
     if (!session?.user?.id) return
 
     try {
-      // Profile views
-      const { count: viewsCount } = await supabase
-        .from("profile_views")
-        .select("*", { count: "exact", head: true })
-        .eq("profile_id", session.user.id)
+      // Carica analitiche manuali
+      const { data: manualData, error } = await supabase
+        .from("creator_manual_analytics")
+        .select("*")
+        .eq("creator_id", session.user.id)
+        .maybeSingle()
 
-      // Followers/Following
-      const { count: followersCount } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("following_id", session.user.id)
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading manual analytics:", error)
+      }
 
-      const { count: followingCount } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("follower_id", session.user.id)
-
-      // Posts count
-      const { count: postsCount } = await supabase
-        .from("posts")
-        .select("*", { count: "exact", head: true })
-        .eq("author_id", session.user.id)
-
-      // Total likes and comments
-      const { data: userPosts } = await supabase
-        .from("posts")
-        .select("like_count, comment_count, likes_count, comments_count")
-        .eq("author_id", session.user.id)
-
-      const totalLikes = (userPosts || []).reduce((sum, p) => sum + (p.likes_count || p.like_count || 0), 0)
-      const totalComments = (userPosts || []).reduce((sum, p) => sum + (p.comments_count || p.comment_count || 0), 0)
-      const totalInteractions = totalLikes + totalComments
-
-      // Engagement rate
-      const totalReach = viewsCount || 1
-      const engagementRate = totalReach > 0 ? (totalInteractions / totalReach) * 100 : 0
-
-      setAnalytics({
-        profileViews: viewsCount || 0,
-        totalFollowers: followersCount || 0,
-        totalFollowing: followingCount || 0,
-        totalPosts: postsCount || 0,
-        totalLikes,
-        totalComments,
-        totalInteractions,
-        engagementRate: Math.round(engagementRate * 100) / 100,
-        totalReach,
-      })
+      if (manualData) {
+        setAnalytics({
+          profileViews: manualData.profile_views,
+          totalFollowers: manualData.total_followers,
+          totalFollowing: manualData.total_following,
+          totalPosts: manualData.total_posts,
+          totalLikes: manualData.total_likes,
+          totalComments: manualData.total_comments,
+          totalInteractions: manualData.total_interactions,
+          engagementRate: manualData.engagement_rate ? parseFloat(manualData.engagement_rate.toString()) : null,
+          totalReach: manualData.total_reach,
+          showProfileViews: manualData.show_profile_views ?? true,
+          showFollowers: manualData.show_followers ?? true,
+          showFollowing: manualData.show_following ?? true,
+          showPosts: manualData.show_posts ?? true,
+          showInteractions: manualData.show_interactions ?? true,
+          showEngagementRate: manualData.show_engagement_rate ?? true,
+          showReach: manualData.show_reach ?? true,
+        })
+        setAnalyticsInputs({
+          profileViews: manualData.profile_views?.toString() || "",
+          totalFollowers: manualData.total_followers?.toString() || "",
+          totalFollowing: manualData.total_following?.toString() || "",
+          totalPosts: manualData.total_posts?.toString() || "",
+          totalLikes: manualData.total_likes?.toString() || "",
+          totalComments: manualData.total_comments?.toString() || "",
+          totalReach: manualData.total_reach?.toString() || "",
+          engagementRate: manualData.engagement_rate?.toString() || "",
+        })
+      }
     } catch (error) {
-      console.error("Error loading analytics:", error)
+      console.error("Error loading manual analytics:", error)
+    }
+  }
+
+  const handleSaveAnalytics = async () => {
+    if (!session?.user?.id) return
+
+    setSaving(true)
+    try {
+      const analyticsData = {
+        creator_id: session.user.id,
+        profile_views: analyticsInputs.profileViews.trim() ? parseInt(analyticsInputs.profileViews) : null,
+        total_followers: analyticsInputs.totalFollowers.trim() ? parseInt(analyticsInputs.totalFollowers) : null,
+        total_following: analyticsInputs.totalFollowing.trim() ? parseInt(analyticsInputs.totalFollowing) : null,
+        total_posts: analyticsInputs.totalPosts.trim() ? parseInt(analyticsInputs.totalPosts) : null,
+        total_likes: analyticsInputs.totalLikes.trim() ? parseInt(analyticsInputs.totalLikes) : null,
+        total_comments: analyticsInputs.totalComments.trim() ? parseInt(analyticsInputs.totalComments) : null,
+        total_reach: analyticsInputs.totalReach.trim() ? parseInt(analyticsInputs.totalReach) : null,
+        engagement_rate: analyticsInputs.engagementRate.trim() ? parseFloat(analyticsInputs.engagementRate) : null,
+        total_interactions: (analyticsInputs.totalLikes.trim() ? parseInt(analyticsInputs.totalLikes) : 0) + 
+                           (analyticsInputs.totalComments.trim() ? parseInt(analyticsInputs.totalComments) : 0),
+        show_profile_views: analytics.showProfileViews,
+        show_followers: analytics.showFollowers,
+        show_following: analytics.showFollowing,
+        show_posts: analytics.showPosts,
+        show_interactions: analytics.showInteractions,
+        show_engagement_rate: analytics.showEngagementRate,
+        show_reach: analytics.showReach,
+      }
+
+      const { error } = await supabase
+        .from("creator_manual_analytics")
+        .upsert(analyticsData, {
+          onConflict: "creator_id",
+        })
+
+      if (error) throw error
+
+      toast({
+        title: "Successo",
+        description: "Analitiche salvate con successo",
+      })
+
+      await loadManualAnalytics()
+    } catch (error: any) {
+      console.error("Error saving analytics:", error)
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare le analitiche.",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -325,88 +394,307 @@ export default function CreatorSettingsPage() {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6 mt-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Visualizzazioni Profilo
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-primary" />
-                    <span className="text-2xl font-bold">{analytics.profileViews}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Follower</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <span className="text-2xl font-bold">{analytics.totalFollowers}</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Interazioni Totali
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Heart className="w-5 h-5 text-primary" />
-                    <span className="text-2xl font-bold">{analytics.totalInteractions}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {analytics.totalLikes} like, {analytics.totalComments} commenti
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    Engagement Rate
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                    <span className="text-2xl font-bold">{analytics.engagementRate}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             <Card>
               <CardHeader>
-                <CardTitle>Statistiche Dettagliate</CardTitle>
-                <CardDescription>Panoramica completa della tua performance</CardDescription>
+                <CardTitle>Inserisci le tue Analitiche</CardTitle>
+                <CardDescription>
+                  Inserisci manualmente le tue statistiche e controlla cosa mostrare nel tuo profilo pubblico
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Post Totali</p>
-                    <p className="text-2xl font-bold">{analytics.totalPosts}</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="profileViews">Visualizzazioni Profilo</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showProfileViews" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showProfileViews"
+                          checked={analytics.showProfileViews}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showProfileViews: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="profileViews"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.profileViews}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, profileViews: e.target.value }))
+                      }
+                      placeholder="Es. 1000"
+                    />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Following</p>
-                    <p className="text-2xl font-bold">{analytics.totalFollowing}</p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="totalFollowers">Follower</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showFollowers" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showFollowers"
+                          checked={analytics.showFollowers}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showFollowers: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="totalFollowers"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalFollowers}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalFollowers: e.target.value }))
+                      }
+                      placeholder="Es. 5000"
+                    />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Like Totali</p>
-                    <p className="text-2xl font-bold">{analytics.totalLikes}</p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="totalFollowing">Following</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showFollowing" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showFollowing"
+                          checked={analytics.showFollowing}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showFollowing: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="totalFollowing"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalFollowing}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalFollowing: e.target.value }))
+                      }
+                      placeholder="Es. 300"
+                    />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Commenti Totali</p>
-                    <p className="text-2xl font-bold">{analytics.totalComments}</p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="totalPosts">Post Totali</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showPosts" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showPosts"
+                          checked={analytics.showPosts}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showPosts: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="totalPosts"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalPosts}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalPosts: e.target.value }))
+                      }
+                      placeholder="Es. 150"
+                    />
                   </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="totalLikes">Like Totali</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showInteractions" className="text-xs text-muted-foreground">
+                          Mostra interazioni
+                        </Label>
+                        <Switch
+                          id="showInteractions"
+                          checked={analytics.showInteractions}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showInteractions: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="totalLikes"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalLikes}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalLikes: e.target.value }))
+                      }
+                      placeholder="Es. 5000"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="totalComments">Commenti Totali</Label>
+                    <Input
+                      id="totalComments"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalComments}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalComments: e.target.value }))
+                      }
+                      placeholder="Es. 200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="totalReach">Reach Totale</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showReach" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showReach"
+                          checked={analytics.showReach}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showReach: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="totalReach"
+                      type="number"
+                      min="0"
+                      value={analyticsInputs.totalReach}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, totalReach: e.target.value }))
+                      }
+                      placeholder="Es. 10000"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="engagementRate">Engagement Rate (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="showEngagementRate" className="text-xs text-muted-foreground">
+                          Mostra
+                        </Label>
+                        <Switch
+                          id="showEngagementRate"
+                          checked={analytics.showEngagementRate}
+                          onCheckedChange={(checked: boolean) =>
+                            setAnalytics((prev) => ({ ...prev, showEngagementRate: checked }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <Input
+                      id="engagementRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={analyticsInputs.engagementRate}
+                      onChange={(e) =>
+                        setAnalyticsInputs((prev) => ({ ...prev, engagementRate: e.target.value }))
+                      }
+                      placeholder="Es. 5.5"
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={handleSaveAnalytics} disabled={saving} className="w-full">
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? "Salvataggio..." : "Salva Analitiche"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Preview delle analitiche */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Anteprima Profilo Pubblico</CardTitle>
+                <CardDescription>
+                  Ecco come appaiono le tue analitiche nel profilo pubblico
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {analytics.showProfileViews && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-5 h-5 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Views</p>
+                            <p className="text-2xl font-bold">
+                              {analyticsInputs.profileViews || "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {analytics.showFollowers && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Follower</p>
+                            <p className="text-2xl font-bold">
+                              {analyticsInputs.totalFollowers || "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {analytics.showPosts && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Post</p>
+                            <p className="text-2xl font-bold">
+                              {analyticsInputs.totalPosts || "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {analytics.showEngagementRate && analyticsInputs.engagementRate && (
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-primary" />
+                          <div>
+                            <p className="text-sm text-muted-foreground">Engagement</p>
+                            <p className="text-2xl font-bold">
+                              {analyticsInputs.engagementRate}%
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -464,7 +464,7 @@ export default function CommunityDetailPage() {
         <div className="flex-1 flex flex-col">
           <div
             ref={messagesContainerRef}
-            className="flex-1 overflow-y-auto p-4 space-y-4"
+            className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4"
           >
             {messages.length === 0 ? (
               <div className="flex items-center justify-center h-full text-center text-muted-foreground">
@@ -480,7 +480,7 @@ export default function CommunityDetailPage() {
                 return (
                   <div
                     key={message.id}
-                    className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
+                    className={`flex gap-2 sm:gap-3 w-full ${isOwn ? "flex-row-reverse" : ""} px-1`}
                   >
                     <div className="relative w-8 h-8 rounded-full overflow-hidden shrink-0">
                       {message.sender.avatar_url ? (
@@ -499,8 +499,8 @@ export default function CommunityDetailPage() {
                         </div>
                       )}
                     </div>
-                    <div className={`flex-1 max-w-[70%] ${isOwn ? "items-end" : ""}`}>
-                      <div className="flex items-center gap-2 mb-1">
+                    <div className={`flex-1 min-w-0 max-w-[85%] sm:max-w-[70%] ${isOwn ? "items-end flex flex-col" : "flex flex-col"}`}>
+                      <div className={`flex items-center gap-2 mb-1 ${isOwn ? "justify-end" : ""}`}>
                         <span className="text-xs font-semibold">
                           {message.sender.full_name || message.sender.username || "Utente"}
                         </span>
@@ -512,9 +512,9 @@ export default function CommunityDetailPage() {
                         </span>
                       </div>
                       <div
-                        className={`rounded-lg p-3 ${
+                        className={`rounded-lg p-3 min-w-0 ${
                           isOwn
-                            ? "bg-primary text-primary-foreground ml-auto"
+                            ? "bg-primary text-primary-foreground"
                             : "bg-muted"
                         }`}
                       >

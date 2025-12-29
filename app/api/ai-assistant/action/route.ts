@@ -1,0 +1,105 @@
+import { NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
+import { generateActionMessage, type ActionMessageParams } from "@/lib/ai-assistant"
+
+// Crea un client Supabase con service role key per bypassare RLS
+function createSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseServiceKey) {
+    // Fallback: usa il client normale (può fallire per RLS)
+    const { createSupabaseServerClient } = require("@/lib/supabase/server")
+    return createSupabaseServerClient()
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
+
+export async function POST(request: Request) {
+  try {
+    const params = await request.json() as ActionMessageParams
+
+    if (!params.userId || !params.action || !params.actionDescription || !params.role) {
+      return NextResponse.json(
+        { error: "Parametri mancanti: userId, action, actionDescription, role sono richiesti" },
+        { status: 400 }
+      )
+    }
+
+    // Genera il messaggio per l'azione
+    const messageContent = await generateActionMessage(params)
+
+    // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
+    const supabase = createSupabaseAdminClient()
+    
+    // ID speciale per l'assistente AI (deve essere creato tramite SQL trigger)
+    const AI_ASSISTANT_ID = "00000000-0000-0000-0000-000000000000"
+
+    // Inserisci il messaggio
+    // Usa is_ai_message = true e sender_id NULL per identificare messaggi AI
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: null, // NULL per messaggi AI
+        receiver_id: params.userId,
+        content: messageContent,
+        read: false,
+        is_ai_message: true, // Marca come messaggio AI
+      })
+      .select()
+      .single()
+
+    if (messageError) {
+      console.error("Errore nell'inserimento del messaggio:", messageError)
+      return NextResponse.json({
+        success: false,
+        error: "Impossibile salvare il messaggio",
+        details: messageError.message,
+        note: "Assicurati di aver eseguito supabase/36_CREA_ASSISTENTE_AI_TRIGGER.sql",
+      }, { status: 500 })
+    }
+
+    // Crea notifica per l'utente
+    try {
+      const { error: notifError } = await supabase
+        .from("pending_notifications")
+        .insert({
+          user_id: params.userId,
+          notification_type: "message",
+          title: "🤖 Nuovo messaggio dall'assistente",
+          message: messageContent.substring(0, 100) + (messageContent.length > 100 ? "..." : ""),
+          url: "/messages",
+          data: {
+            type: "ai_assistant_message",
+            message_id: message.id,
+            action: params.action,
+          },
+        })
+
+      if (notifError) {
+        console.error("Errore nella creazione della notifica:", notifError)
+      }
+    } catch (notifErr) {
+      console.error("Errore notifica:", notifErr)
+    }
+
+    return NextResponse.json({
+      success: true,
+      messageId: message.id,
+      content: messageContent,
+    })
+  } catch (error: any) {
+    console.error("Errore nell'API action:", error)
+    return NextResponse.json(
+      { error: error.message || "Errore sconosciuto" },
+      { status: 500 }
+    )
+  }
+}
+
