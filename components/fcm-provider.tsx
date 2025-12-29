@@ -29,11 +29,14 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
   const [isFCMReady, setIsFCMReady] = useState(false)
 
   useEffect(() => {
-    console.log("🔄 FCM: useEffect triggerato", {
-      status,
-      hasUserId: !!session?.user?.id,
-      hasWindow: typeof window !== "undefined",
-    })
+    // Riduci log verbosi - log solo quando cambiano condizioni critiche
+    const shouldLog = status === "authenticated" && session?.user?.id
+    if (shouldLog) {
+      console.log("🔄 FCM: useEffect triggerato", {
+        status,
+        hasUserId: !!session?.user?.id,
+      })
+    }
 
     if (typeof window === "undefined" || typeof navigator === "undefined") {
       console.log("⏭️ FCM: window/navigator non disponibile (SSR)")
@@ -45,11 +48,10 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     const isIOS = /iPhone|iPad|iPod/i.test(userAgent)
     const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent)
     
-    console.log("🔄 FCM: Rilevamento dispositivo", {
-      isIOS,
-      isMobile,
-      userAgent: userAgent,
-    })
+    // Log ridotto - solo quando necessario
+    if (shouldLog) {
+      console.log("🔄 FCM: Rilevamento dispositivo", { isIOS, isMobile })
+    }
 
     if (!("serviceWorker" in navigator)) {
       console.warn("⚠️ FCM: Service Worker non supportato su questo browser", {
@@ -69,13 +71,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
 
     // Su iOS, verifica la versione (richiede iOS 16.4+)
     if (isIOS) {
-      console.log("🍎 FCM: Rilevato iOS, verifica supporto...")
       // iOS 16.4+ supporta le notifiche push web
       // Ma spesso richiedono che il sito sia aggiunto alla home screen
       const isStandalone = (window.navigator as any).standalone || window.matchMedia('(display-mode: standalone)').matches
-      console.log("🍎 FCM: iOS - Standalone mode:", isStandalone, "UserAgent:", userAgent)
       
-      if (!isStandalone) {
+      if (!isStandalone && shouldLog) {
         console.warn("⚠️ FCM: Su iOS, le notifiche push funzionano meglio quando il sito è aggiunto alla home screen")
       }
     }
@@ -118,7 +118,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
 
         // Ora inizializza FCM se l'utente è autenticato
         if (status === "authenticated" && session?.user?.id) {
-          console.log("✅ FCM: Condizioni soddisfatte, inizializzo...")
+          // console.log("✅ FCM: Condizioni soddisfatte, inizializzo...")
           setTimeout(() => initializeFCM(), 500)
         }
       })
@@ -149,11 +149,11 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
     try {
-      console.log("🔥 FCM: Inizializzazione in corso...", { isIOS, isMobile })
-      console.log("👤 FCM: User ID:", session.user.id)
+      // console.log("🔥 FCM: Inizializzazione in corso...")
+      // console.log("👤 FCM: User ID:", session.user.id)
 
       // Verifica che FCM sia supportato
-      console.log("🔍 FCM: Verifica supporto FCM...")
+      // console.log("🔍 FCM: Verifica supporto FCM...")
       const supported = await isSupported()
       console.log("🔍 FCM: isSupported() risultato:", supported, { isIOS, isMobile })
       
@@ -173,14 +173,14 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      console.log("✅ FCM: Browser supporta FCM", { isIOS, isMobile })
+      // console.log("✅ FCM: Browser supporta FCM")
 
       // Ottieni il servizio messaging
       const messagingInstance = getMessaging()
       setMessaging(messagingInstance)
       setIsFCMReady(true)
 
-      console.log("✅ FCM: Inizializzazione completata")
+      // console.log("✅ FCM: Inizializzazione completata")
 
       // Controlla se l'utente è già iscritto (passa messagingInstance direttamente)
       await checkAndRequestPermission(messagingInstance)
@@ -248,7 +248,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle()
 
       const hasSubscriptionInDB = !!existingSubscription?.fcm_token
-      console.log("📱 FCM: Utente iscritto in DB?", hasSubscriptionInDB)
+      // console.log("📱 FCM: Utente iscritto in DB?", hasSubscriptionInDB)
 
       // Se l'utente non è iscritto, mostra il dialog
       if (!hasSubscriptionInDB) {
