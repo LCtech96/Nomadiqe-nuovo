@@ -74,9 +74,20 @@ export async function POST(request: Request) {
 
     // Crea notifica per l'utente
     try {
-      const notificationMessage = messageContent
-        ? messageContent.substring(0, 100) + (messageContent.length > 100 ? "..." : "")
-        : "Nuovo messaggio dall'assistente AI"
+      // Assicurati che notificationMessage non sia mai null o vuoto
+      let notificationMessage = "Nuovo messaggio dall'assistente AI" // Fallback di default
+      
+      if (messageContent && messageContent.trim().length > 0) {
+        notificationMessage = messageContent.substring(0, 100).trim()
+        if (messageContent.length > 100) {
+          notificationMessage += "..."
+        }
+      }
+      
+      // Verifica finale che notificationMessage non sia vuoto
+      if (!notificationMessage || notificationMessage.trim().length === 0) {
+        notificationMessage = "Nuovo messaggio dall'assistente AI"
+      }
       
       const { error: notifError } = await supabase
         .from("pending_notifications")
