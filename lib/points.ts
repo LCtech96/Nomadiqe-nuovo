@@ -132,6 +132,48 @@ export async function awardPoints(
       }
     }
 
+    // Invia messaggio AI per l'azione (non bloccare se fallisce)
+    try {
+      const { sendActionMessage } = await import("./ai-messages")
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single()
+      
+      if (profile?.role) {
+        const actionDescriptions: Record<keyof typeof POINTS_CONFIG, string> = {
+          sign_up: "Registrazione completata",
+          onboarding: "Onboarding completato",
+          booking: "Prenotazione completata",
+          post: "Post pubblicato",
+          check_in: "Check-in giornaliero",
+          review: "Recensione pubblicata",
+        }
+        
+        const nextStepsMap: Record<keyof typeof POINTS_CONFIG, string[]> = {
+          sign_up: ["Completa il tuo profilo", "Scegli il tuo ruolo", "Esplora la piattaforma"],
+          onboarding: ["Pubblica il tuo primo post", "Connettiti con altri utenti", "Inizia a esplorare"],
+          booking: ["Scrivi una recensione dopo il soggiorno", "Condividi la tua esperienza"],
+          post: ["Continua a condividere contenuti", "Interagisci con altri post"],
+          check_in: ["Torna domani per altri punti", "Continua a essere attivo"],
+          review: ["Scrivi altre recensioni", "Condividi le tue esperienze"],
+        }
+        
+        await sendActionMessage(
+          userId,
+          actionType,
+          actionDescriptions[actionType],
+          profile.role,
+          points,
+          nextStepsMap[actionType]
+        )
+      }
+    } catch (aiError) {
+      // Non bloccare se l'AI fallisce
+      console.warn("Errore nell'invio del messaggio AI (non critico):", aiError)
+    }
+
     return true
   } catch (error) {
     console.error("Error awarding points:", error)

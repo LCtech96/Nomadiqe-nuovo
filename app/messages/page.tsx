@@ -15,17 +15,18 @@ import { it } from "date-fns/locale"
 
 interface Message {
   id: string
-  sender_id: string
+  sender_id: string | null // NULL per messaggi AI
   receiver_id: string
   content: string
   read: boolean
   created_at: string
+  is_ai_message?: boolean // Flag per identificare messaggi AI
   sender?: {
     id: string
     username: string | null
     full_name: string | null
     avatar_url: string | null
-  }
+  } | null
   receiver?: {
     id: string
     username: string | null
@@ -142,6 +143,25 @@ export default function MessagesPage() {
                 return conv
               })
             } else {
+              // Se è un messaggio AI, usa ID speciale
+              if (payload.new.is_ai_message || payload.new.sender_id === null) {
+                const aiConvId = "ai-assistant"
+                return [
+                  {
+                    otherUserId: aiConvId,
+                    otherUser: {
+                      id: aiConvId,
+                      username: "Nomadiqe Assistant",
+                      full_name: "Nomadiqe Assistant",
+                      avatar_url: null,
+                    },
+                    lastMessage: newMessage,
+                    unreadCount: selectedConversation === aiConvId ? 0 : 1,
+                  },
+                  ...prev,
+                ]
+              }
+              
               // Aggiungi nuova conversazione
               return [
                 {
@@ -266,14 +286,42 @@ export default function MessagesPage() {
       // Group messages by conversation
       const conversationsMap = new Map<string, Conversation>()
 
-      messagesData?.forEach((msg: any) => {
+      for (const msg of messagesData || []) {
+        // Skip AI messages in conversation grouping (they appear in their own conversation)
+        if (msg.is_ai_message || msg.sender_id === null) {
+          // AI messages: use a special ID for the AI assistant conversation
+          const aiConversationId = "ai-assistant"
+          if (!conversationsMap.has(aiConversationId)) {
+            conversationsMap.set(aiConversationId, {
+              otherUserId: aiConversationId,
+              otherUser: {
+                id: aiConversationId,
+                username: "Nomadiqe Assistant",
+                full_name: "Nomadiqe Assistant",
+                avatar_url: null,
+              },
+              lastMessage: msg,
+              unreadCount: msg.read === false && msg.receiver_id === session.user.id ? 1 : 0,
+            })
+          } else {
+            const existing = conversationsMap.get(aiConversationId)!
+            if (new Date(msg.created_at) > new Date(existing.lastMessage.created_at)) {
+              existing.lastMessage = msg
+              if (msg.read === false && msg.receiver_id === session.user.id) {
+                existing.unreadCount++
+              }
+            }
+          }
+          continue
+        }
+        
         const otherUserId = msg.sender_id === session.user.id ? msg.receiver_id : msg.sender_id
         const otherUser = msg.sender_id === session.user.id ? msg.receiver : msg.sender
 
         if (!conversationsMap.has(otherUserId)) {
           conversationsMap.set(otherUserId, {
             otherUserId,
-            otherUser,
+            otherUser: otherUser || { id: otherUserId, username: null, full_name: null, avatar_url: null },
             lastMessage: msg,
             unreadCount: 0,
           })
@@ -284,7 +332,7 @@ export default function MessagesPage() {
           const conv = conversationsMap.get(otherUserId)!
           conv.unreadCount++
         }
-      })
+      }
 
       setConversations(Array.from(conversationsMap.values()))
     } catch (error) {
@@ -523,7 +571,11 @@ export default function MessagesPage() {
                       <ArrowLeft className="w-4 h-4" />
                     </Button>
                     <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
-                      {selectedConv.otherUser.avatar_url ? (
+                      {selectedConv.otherUserId === "ai-assistant" ? (
+                        <div className="w-full h-full bg-blue-500/20 flex items-center justify-center">
+                          <span className="text-xl">🤖</span>
+                        </div>
+                      ) : selectedConv.otherUser.avatar_url ? (
                         <Image
                           src={selectedConv.otherUser.avatar_url}
                           alt={selectedConv.otherUser.username || "User"}
@@ -538,7 +590,8 @@ export default function MessagesPage() {
                       )}
                     </div>
                     <div>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        {selectedConv.otherUserId === "ai-assistant" && <span>🤖</span>}
                         {selectedConv.otherUser.username || selectedConv.otherUser.full_name || "Utente"}
                       </CardTitle>
                     </div>
@@ -546,22 +599,30 @@ export default function MessagesPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {/* Messages */}
-                  <div className="h-[400px] overflow-y-auto p-4 space-y-4">
+                  <div className="h-[400px] overflow-y-auto p-2 sm:p-4 space-y-4">
                     {messages.map((msg) => {
                       const isOwn = msg.sender_id === session.user.id
+                      const isAIMessage = msg.is_ai_message || msg.sender_id === null
                       return (
                         <div
                           key={msg.id}
-                          className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                          className={`flex w-full ${isOwn ? "justify-end" : "justify-start"} px-1`}
                         >
                           <div
-                            className={`max-w-[70%] rounded-lg p-3 ${
-                              isOwn
+                            className={`max-w-[85%] sm:max-w-[70%] min-w-0 rounded-lg p-3 ${
+                              isAIMessage
+                                ? "bg-blue-500/10 border border-blue-500/20 text-foreground"
+                                : isOwn
                                 ? "bg-primary text-primary-foreground"
                                 : "bg-muted"
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            {isAIMessage && (
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">🤖 Nomadiqe Assistant</span>
+                              </div>
+                            )}
+                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                             <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                               {formatDistanceToNow(new Date(msg.created_at), {
                                 addSuffix: true,
@@ -575,32 +636,38 @@ export default function MessagesPage() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Send Message */}
-                  <div className="border-t p-4">
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Scrivi un messaggio..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        rows={2}
-                        className="resize-none"
-                        onKeyPress={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault()
-                            handleSendMessage()
-                          }
-                        }}
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        disabled={sending || !newMessage.trim()}
-                        size="icon"
-                        className="shrink-0"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
+                  {/* Send Message - Disabilitato per conversazioni AI */}
+                  {selectedConv.otherUserId === "ai-assistant" ? (
+                    <div className="border-t p-4 bg-muted/50 text-center text-sm text-muted-foreground">
+                      Non puoi rispondere all'assistente AI. Usa questo spazio per ricevere suggerimenti e aggiornamenti.
                     </div>
-                  </div>
+                  ) : (
+                    <div className="border-t p-4">
+                      <div className="flex gap-2">
+                        <Textarea
+                          placeholder="Scrivi un messaggio..."
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          rows={2}
+                          className="resize-none"
+                          onKeyPress={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault()
+                              handleSendMessage()
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={sending || !newMessage.trim()}
+                          size="icon"
+                          className="shrink-0"
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </>
             ) : (

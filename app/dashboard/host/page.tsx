@@ -42,6 +42,7 @@ export default function HostDashboard() {
     required_social_platforms: [],
     additional_requirements: null,
   })
+  const [freeStayNightsInput, setFreeStayNightsInput] = useState<string>("")
   const [savingPreferences, setSavingPreferences] = useState(false)
   const [showPreferencesForm, setShowPreferencesForm] = useState(false)
 
@@ -99,12 +100,14 @@ export default function HostDashboard() {
       if (error && error.code !== "PGRST116") throw error
 
       if (data) {
+        const nights = data.free_stay_nights ?? null
         setPreferences({
-          free_stay_nights: data.free_stay_nights || 0,
+          free_stay_nights: nights ?? 0,
           promotion_types: data.promotion_types || [],
           required_social_platforms: data.required_social_platforms || [],
           additional_requirements: data.additional_requirements || null,
         })
+        setFreeStayNightsInput(nights !== null && nights !== undefined ? nights.toString() : "")
       }
     } catch (error) {
       console.error("Error loading preferences:", error)
@@ -116,11 +119,13 @@ export default function HostDashboard() {
 
     setSavingPreferences(true)
     try {
+      const nightsValue = freeStayNightsInput.trim() === "" ? null : parseInt(freeStayNightsInput)
+      
       const { error } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
           host_id: session.user.id,
-          free_stay_nights: preferences.free_stay_nights,
+          free_stay_nights: nightsValue ?? 0,
           promotion_types: preferences.promotion_types,
           required_social_platforms: preferences.required_social_platforms,
           additional_requirements: preferences.additional_requirements || null,
@@ -266,15 +271,19 @@ export default function HostDashboard() {
                   id="free_stay_nights"
                   type="number"
                   min="0"
-                  value={preferences.free_stay_nights}
-                  onChange={(e) =>
+                  value={freeStayNightsInput}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    setFreeStayNightsInput(value)
+                    // Aggiorna anche lo stato preferences per il salvataggio
+                    const numValue = value.trim() === "" ? null : parseInt(value)
                     setPreferences((prev) => ({
                       ...prev,
-                      free_stay_nights: parseInt(e.target.value) || 0,
+                      free_stay_nights: numValue ?? 0,
                     }))
-                  }
+                  }}
                   className="mt-1"
-                  placeholder="0"
+                  placeholder="Inserisci numero di notti"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Numero di notti che sei disposto ad offrire gratuitamente ai creator
@@ -434,7 +443,7 @@ export default function HostDashboard() {
               <div className="space-y-2 text-sm">
                 <p>
                   <span className="font-semibold">Notti FREE STAY:</span>{" "}
-                  {preferences.free_stay_nights}
+                  {freeStayNightsInput || "Non impostato"}
                 </p>
                 <p>
                   <span className="font-semibold">Tipo promozione:</span>{" "}

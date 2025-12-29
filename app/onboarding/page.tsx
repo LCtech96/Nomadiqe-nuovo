@@ -177,6 +177,27 @@ export default function OnboardingPage() {
       // Non verifichiamo subito perché potrebbe essere un problema di cache del database
       // Se l'UPDATE non ha dato errori, assumiamo che sia andato a buon fine
 
+      // Invia messaggio di benvenuto dall'assistente AI
+      try {
+        const response = await fetch("/api/ai-assistant/welcome", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: session.user.id,
+            role: selectedRole,
+            username: session.user.email?.split("@")[0],
+            fullName: session.user.name,
+          }),
+        })
+        if (!response.ok) {
+          console.warn("Errore nell'invio del messaggio di benvenuto (non critico)")
+        }
+      } catch (error) {
+        console.warn("Errore chiamata API welcome (non critico):", error)
+      }
+
       // Mostra un messaggio di successo
       toast({
         title: "Successo",

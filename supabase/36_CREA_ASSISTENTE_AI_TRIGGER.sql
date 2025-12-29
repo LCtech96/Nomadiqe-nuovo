@@ -1,0 +1,60 @@
+-- ============================================
+-- SISTEMA ASSISTENTE AI PER MESSAGGI
+-- ============================================
+-- NOTA: Questo file NON crea trigger SQL perché non possiamo
+-- inserire messaggi con un sender_id che non esiste in auth.users.
+--
+-- I messaggi dell'assistente AI vengono gestiti tramite API routes Next.js
+-- che usano il service role key per bypassare RLS.
+-- ============================================
+
+-- ID SPECIALE PER L'ASSISTENTE AI
+-- Questo ID viene usato come sender_id per tutti i messaggi dell'assistente
+-- NOTA: Non creiamo un profilo per questo ID perché richiederebbe un utente in auth.users
+-- Le API routes gestiranno l'inserimento dei messaggi usando il service role key
+-- 
+-- ID: '00000000-0000-0000-0000-000000000000'
+
+-- ============================================
+-- COME FUNZIONA
+-- ============================================
+-- 
+-- 1. MESSAGGI DI BENVENUTO:
+--    - Quando un utente completa l'onboarding (assegnazione ruolo)
+--    - app/onboarding/page.tsx chiama POST /api/ai-assistant/welcome
+--    - L'API route genera un messaggio con Groq AI
+--    - Il messaggio viene inserito nella tabella messages con sender_id speciale
+--    - Una notifica viene creata per l'utente
+--
+-- 2. MESSAGGI PER AZIONI:
+--    - Quando un utente compie un'azione (post, booking, etc.)
+--    - lib/points.ts chiama POST /api/ai-assistant/action
+--    - L'API route genera un messaggio personalizzato con Groq AI
+--    - Il messaggio viene inserito con sender_id speciale
+--    - Una notifica viene creata per l'utente
+--
+-- 3. NOTIFICHE:
+--    - Ogni messaggio dell'assistente crea una notifica
+--    - Le notifiche appaiono come push notifications
+--    - Cliccando una notifica, si apre la pagina /messages
+--    - Il messaggio dell'assistente è visibile nella conversazione
+--
+-- ============================================
+-- CONFIGURAZIONE RICHIESTA
+-- ============================================
+--
+-- 1. Variabile d'ambiente GROQ_API_KEY (già configurata)
+-- 2. Variabile d'ambiente SUPABASE_SERVICE_ROLE_KEY su Vercel
+--    (opzionale ma consigliata per bypassare RLS completamente)
+--
+-- Per ottenere il service role key:
+-- - Vai su Supabase Dashboard → Settings → API
+-- - Copia "service_role" key (NON anon key)
+-- - Aggiungila come SUPABASE_SERVICE_ROLE_KEY su Vercel
+--
+-- ============================================
+-- COMMENTI
+-- ============================================
+
+COMMENT ON TABLE public.messages IS 'La tabella messages include messaggi dell''assistente AI con sender_id = ''00000000-0000-0000-0000-000000000000''';
+COMMENT ON COLUMN public.messages.sender_id IS 'Può essere un ID utente valido o ''00000000-0000-0000-0000-000000000000'' per messaggi dell''assistente AI';
