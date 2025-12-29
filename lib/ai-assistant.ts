@@ -180,8 +180,9 @@ Messaggio:`
     })
 
     const message = completion.choices[0]?.message?.content?.trim()
-    if (!message) {
-      throw new Error("Nessuna risposta dal modello AI")
+    if (!message || message.length === 0) {
+      // Fallback message se l'AI non genera un messaggio valido
+      return `${emoji} Ottimo lavoro! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
     }
 
     return `${emoji} ${message}`
