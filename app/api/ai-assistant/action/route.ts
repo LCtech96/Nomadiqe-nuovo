@@ -33,15 +33,22 @@ export async function POST(request: Request) {
     }
 
     // Genera il messaggio per l'azione
-    const messageContent = await generateActionMessage(params)
+    let messageContent: string
+    try {
+      const generated = await generateActionMessage(params)
+      // Garantisce che messageContent sia sempre una stringa non vuota
+      messageContent = (generated && typeof generated === 'string' && generated.trim().length > 0)
+        ? generated.trim()
+        : `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
+    } catch (genError) {
+      console.error("Errore nella generazione del messaggio:", genError)
+      // Fallback garantito se la generazione fallisce
+      messageContent = `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
+    }
 
-    // Verifica che il messaggio sia stato generato
-    if (!messageContent || messageContent.trim().length === 0) {
-      console.error("Errore: il messaggio generato è vuoto o null")
-      return NextResponse.json({
-        success: false,
-        error: "Impossibile generare il messaggio",
-      }, { status: 500 })
+    // Verifica finale che il messaggio sia valido (dovrebbe sempre essere valido grazie al fallback sopra)
+    if (!messageContent || typeof messageContent !== 'string' || messageContent.trim().length === 0) {
+      messageContent = `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
     }
 
     // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
