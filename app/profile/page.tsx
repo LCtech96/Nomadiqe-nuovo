@@ -23,7 +23,6 @@ import {
   Link2,
   Copy,
   Check,
-  Bell,
   Upload,
   ImageIcon
 } from "lucide-react"
@@ -52,7 +51,7 @@ interface Collaboration {
   status: string
 }
 
-type TabType = "posts" | "vetrina" | "collab" | "notifications"
+type TabType = "posts" | "vetrina" | "collab"
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
@@ -100,9 +99,6 @@ export default function ProfilePage() {
   const [kolBedPreferences, setKolBedPreferences] = useState<any>(null)
   const [profileLinkCopied, setProfileLinkCopied] = useState(false)
   
-  // Notifications
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   
   // Username change tracking
   const [usernameLastChanged, setUsernameLastChanged] = useState<Date | null>(null)
@@ -341,12 +337,6 @@ export default function ProfilePage() {
         console.error("Statistics error:", statsError)
       }
 
-      // Load notifications (don't fail if error)
-      try {
-        await loadNotifications()
-      } catch (notifError) {
-        console.error("Notifications error:", notifError)
-      }
 
       // Load username change date (if column exists, otherwise use updated_at as fallback)
       if (profileData.username_changed_at) {
@@ -407,26 +397,6 @@ export default function ProfilePage() {
     }
   }
 
-  const loadNotifications = async () => {
-    if (!session?.user?.id) return
-
-    try {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", session.user.id)
-        .order("created_at", { ascending: false })
-        .limit(50)
-
-      if (error) throw error
-
-      setNotifications(data || [])
-      const unread = (data || []).filter((n) => !n.read).length
-      setUnreadCount(unread)
-    } catch (error) {
-      console.error("Error loading notifications:", error)
-    }
-  }
 
   const canChangeUsername = (): boolean => {
     if (!usernameLastChanged) return true
@@ -1174,24 +1144,6 @@ export default function ProfilePage() {
                 </div>
               </button>
             )}
-            <button
-              onClick={() => setActiveTab("notifications")}
-              className={`flex-1 py-4 text-sm font-semibold uppercase tracking-wider border-b-2 transition-colors relative ${
-                activeTab === "notifications"
-                  ? "border-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <Bell className="w-4 h-4" />
-                Messaggi
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </div>
-            </button>
           </div>
         </div>
 
@@ -1498,84 +1450,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {activeTab === "notifications" && (
-            <div className="py-4">
-              <div className="mb-4">
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/messages")}
-                  className="w-full"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Vai ai Messaggi Diretti
-                </Button>
-              </div>
-              <div className="border-t pt-4">
-                <h3 className="font-semibold mb-4">Notifiche</h3>
-                {notifications.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Nessuna notifica</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {notifications.map((notification) => (
-                      <Card
-                        key={notification.id}
-                        className={`cursor-pointer transition-colors ${
-                          !notification.read ? "bg-primary/5 border-primary/20" : ""
-                        }`}
-                        onClick={async () => {
-                          if (!notification.read) {
-                            await supabase
-                              .from("notifications")
-                              .update({ read: true })
-                              .eq("id", notification.id)
-                            loadNotifications()
-                          }
-                          
-                          // Navigate based on notification type
-                          if (notification.related_id) {
-                            if (notification.type.includes("post")) {
-                              router.push(`/posts/${notification.related_id}`)
-                            } else if (notification.type.includes("property")) {
-                              router.push(`/properties/${notification.related_id}`)
-                            } else if (notification.type.includes("profile")) {
-                              router.push(`/profile/${notification.related_id}`)
-                            }
-                          }
-                        }}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              !notification.read ? "bg-primary" : "bg-transparent"
-                            }`} />
-                            <div className="flex-1">
-                              <p className="font-semibold text-sm">{notification.title}</p>
-                              {notification.message && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {notification.message}
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {new Date(notification.created_at).toLocaleDateString("it-IT", {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
       

@@ -193,3 +193,4 @@ Tutte le funzioni RPC ora hanno `SECURITY DEFINER` per funzionare correttamente:
 3. Verifica che le funzioni RPC per repost siano state create
 
 
+

@@ -27,6 +27,7 @@ interface Property {
   images: string[]
   rating: number
   review_count: number
+  owner_id?: string
 }
 
 export default function PropertyDetailPage() {
@@ -117,46 +118,68 @@ export default function PropertyDetailPage() {
       return
     }
 
+    if (!property?.owner_id) {
+      toast({
+        title: "Errore",
+        description: "Impossibile trovare il proprietario della proprietà",
+        variant: "destructive",
+      })
+      return
+    }
+
     const checkInDate = new Date(checkIn)
     const checkOutDate = new Date(checkOut)
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
     const totalPrice = nights * property!.price_per_night
 
     try {
-      const { data, error } = await supabase
-        .from("bookings")
+      // Invia richiesta di prenotazione come messaggio all'host
+      const bookingRequestData = {
+        property_id: property.id,
+        property_name: property.name,
+        check_in: checkIn,
+        check_out: checkOut,
+        guests: guests,
+        total_price: totalPrice,
+        nights: nights,
+      }
+
+      const messageContent = `Nuova richiesta di prenotazione per "${property.name}"
+
+Check-in: ${new Date(checkIn).toLocaleDateString("it-IT")}
+Check-out: ${new Date(checkOut).toLocaleDateString("it-IT")}
+Notti: ${nights}
+Ospiti: ${guests}
+Totale: €${totalPrice.toFixed(2)}
+
+Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
+
+      const { data: message, error: messageError } = await supabase
+        .from("messages")
         .insert({
-          property_id: property!.id,
-          traveler_id: session.user.id,
-          check_in: checkIn,
-          check_out: checkOut,
-          guests: guests,
-          total_price: totalPrice,
-          status: "pending",
+          sender_id: session.user.id,
+          receiver_id: property.owner_id,
+          content: messageContent,
+          read: false,
+          booking_request_data: bookingRequestData,
+          booking_request_status: "pending",
         })
         .select()
         .single()
 
-      if (error) throw error
-
-      // Award booking points
-      try {
-        const { awardPoints } = await import("@/lib/points")
-        await awardPoints(session.user.id, "booking", "Prenotazione completata")
-      } catch (pointsError) {
-        console.warn("Could not award points:", pointsError)
-      }
+      if (messageError) throw messageError
 
       toast({
-        title: "Successo",
-        description: "Prenotazione creata con successo!",
+        title: "Richiesta inviata!",
+        description: "La tua richiesta di prenotazione è stata inviata all'host. Riceverai una risposta nei messaggi.",
       })
 
-      router.push("/dashboard/traveler/bookings")
+      router.push("/messages")
     } catch (error: any) {
+      console.error("Error sending booking request:", error)
       toast({
         title: "Errore",
-        description: error.message,
+        description: error.message || "Impossibile inviare la richiesta di prenotazione",
         variant: "destructive",
       })
     }

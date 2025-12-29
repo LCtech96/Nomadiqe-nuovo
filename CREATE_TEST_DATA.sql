@@ -207,3 +207,4 @@ ORDER BY properties_count DESC NULLS LAST
 LIMIT 10;
 
 
+

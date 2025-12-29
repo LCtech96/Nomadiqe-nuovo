@@ -26,3 +26,4 @@ CREATE POLICY IF NOT EXISTS "Users can delete own properties" ON public.properti
 
 
 
+

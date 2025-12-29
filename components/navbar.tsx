@@ -6,7 +6,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Menu, ChevronDown, Trash2 } from "lucide-react"
+import { Moon, Sun, Menu, ChevronDown, Trash2, Bell, Mail, LayoutDashboard } from "lucide-react"
+import { usePathname } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -37,6 +38,7 @@ export default function Navbar() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+  const pathname = usePathname()
   const { toast } = useToast()
   const [profile, setProfile] = useState<any>(null)
   const [availableRoles, setAvailableRoles] = useState<string[]>([])
@@ -44,13 +46,91 @@ export default function Navbar() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const supabase = createSupabaseClient()
+  const isProfilePage = pathname === "/profile"
 
   useEffect(() => {
     if (session?.user?.id && !profileError) {
       loadProfile()
+      loadNotifications()
     }
   }, [session])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    
+    // Subscribe to notifications changes
+    const notificationsChannel = supabase
+      .channel(`notifications:${session.user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${session.user.id}`,
+        },
+        () => {
+          loadNotifications()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(notificationsChannel)
+    }
+  }, [session])
+
+  const loadNotifications = async () => {
+    if (!session?.user?.id) return
+
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+
+      if (error) throw error
+
+      setNotifications(data || [])
+      const unread = (data || []).filter((n) => !n.read).length
+      setUnreadCount(unread)
+    } catch (error) {
+      console.error("Error loading notifications:", error)
+    }
+  }
+
+  const handleNotificationClick = async (notification: any) => {
+    if (!notification.read) {
+      await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("id", notification.id)
+      loadNotifications()
+    }
+    
+    setNotificationsOpen(false)
+    
+    // Navigate based on notification type
+    if (notification.related_id) {
+      if (notification.type?.includes("post") || notification.type === "post_comment" || notification.type === "post_like") {
+        router.push(`/posts/${notification.related_id}`)
+      } else if (notification.type?.includes("property")) {
+        router.push(`/properties/${notification.related_id}`)
+      } else if (notification.type?.includes("profile") || notification.type === "follow") {
+        router.push(`/profile/${notification.related_id}`)
+      } else if (notification.type === "message") {
+        router.push("/messages")
+      }
+    } else if (notification.type === "message") {
+      router.push("/messages")
+    }
+  }
 
   const loadProfile = async () => {
     if (!session?.user?.id || profileError) return
@@ -158,11 +238,11 @@ export default function Navbar() {
                 <Link href="/home" className="text-sm font-medium hover:text-primary">
                   Home
                 </Link>
-                {profile?.role === "traveler" ? (
-                  <Link href="/dashboard/traveler" className="text-sm font-medium hover:text-primary">
-                    Dashboard
-                  </Link>
-                ) : (
+                <Link href="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
+                {profile?.role !== "traveler" && (
                   <Link href="/kol-bed" className="text-sm font-medium hover:text-primary">
                     KOL&BED
                   </Link>
@@ -181,6 +261,72 @@ export default function Navbar() {
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
+
+            {session && (
+              <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                    <span className="sr-only">Notifiche</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
+                  <DropdownMenuLabel>Notifiche</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      Nessuna notifica
+                    </div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <DropdownMenuItem
+                        key={notification.id}
+                        className="cursor-pointer"
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start gap-3 w-full">
+                          <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                            !notification.read ? "bg-primary" : "bg-transparent"
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                              {notification.title}
+                            </p>
+                            {notification.message && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {notification.message}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(notification.created_at).toLocaleDateString("it-IT", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {session && isProfilePage && (
+              <Button variant="ghost" size="icon" asChild>
+                <Link href="/messages">
+                  <Mail className="h-5 w-5" />
+                  <span className="sr-only">Messaggi</span>
+                </Link>
+              </Button>
+            )}
 
             {session ? (
               <DropdownMenu>
@@ -223,9 +369,6 @@ export default function Navbar() {
                     </>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Dashboard</Link>
-                  </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link href="/profile">Profilo</Link>
                   </DropdownMenuItem>
@@ -311,6 +454,70 @@ export default function Navbar() {
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
+              {session && (
+                <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                      <span className="sr-only">Notifiche</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 max-h-[400px] overflow-y-auto">
+                    <DropdownMenuLabel>Notifiche</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        Nessuna notifica
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <DropdownMenuItem
+                          key={notification.id}
+                          className="cursor-pointer"
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex items-start gap-3 w-full">
+                            <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                              !notification.read ? "bg-primary" : "bg-transparent"
+                            }`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-semibold ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                                {notification.title}
+                              </p>
+                              {notification.message && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {notification.message}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(notification.created_at).toLocaleDateString("it-IT", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {session && isProfilePage && (
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href="/messages">
+                    <Mail className="h-5 w-5" />
+                    <span className="sr-only">Messaggi</span>
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -348,9 +555,10 @@ export default function Navbar() {
                 <div className="border-t pt-4 space-y-2">
                   <Link 
                     href="/dashboard" 
-                    className="block py-2 text-base"
+                    className="block py-2 text-base flex items-center gap-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >
+                    <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </Link>
                   <div className="space-y-1">

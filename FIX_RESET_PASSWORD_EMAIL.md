@@ -157,3 +157,4 @@ Se il dominio non è ancora verificato, puoi usare il dominio di test di Resend:
 - [ ] Nessun avviso phishing da Gmail
 
 
+

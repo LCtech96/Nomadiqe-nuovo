@@ -132,3 +132,4 @@ CREATE POLICY "Bookings are viewable by traveler and host" ON public.bookings
 
 
 
+
