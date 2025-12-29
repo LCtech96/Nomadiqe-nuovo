@@ -12,6 +12,7 @@ import Image from "next/image"
 import { MessageCircle, Send, User, ArrowLeft } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { it } from "date-fns/locale"
+import { BookingRequestActions } from "@/components/booking-request-actions"
 
 interface Message {
   id: string
