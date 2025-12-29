@@ -1023,7 +1023,7 @@ export default function ProfilePage() {
                           className="flex-1"
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Max 5MB, formato JPG/PNG</p>
+                      <p className="text-xs text-muted-foreground mt-1">Max 10MB, formato JPG/PNG (ritaglio disponibile)</p>
                     </div>
                     <Button onClick={handleSave} className="w-full">
                       Salva modifiche

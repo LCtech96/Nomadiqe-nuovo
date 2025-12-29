@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { put } from "@vercel/blob"
+import ImageCropper from "@/components/image-cropper"
 import { 
   Briefcase, 
   CheckCircle2, 
@@ -42,6 +43,8 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
   const [loading, setLoading] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false)
+  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null)
 
   // Profile data
   const [profileData, setProfileData] = useState({
@@ -119,20 +122,31 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      // Allow larger files (up to 10MB) since we'll crop and compress
+      if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File troppo grande",
-          description: "L'immagine deve essere inferiore a 5MB",
+          description: "L'immagine deve essere inferiore a 10MB",
           variant: "destructive",
         })
         return
       }
-      setProfileData({
-        ...profileData,
-        avatarFile: file,
-        avatarPreview: URL.createObjectURL(file),
-      })
+      // Open cropper instead of setting directly
+      setAvatarFileToCrop(file)
+      setShowAvatarCropper(true)
     }
+    // Reset input
+    e.target.value = ""
+  }
+
+  const handleAvatarCropComplete = (croppedFile: File) => {
+    setProfileData({
+      ...profileData,
+      avatarFile: croppedFile,
+      avatarPreview: URL.createObjectURL(croppedFile),
+    })
+    setShowAvatarCropper(false)
+    setAvatarFileToCrop(null)
   }
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -458,6 +472,7 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
 
   // Profile step
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 py-12 px-4">
       <div className="container mx-auto max-w-2xl">
         <Card>
@@ -515,7 +530,7 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
                       </Button>
                     </Label>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Formato: JPG, PNG. Max 5MB
+                      Formato: JPG, PNG. Max 10MB (ritaglio disponibile)
                     </p>
                   </div>
                 </div>
@@ -595,5 +610,15 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
         </Card>
       </div>
     </div>
+        <ImageCropper
+          open={showAvatarCropper}
+          onOpenChange={setShowAvatarCropper}
+          imageFile={avatarFileToCrop}
+          onCropComplete={handleAvatarCropComplete}
+          aspectRatio={1}
+          maxWidth={800}
+          maxHeight={800}
+        />
+      </>
   )
 }

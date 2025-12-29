@@ -19,6 +19,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import { X, Upload } from "lucide-react"
+import ImageCropper from "@/components/image-cropper"
 
 export default function NewPropertyPage() {
   const { data: session } = useSession()
@@ -44,6 +45,9 @@ export default function NewPropertyPage() {
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [uploadingImages, setUploadingImages] = useState(false)
+  const [showImageCropper, setShowImageCropper] = useState(false)
+  const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
 
   // Lista servizi predefiniti
   const availableAmenities = [
@@ -233,22 +237,44 @@ export default function NewPropertyPage() {
       return
     }
 
-    const newFiles = files.filter((file) => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "Attenzione",
-          description: `${file.name} è troppo grande (max 5MB). L'immagine verrà ignorata.`,
-          variant: "destructive",
-        })
-        return false
-      }
-      return true
-    })
+    // Filter by size (allow up to 10MB before cropping)
+    const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024)
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: "Errore",
+        description: "Le immagini devono essere inferiori a 10MB",
+        variant: "destructive",
+      })
+      return
+    }
 
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+    // Store pending files and process first one
+    setPendingImageFiles(validFiles)
+    setImageFileToCrop(validFiles[0])
+    setShowImageCropper(true)
+    
+    // Reset input
+    e.target.value = ""
+  }
 
-    setImages([...images, ...newFiles])
-    setImagePreviews([...imagePreviews, ...newPreviews])
+  const handleImageCropComplete = (croppedFile: File) => {
+    const newPreview = URL.createObjectURL(croppedFile)
+    
+    setImages([...images, croppedFile])
+    setImagePreviews([...imagePreviews, newPreview])
+
+    // Process next file if available
+    if (pendingImageFiles.length > 1) {
+      const remainingFiles = pendingImageFiles.slice(1)
+      setPendingImageFiles(remainingFiles)
+      setImageFileToCrop(remainingFiles[0])
+      // Keep cropper open for next image
+    } else {
+      setShowImageCropper(false)
+      setImageFileToCrop(null)
+      setPendingImageFiles([])
+    }
   }
 
   const removeImage = (index: number) => {
@@ -542,6 +568,22 @@ export default function NewPropertyPage() {
         </Card>
       </div>
     </div>
+        <ImageCropper
+          open={showImageCropper}
+          onOpenChange={(open) => {
+            setShowImageCropper(open)
+            if (!open) {
+              setImageFileToCrop(null)
+              setPendingImageFiles([])
+            }
+          }}
+          imageFile={imageFileToCrop}
+          onCropComplete={handleImageCropComplete}
+          aspectRatio={4 / 3}
+          maxWidth={1200}
+          maxHeight={900}
+        />
+      </>
   )
 }
 
