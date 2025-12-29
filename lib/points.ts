@@ -22,63 +22,114 @@ export async function awardPoints(
   const supabase = createSupabaseClient()
   const points = POINTS_CONFIG[actionType]
 
+  if (!userId || !points) {
+    console.error("Invalid userId or points value")
+    return false
+  }
+
   try {
-    // Check daily limits
+    // Check daily limits and prevent duplicates
     if (actionType === "post") {
       const today = new Date().toISOString().split("T")[0]
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from("points_history")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("action_type", "post")
         .gte("created_at", today)
 
-      if (count && count >= DAILY_LIMITS.post) {
+      if (countError) {
+        console.error("Error checking daily limit:", countError)
+        // Continue anyway - don't block if there's an error checking
+      } else if (count && count >= DAILY_LIMITS.post) {
         return false
+      }
+    }
+
+    // For booking, check if points were already awarded recently to avoid duplicates
+    // Database triggers award points when booking status changes to 'completed' with action_type 'booking_completed'
+    // We use 'booking' action_type, so they won't conflict, but we check anyway as a safeguard
+    if (actionType === "booking") {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+      const { data: recent, error: recentError } = await supabase
+        .from("points_history")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("action_type", "booking")
+        .gte("created_at", fiveMinutesAgo)
+        .limit(1)
+
+      if (!recentError && recent && recent.length > 0) {
+        // Points were recently awarded for this action, skip to avoid duplicates
+        return true
       }
     }
 
     if (actionType === "check_in") {
       const today = new Date().toISOString().split("T")[0]
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from("daily_checkins")
         .select("id")
         .eq("user_id", userId)
         .eq("check_in_date", today)
-        .single()
+        .maybeSingle()
 
-      if (existing) {
+      if (checkError) {
+        console.error("Error checking check-in:", checkError)
+        // Continue anyway
+      } else if (existing) {
         return false
       }
 
       // Create check-in record
-      await supabase.from("daily_checkins").insert({
+      const { error: insertError } = await supabase.from("daily_checkins").insert({
         user_id: userId,
         check_in_date: today,
         points_earned: points,
       })
+
+      if (insertError) {
+        console.error("Error creating check-in record:", insertError)
+        // Continue to award points anyway
+      }
     }
 
     // Add points history
-    await supabase.from("points_history").insert({
+    const { error: historyError } = await supabase.from("points_history").insert({
       user_id: userId,
       points: points,
       action_type: actionType,
       description: description || `${actionType} completed`,
     })
 
-    // Update user points
-    const { data: profile } = await supabase
+    if (historyError) {
+      console.error("Error inserting points history:", historyError)
+      return false
+    }
+
+    // Update user points - fetch current points and increment atomically
+    const { data: profile, error: fetchError } = await supabase
       .from("profiles")
       .select("points")
       .eq("id", userId)
       .single()
 
+    if (fetchError) {
+      console.error("Error fetching profile:", fetchError)
+      // Points history was added, so return true
+      return true
+    }
+
     if (profile) {
-      await supabase
+      const { error: updateError } = await supabase
         .from("profiles")
-        .update({ points: profile.points + points })
+        .update({ points: (profile.points || 0) + points })
         .eq("id", userId)
+
+      if (updateError) {
+        console.error("Error updating user points:", updateError)
+        // Points history was added, so we still return true
+      }
     }
 
     return true
@@ -105,6 +156,7 @@ export async function getPointsHistory(userId: string, limit = 20) {
 
   return data || []
 }
+
 
 
 

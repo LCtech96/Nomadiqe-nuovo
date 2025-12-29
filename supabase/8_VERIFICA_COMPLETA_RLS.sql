@@ -42,3 +42,4 @@ FROM auth.users
 WHERE email = 'lucacorrao1996@gmail.com';
 
 
+

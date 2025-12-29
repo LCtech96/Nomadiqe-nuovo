@@ -56,3 +56,4 @@ CREATE POLICY "Users can delete own properties" ON public.properties
 
 
 
+

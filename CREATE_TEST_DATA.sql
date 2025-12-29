@@ -206,3 +206,4 @@ GROUP BY p.id, p.username, p.full_name
 ORDER BY properties_count DESC NULLS LAST
 LIMIT 10;
 
+

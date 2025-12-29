@@ -15,3 +15,4 @@ export const firebaseConfig = {
 export const VAPID_KEY = "BAaM3MclIt1m52aVo-hbAGbD9sSz-Lfy0afA4B_p2A4XJVrOsRHeK_ok0wqmaOJxQsLKdxyLlWNdHqu_nlBtVqY"
 
 
+

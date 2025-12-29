@@ -192,3 +192,4 @@ Tutte le funzioni RPC ora hanno `SECURITY DEFINER` per funzionare correttamente:
 2. Controlla che la colonna `repost_count` esista in `posts`
 3. Verifica che le funzioni RPC per repost siano state create
 
+

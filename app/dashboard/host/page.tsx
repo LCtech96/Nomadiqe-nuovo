@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Plus, Home, Users, Settings, Save } from "lucide-react"
+import { Plus, Home, Users, Settings, Save, MessageSquare } from "lucide-react"
 
 interface Property {
   id: string
@@ -217,6 +217,24 @@ export default function HostDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Community Link */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Community Host</CardTitle>
+            <CardDescription>
+              Connettiti con altri host nella tua zona
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href="/communities">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Vai alle Community
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* KOL&BED Preferences Section */}
         <Card className="mb-8">

@@ -57,3 +57,4 @@ WHERE schemaname = 'public' AND tablename IN ('post_likes', 'post_comments')
 ORDER BY tablename;
 
 
+

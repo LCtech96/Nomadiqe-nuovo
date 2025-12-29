@@ -99,3 +99,4 @@ Se vuoi usare la SERVICE_ROLE_KEY per maggiore sicurezza, possiamo aggiornare `l
 **Dopo aver aggiunto la variabile, torna qui e dimmi quando hai finito!** 🚀
 
 
+

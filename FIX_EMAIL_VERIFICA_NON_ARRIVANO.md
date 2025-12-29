@@ -182,3 +182,4 @@ Se nessuna soluzione funziona:
 - [ ] Verificato console browser per errori
 - [ ] Controllato Auth Logs su Supabase
 
+

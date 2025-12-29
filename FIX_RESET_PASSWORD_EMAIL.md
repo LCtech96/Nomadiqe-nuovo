@@ -156,3 +156,4 @@ Se il dominio non è ancora verificato, puoi usare il dominio di test di Resend:
 - [ ] Email ricevuta con codice OTP (non link)
 - [ ] Nessun avviso phishing da Gmail
 
+

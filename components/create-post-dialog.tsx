@@ -187,30 +187,14 @@ export default function CreatePostDialog({
 
       if (error) throw error
 
-      // Award points for creating post (se la tabella esiste)
+      // Award points for creating post
+      // Note: Database triggers may also award points, but we update the 'points' column here
+      // for frontend display consistency
       try {
-        await supabase.from("points_history").insert({
-          user_id: session.user.id,
-          points: 15,
-          action_type: "post",
-          description: "Post creato",
-        })
-
-        // Update user points
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("points")
-          .eq("id", session.user.id)
-          .maybeSingle()
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ points: (profile.points || 0) + 15 })
-            .eq("id", session.user.id)
-        }
+        const { awardPoints } = await import("@/lib/points")
+        await awardPoints(session.user.id, "post", "Post creato")
       } catch (pointsError) {
-        // Ignora errori se la tabella points_history non esiste
+        // Ignora errori se il sistema punti non è disponibile
         console.warn("Could not award points:", pointsError)
       }
 

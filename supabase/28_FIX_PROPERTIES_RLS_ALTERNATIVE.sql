@@ -63,3 +63,4 @@ WHERE tablename = 'properties'
 -- per usare correttamente il token di NextAuth.
 -- ============================================
 
+

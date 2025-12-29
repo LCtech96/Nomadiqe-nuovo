@@ -373,35 +373,52 @@ export default function InteractiveGuide({ onComplete }: InteractiveGuideProps) 
     setSteps(updatedSteps)
 
     // Assegna punti se non già assegnati
+    if (!session?.user?.id) return
+    
     try {
       const { data: existing } = await supabase
         .from("points_history")
         .select("id")
-        .eq("user_id", session?.user?.id)
+        .eq("user_id", session.user.id)
         .eq("action_type", "guide_step")
         .eq("description", step.id)
         .maybeSingle()
 
       if (!existing) {
-        await supabase.from("points_history").insert({
-          user_id: session?.user?.id,
+        // Add points history
+        const { error: historyError } = await supabase.from("points_history").insert({
+          user_id: session.user.id,
           points: step.points,
           action_type: "guide_step",
           description: step.id,
         })
 
-        // Aggiorna i punti del profilo
-        const { data: profile } = await supabase
+        if (historyError) {
+          console.error("Error inserting points history:", historyError)
+          return
+        }
+
+        // Update user points
+        const { data: profile, error: fetchError } = await supabase
           .from("profiles")
           .select("points")
-          .eq("id", session?.user?.id)
+          .eq("id", session.user.id)
           .single()
 
+        if (fetchError) {
+          console.error("Error fetching profile:", fetchError)
+          return
+        }
+
         if (profile) {
-          await supabase
+          const { error: updateError } = await supabase
             .from("profiles")
             .update({ points: (profile.points || 0) + step.points })
-            .eq("id", session?.user?.id)
+            .eq("id", session.user.id)
+
+          if (updateError) {
+            console.error("Error updating profile points:", updateError)
+          }
         }
 
         toast({
