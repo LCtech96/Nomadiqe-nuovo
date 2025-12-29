@@ -22,6 +22,14 @@ export interface ActionMessageParams {
   nextSteps?: string[]
 }
 
+export interface InactivityMessageParams {
+  userId: string
+  role: UserRole
+  username?: string
+  fullName?: string
+  hoursInactive?: number
+}
+
 const ROLE_GUIDES: Record<UserRole, string> = {
   traveler: `Sei un Traveler su Nomadiqe. Ecco cosa puoi fare:
 - Cerca e prenota strutture uniche
@@ -126,6 +134,8 @@ export async function generateActionMessage(params: ActionMessageParams): Promis
     onboarding: "🎯",
     profile_complete: "✨",
     collaboration: "🤝",
+    like: "❤️",
+    comment: "💬",
   }
   
   const emoji = actionEmojis[action] || "🎉"
@@ -178,6 +188,133 @@ Messaggio:`
     console.error("Errore nella generazione del messaggio di azione:", error)
     // Fallback message
     return `${emoji} Ottimo lavoro! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
+  }
+}
+
+const roleSpecificSuggestions: Record<UserRole, Record<string, string[]>> = {
+  traveler: {
+    like: [
+      "Scrivi un commento per condividere la tua opinione",
+      "Esplora altri post e scopri nuove destinazioni",
+      "Segui i creator e host che ti interessano",
+    ],
+    comment: [
+      "Metti like ad altri post interessanti",
+      "Pubblica il tuo primo post per condividere le tue esperienze",
+      "Cerca strutture nella tua prossima destinazione",
+    ],
+    inactivity: [
+      "Esplora nuovi post e destinazioni",
+      "Cerca la tua prossima avventura",
+      "Scrivi una recensione per le strutture che hai visitato",
+    ],
+  },
+  host: {
+    like: [
+      "Carica altre strutture per aumentare la visibilità",
+      "Cerca collaborazioni con creator digitali (KOL&BED)",
+      "Gestisci le tue prenotazioni",
+    ],
+    comment: [
+      "Pubblica nuove strutture",
+      "Connettiti con altri host nella tua zona",
+      "Rispondi alle recensioni dei tuoi ospiti",
+    ],
+    inactivity: [
+      "Carica nuove strutture per attrarre più viaggiatori",
+      "Cerca collaborazioni con creator per promuovere le tue proprietà",
+      "Gestisci il calendario delle prenotazioni",
+    ],
+  },
+  creator: {
+    like: [
+      "Commenta per mostrare il tuo interesse",
+      "Cerca nuove collaborazioni con host (KOL&BED)",
+      "Pubblica contenuti sui tuoi viaggi",
+    ],
+    comment: [
+      "Metti like ad altri post interessanti",
+      "Cerca nuove opportunità di collaborazione",
+      "Aggiorna le tue analitiche nel profilo",
+    ],
+    inactivity: [
+      "Pubblica nuovi contenuti sui tuoi viaggi",
+      "Cerca collaborazioni con host per FREE STAY",
+      "Aggiorna le tue analitiche e visibilità",
+    ],
+  },
+  manager: {
+    like: [
+      "Carica nuovi prodotti e servizi nel tuo catalogo",
+      "Invia listini prezzi agli host interessati",
+      "Crea proposte di partnership",
+    ],
+    comment: [
+      "Aggiungi nuovi servizi al catalogo",
+      "Connettiti con host per offrire i tuoi servizi",
+      "Aggiorna i listini prezzi",
+    ],
+    inactivity: [
+      "Carica nuovi prodotti e servizi",
+      "Invia listini prezzi agli host interessati",
+      "Crea nuove proposte di partnership",
+    ],
+  },
+}
+
+export async function generateInactivityMessage(params: InactivityMessageParams): Promise<string> {
+  const { role, username, fullName, hoursInactive = 1 } = params
+  
+  const userName = fullName || username || "utente"
+  const suggestions = roleSpecificSuggestions[role]?.inactivity || [
+    "Esplora la piattaforma",
+    "Interagisci con altri utenti",
+    "Scopri nuove funzionalità",
+  ]
+  
+  const prompt = `Sei l'assistente AI di Nomadiqe.
+
+L'utente ${userName} non ha interagito con l'app per circa ${hoursInactive} ${hoursInactive === 1 ? "ora" : "ore"}.
+
+Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"}
+
+Scrivi un messaggio BREVE e amichevole (massimo 120 parole) che:
+1. Ricorda all'utente che sei qui per aiutarlo
+2. Lo incoraggia a tornare attivo
+3. Suggerisce 2-3 azioni specifiche per il suo ruolo: ${suggestions.join(", ")}
+4. Gli ricorda come guadagnare punti
+
+Sii positivo, non invadente. Usa max 2 emoji. Scrivi in italiano.
+
+Messaggio:`
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "Sei un assistente AI amichevole per Nomadiqe. Scrivi messaggi brevi, incoraggianti e non invadenti in italiano.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.7,
+      max_tokens: 250,
+    })
+
+    const message = completion.choices[0]?.message?.content?.trim()
+    if (!message) {
+      throw new Error("Nessuna risposta dal modello AI")
+    }
+
+    return `👋 ${message}`
+  } catch (error) {
+    console.error("Errore nella generazione del messaggio di inattività:", error)
+    // Fallback message
+    return `👋 Ciao ${userName}! Non ti vedo da un po'. ${suggestions[0] || "Esplora la piattaforma"} per tornare attivo!`
   }
 }
 

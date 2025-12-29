@@ -161,6 +161,14 @@ export default function PostPage() {
           ...prev,
           like_count: (prev.like_count || 0) + 1,
         }))
+        
+        // Invia messaggio AI per il like (non bloccare se fallisce)
+        try {
+          const { sendLikeMessage } = await import("@/lib/ai-interactions")
+          await sendLikeMessage(session.user.id)
+        } catch (aiError) {
+          console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
+        }
       }
     } catch (error: any) {
       console.error("Error liking post:", error)
@@ -194,6 +202,14 @@ export default function PostPage() {
         ...prev,
         comment_count: (prev.comment_count || 0) + 1,
       }))
+      
+      // Invia messaggio AI per il commento (non bloccare se fallisce)
+      try {
+        const { sendCommentMessage } = await import("@/lib/ai-interactions")
+        await sendCommentMessage(session.user.id)
+      } catch (aiError) {
+        console.warn("Errore nell'invio del messaggio AI per commento (non critico):", aiError)
+      }
     } catch (error: any) {
       toast({
         title: "Errore",
