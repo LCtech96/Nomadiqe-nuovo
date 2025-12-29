@@ -217,16 +217,21 @@ export default function ProfilePage() {
         setReferralCode(profileData.referral_code)
         setReferralLink(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`)
       } else {
-        // Prova a caricare dalla tabella referral_codes
-        const { data: refCodeData } = await supabase
-          .from("referral_codes")
-          .select("code")
-          .eq("user_id", session.user.id)
-          .maybeSingle()
-        
-        if (refCodeData?.code) {
-          setReferralCode(refCodeData.code)
-          setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
+        // Prova a caricare dalla tabella referral_codes (se esiste)
+        try {
+          const { data: refCodeData } = await supabase
+            .from("referral_codes")
+            .select("code")
+            .eq("user_id", session.user.id)
+            .maybeSingle()
+          
+          if (refCodeData?.code) {
+            setReferralCode(refCodeData.code)
+            setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
+          }
+        } catch (error) {
+          // Tabella referral_codes non esiste o errore, ignora silenziosamente
+          console.debug("Tabella referral_codes non disponibile:", error)
         }
       }
 
