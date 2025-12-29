@@ -96,6 +96,11 @@ export default function HomePage() {
                 tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
                 straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
               </p>
+              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
+                Nomadiqe è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
+                e connettersi con una community attiva di host e viaggiatori.
+              </p>
               
               <div className="grid md:grid-cols-3 gap-6 mt-10">
                 <div className="text-center">

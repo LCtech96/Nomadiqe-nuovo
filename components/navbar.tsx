@@ -373,14 +373,15 @@ export default function Navbar() {
                     <Link href="/profile">Profilo</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
+                  {/* Temporaneamente nascosto - Elimina profilo */}
+                  {/* <DropdownMenuItem
                     onClick={() => setShowDeleteDialog(true)}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Elimina profilo
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator /> */}
                   <DropdownMenuItem onClick={() => signOut()}>
                     Esci
                   </DropdownMenuItem>
@@ -571,7 +572,8 @@ export default function Navbar() {
                     </button>
                     {settingsOpen && (
                       <div className="pl-4 border-l border-border">
-                        <button
+                        {/* Temporaneamente nascosto - Elimina profilo */}
+                        {/* <button
                           onClick={() => {
                             setMobileMenuOpen(false)
                             setShowDeleteDialog(true)
@@ -579,7 +581,7 @@ export default function Navbar() {
                           className="block w-full text-left py-2 text-sm text-destructive"
                         >
                           Elimina profilo
-                        </button>
+                        </button> */}
                       </div>
                     )}
                   </div>
