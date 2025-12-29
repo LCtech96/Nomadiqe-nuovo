@@ -192,13 +192,13 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto p-4 max-w-2xl">
+      <div className="px-1 md:px-4">
         {session && (
-          <Card className="mb-6">
-            <CardHeader>
+          <Card className="mb-4 overflow-hidden border-0 shadow-sm bg-card/50 backdrop-blur-sm rounded-2xl">
+            <CardHeader className="px-5 pt-5 pb-3">
               <h2 className="text-xl font-semibold">Crea un post</h2>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-5 pb-5">
               <form onSubmit={handleCreatePost} className="space-y-4">
                 <Input
                   placeholder="Cosa vuoi condividere?"
@@ -219,24 +219,26 @@ export default function FeedPage() {
           </Card>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {posts.map((post) => (
-            <Card key={post.id}>
-              <CardHeader>
+            <Card key={post.id} className="overflow-hidden border-0 shadow-sm bg-card/50 backdrop-blur-sm rounded-2xl">
+              <CardHeader className="px-5 pt-5 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-1 ring-border/50">
                     {post.author.avatar_url ? (
                       <Image
                         src={post.author.avatar_url}
                         alt={post.author.username}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
+                        fill
+                        sizes="44px"
+                        className="object-cover"
                       />
                     ) : (
-                      <span className="text-primary font-semibold">
-                        {post.author.username?.[0]?.toUpperCase() || "U"}
-                      </span>
+                      <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-primary font-semibold text-sm">
+                          {post.author.username?.[0]?.toUpperCase() || "U"}
+                        </span>
+                      </div>
                     )}
                   </div>
                   <div>
@@ -249,26 +251,47 @@ export default function FeedPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <p className="mb-4">{post.content}</p>
+              <CardContent className="px-5 pb-5">
+                {post.content && (
+                  <div className="pb-3">
+                    <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+                  </div>
+                )}
                 {post.location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                    <MapPin className="w-4 h-4" />
-                    <span>{post.location}</span>
+                  <div className="pb-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span>{post.location}</span>
+                    </div>
                   </div>
                 )}
                 {post.images && post.images.length > 0 && (
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    {post.images.map((img, idx) => (
-                      <Image
-                        key={idx}
-                        src={img}
-                        alt={`Post image ${idx + 1}`}
-                        width={400}
-                        height={300}
-                        className="w-full h-48 object-cover rounded-lg"
-                      />
-                    ))}
+                  <div className="mb-3">
+                    {post.images.length === 1 ? (
+                      <div className="relative w-full aspect-[4/3] overflow-hidden rounded-lg bg-muted">
+                        <Image
+                          src={post.images[0]}
+                          alt="Post image"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 600px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {post.images.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+                            <Image
+                              src={img}
+                              alt={`Post image ${idx + 1}`}
+                              fill
+                              sizes="(max-width: 768px) 50vw, 300px"
+                              className="object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {post.property_id && (
@@ -279,27 +302,26 @@ export default function FeedPage() {
                     Vedi proprietà →
                   </Link>
                 )}
-                <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                <div className="flex items-center gap-8 border-t border-border/50 pt-3.5">
+                  <button
                     onClick={() => handleLike(post.id, post.liked)}
+                    className={`flex items-center gap-2 transition-all active:scale-95 ${
+                      post.liked 
+                        ? "text-red-500" 
+                        : "text-muted-foreground hover:text-red-500"
+                    }`}
                   >
-                    <Heart
-                      className={`w-5 h-5 mr-2 ${
-                        post.liked ? "fill-red-500 text-red-500" : ""
-                      }`}
-                    />
-                    {post.like_count}
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    {post.comment_count}
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Share2 className="w-5 h-5 mr-2" />
-                    Condividi
-                  </Button>
+                    <Heart className={`w-5 h-5 ${post.liked ? "fill-current" : ""} transition-all`} />
+                    <span className="text-sm font-semibold">{post.like_count || 0}</span>
+                  </button>
+                  <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95">
+                    <MessageCircle className="w-5 h-5" />
+                    <span className="text-sm font-semibold">{post.comment_count || 0}</span>
+                  </button>
+                  <button className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95">
+                    <Share2 className="w-5 h-5" />
+                    <span className="text-sm font-semibold">Condividi</span>
+                  </button>
                 </div>
               </CardContent>
             </Card>
