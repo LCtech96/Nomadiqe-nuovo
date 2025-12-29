@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { geocodeAddress } from "@/lib/geocoding"
 import { put } from "@vercel/blob"
+import ImageCropper from "@/components/image-cropper"
 
 type HostOnboardingStep = "profile" | "property" | "collaborations"
 
@@ -81,6 +82,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   })
   const [currentNiche, setCurrentNiche] = useState("")
   const [loadingSavedState, setLoadingSavedState] = useState(true)
+  
+  // Image cropper states
+  const [showAvatarCropper, setShowAvatarCropper] = useState(false)
+  const [avatarFileToCrop, setAvatarFileToCrop] = useState<File | null>(null)
+  const [showImageCropper, setShowImageCropper] = useState(false)
+  const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
 
   // Load saved profile data on mount (without onboarding_status for now due to PostgREST cache issue)
   useEffect(() => {
@@ -168,20 +176,31 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
+      // Allow larger files (up to 10MB) since we'll crop and compress
+      if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "Errore",
-          description: "L'immagine deve essere inferiore a 5MB",
+          description: "L'immagine deve essere inferiore a 10MB",
           variant: "destructive",
         })
         return
       }
-      setProfileData({
-        ...profileData,
-        avatarFile: file,
-        avatarPreview: URL.createObjectURL(file),
-      })
+      // Open cropper instead of setting directly
+      setAvatarFileToCrop(file)
+      setShowAvatarCropper(true)
     }
+    // Reset input
+    e.target.value = ""
+  }
+
+  const handleAvatarCropComplete = (croppedFile: File) => {
+    setProfileData({
+      ...profileData,
+      avatarFile: croppedFile,
+      avatarPreview: URL.createObjectURL(croppedFile),
+    })
+    setShowAvatarCropper(false)
+    setAvatarFileToCrop(null)
   }
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
@@ -304,14 +323,47 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       return
     }
 
-    const newFiles = files.filter((file) => file.size <= 5 * 1024 * 1024)
-    const newPreviews = newFiles.map((file) => URL.createObjectURL(file))
+    // Filter by size (allow up to 10MB before cropping)
+    const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024)
+    
+    if (validFiles.length === 0) {
+      toast({
+        title: "Errore",
+        description: "Le immagini devono essere inferiori a 10MB",
+        variant: "destructive",
+      })
+      return
+    }
 
+    // Store pending files and process first one
+    setPendingImageFiles(validFiles)
+    setImageFileToCrop(validFiles[0])
+    setShowImageCropper(true)
+    
+    // Reset input
+    e.target.value = ""
+  }
+
+  const handleImageCropComplete = (croppedFile: File) => {
+    const newPreview = URL.createObjectURL(croppedFile)
+    
     setPropertyData({
       ...propertyData,
-      images: [...propertyData.images, ...newFiles],
-      imagePreviews: [...propertyData.imagePreviews, ...newPreviews],
+      images: [...propertyData.images, croppedFile],
+      imagePreviews: [...propertyData.imagePreviews, newPreview],
     })
+
+    // Process next file if available
+    if (pendingImageFiles.length > 1) {
+      const remainingFiles = pendingImageFiles.slice(1)
+      setPendingImageFiles(remainingFiles)
+      setImageFileToCrop(remainingFiles[0])
+      // Keep cropper open for next image
+    } else {
+      setShowImageCropper(false)
+      setImageFileToCrop(null)
+      setPendingImageFiles([])
+    }
   }
 
   const removeImage = (index: number) => {
@@ -637,7 +689,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                     className="flex-1"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Max 5MB, formato JPG/PNG</p>
+                <p className="text-xs text-muted-foreground">Max 10MB, formato JPG/PNG (ritaglio disponibile)</p>
               </div>
 
               <div className="space-y-2">
@@ -684,12 +736,23 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           </CardContent>
         </Card>
       </div>
+        <ImageCropper
+          open={showAvatarCropper}
+          onOpenChange={setShowAvatarCropper}
+          imageFile={avatarFileToCrop}
+          onCropComplete={handleAvatarCropComplete}
+          aspectRatio={1}
+          maxWidth={800}
+          maxHeight={800}
+        />
+      </>
     )
   }
 
   // Step 2: Property
   if (step === "property") {
     return (
+      <>
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
@@ -887,7 +950,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   multiple
                   onChange={handleImageChange}
                 />
-                <p className="text-xs text-muted-foreground">Max 5MB per immagine</p>
+                <p className="text-xs text-muted-foreground">Max 10MB per immagine (ritaglio disponibile)</p>
                 {propertyData.imagePreviews.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     {propertyData.imagePreviews.map((preview, index) => (
@@ -927,6 +990,22 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           </CardContent>
         </Card>
       </div>
+        <ImageCropper
+          open={showImageCropper}
+          onOpenChange={(open) => {
+            setShowImageCropper(open)
+            if (!open) {
+              setImageFileToCrop(null)
+              setPendingImageFiles([])
+            }
+          }}
+          imageFile={imageFileToCrop}
+          onCropComplete={handleImageCropComplete}
+          aspectRatio={4 / 3}
+          maxWidth={1200}
+          maxHeight={900}
+        />
+      </>
     )
   }
 
