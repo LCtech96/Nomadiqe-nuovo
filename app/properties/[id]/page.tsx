@@ -140,12 +140,12 @@ export default function PropertyDetailPage() {
       if (error) throw error
 
       // Award booking points
-      await supabase.from("points_history").insert({
-        user_id: session.user.id,
-        points: 50,
-        action_type: "booking",
-        description: "Prenotazione completata",
-      })
+      try {
+        const { awardPoints } = await import("@/lib/points")
+        await awardPoints(session.user.id, "booking", "Prenotazione completata")
+      } catch (pointsError) {
+        console.warn("Could not award points:", pointsError)
+      }
 
       toast({
         title: "Successo",

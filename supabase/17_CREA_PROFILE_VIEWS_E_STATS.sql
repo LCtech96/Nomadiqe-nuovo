@@ -70,3 +70,4 @@ COMMENT ON TABLE profile_views IS 'Tracks profile views for analytics';
 COMMENT ON FUNCTION increment_post_comments IS 'Increments the comments count for a post';
 COMMENT ON FUNCTION decrement_post_comments IS 'Decrements the comments count for a post';
 
+

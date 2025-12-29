@@ -906,14 +906,48 @@ export default function ProfilePage() {
                   >
                     {isEditing ? "Annulla" : "Modifica profilo"}
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push("/dashboard/host")}
-                    className="text-sm"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
+                  {profile?.role === "creator" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push("/dashboard/creator/settings")}
+                      className="text-sm"
+                      title="Impostazioni"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  ) : profile?.role === "host" ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push("/dashboard/host")}
+                        className="text-sm"
+                        title="Impostazioni"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push("/communities")}
+                        className="text-sm"
+                        title="Community"
+                      >
+                        <Users className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push("/dashboard/host")}
+                      className="text-sm"
+                      title="Impostazioni"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
 

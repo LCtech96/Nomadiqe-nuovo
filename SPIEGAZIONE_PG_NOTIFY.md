@@ -59,3 +59,4 @@ Esegui la query di verifica per confermare che tutto sia stato convertito corret
 
 
 
+

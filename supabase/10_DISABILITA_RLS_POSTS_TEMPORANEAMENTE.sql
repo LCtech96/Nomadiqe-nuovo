@@ -18,3 +18,4 @@ WHERE schemaname = 'public' AND tablename = 'posts';
 -- Dovrebbe mostrare rls_enabled = false
 
 
+

@@ -107,25 +107,13 @@ export default function FeedPage() {
       if (error) throw error
 
       // Award points for creating post
-      await supabase.from("points_history").insert({
-        user_id: session.user.id,
-        points: 15,
-        action_type: "post",
-        description: "Post creato",
-      })
-
-      // Update user points
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("points")
-        .eq("id", session.user.id)
-        .single()
-
-      if (profile) {
-        await supabase
-          .from("profiles")
-          .update({ points: profile.points + 15 })
-          .eq("id", session.user.id)
+      // Note: Database triggers may also award points, but we update the 'points' column here
+      // for frontend display consistency
+      try {
+        const { awardPoints } = await import("@/lib/points")
+        await awardPoints(session.user.id, "post", "Post creato")
+      } catch (pointsError) {
+        console.warn("Could not award points:", pointsError)
       }
 
       toast({

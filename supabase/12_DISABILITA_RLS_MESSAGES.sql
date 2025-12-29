@@ -17,3 +17,4 @@ WHERE schemaname = 'public' AND tablename = 'messages';
 -- Dovrebbe mostrare rls_enabled = false
 
 
+

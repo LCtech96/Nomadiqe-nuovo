@@ -159,20 +159,20 @@ export const authOptions: NextAuthOptions = {
                 email: user.email!,
                 full_name: user.name,
                 username: user.email!.split("@")[0],
-                points: 100, // Sign up bonus
+                points: 0, // Will be set by awardPoints
               })
 
             if (profileError) {
               console.error("Profile creation error:", profileError)
               // Don't fail sign in if profile creation fails
             } else {
-              // Add points history
-              await supabase.from("points_history").insert({
-                user_id: authUser.id,
-                points: 100,
-                action_type: "sign_up",
-                description: "Registrazione completata",
-              })
+              // Award sign up points
+              try {
+                const { awardPoints } = await import("./points")
+                await awardPoints(authUser.id, "sign_up", "Registrazione completata")
+              } catch (pointsError) {
+                console.warn("Could not award sign up points:", pointsError)
+              }
             }
           }
         }

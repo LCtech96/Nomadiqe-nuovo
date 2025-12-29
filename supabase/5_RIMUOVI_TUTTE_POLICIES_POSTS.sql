@@ -37,3 +37,4 @@ WHERE schemaname = 'public' AND tablename = 'posts';
 -- Dovrebbe essere 0
 
 
+

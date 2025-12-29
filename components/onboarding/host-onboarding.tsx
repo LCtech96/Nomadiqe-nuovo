@@ -568,18 +568,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         // Don't throw - continue anyway
       }
 
-      // Award points
-      await supabase.from("points_history").insert({
-        user_id: session.user.id,
-        points: 50,
-        action_type: "onboarding",
-        description: "Onboarding Host completato",
-      })
-
-      await supabase
-        .from("profiles")
-        .update({ points: 225 }) // 100 sign up + 75 onboarding + 50 host setup
-        .eq("id", session.user.id)
+      // Award onboarding points (sign up and regular onboarding should already be awarded)
+      try {
+        const { awardPoints } = await import("@/lib/points")
+        // This is for host-specific onboarding completion
+        // We'll use the onboarding action type
+        await awardPoints(session.user.id, "onboarding", "Onboarding Host completato")
+      } catch (pointsError) {
+        console.warn("Could not award onboarding points:", pointsError)
+      }
 
       toast({
         title: "Successo",

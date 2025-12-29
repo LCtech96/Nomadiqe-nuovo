@@ -118,3 +118,4 @@ Lo stato viene salvato in `onboarding_status` (JSONB):
 
 
 
+

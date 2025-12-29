@@ -325,7 +325,7 @@ export default function PublicProfilePage() {
           .select("*")
           .eq("user_id", profileId)
 
-        // Load collaborations
+        // Load collaborations (solo quelle visibili)
         const { data: collabsData } = await supabase
           .from("collaborations")
           .select(`
@@ -335,6 +335,7 @@ export default function PublicProfilePage() {
             property:properties(id, title, images, location_data)
           `)
           .eq("creator_id", profileId)
+          .eq("is_visible", true)
           .in("status", ["approved", "completed"])
 
         const mappedCollaborations = (collabsData || [])
@@ -427,16 +428,19 @@ export default function PublicProfilePage() {
       }
 
       // Check if following
-      if (session?.user?.id && session.user.id !== userId) {
+      if (session?.user?.id && session.user.id !== profileId) {
         const { data: followData } = await supabase
           .from("follows")
           .select("id")
           .eq("follower_id", session.user.id)
-          .eq("following_id", userId)
+          .eq("following_id", profileId)
           .maybeSingle()
         
         setIsFollowing(!!followData)
       }
+      
+      // Load stats using profileId
+      await loadStats(profileId)
     } catch (error) {
       console.error("Error loading profile:", error)
     } finally {
