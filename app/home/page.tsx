@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Profile } from "@/types/user"
 import Image from "next/image"
-import { Users, Euro, Heart, MessageCircle, Share2, User, MoreVertical, Edit, Trash2 } from "lucide-react"
+import { Users, Euro, Heart, MessageCircle, Share2, User, MoreVertical, Edit, Trash2, MapPin } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import SharePostDialog from "@/components/share-post-dialog"
 import EditPostDialog from "@/components/edit-post-dialog"
@@ -476,9 +476,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-32">
-      <div className="container mx-auto p-4 max-w-2xl">
+      <div className="px-1 md:px-4">
         {/* Sticky Search Bar for Mobile */}
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-4 px-4 pt-2 pb-4 mb-4 md:static md:bg-transparent md:backdrop-blur-none md:mx-0 md:px-0 md:pt-0 md:pb-0">
+        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-1 md:-mx-4 px-5 md:px-4 pt-4 pb-4 mb-4 md:static md:bg-transparent md:backdrop-blur-none md:mx-0 md:px-0 md:pt-0 md:pb-0">
           <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Home</h1>
           
           {/* User Search Bar */}
@@ -491,80 +491,84 @@ export default function HomePage() {
             <p className="text-muted-foreground">Nessun post disponibile al momento</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {posts.map((post) => (
-              <Card key={post.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div 
-                      className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 cursor-pointer"
-                      onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
-                    >
-                      {post.author?.avatar_url ? (
-                        <Image
-                          src={post.author.avatar_url}
-                          alt={post.author.username || "User"}
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-primary font-semibold text-sm">
-                            {(post.author?.username || post.author?.full_name || "U")[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p 
-                        className="font-semibold text-sm cursor-pointer hover:underline"
+              <Card key={post.id} className="overflow-hidden border-0 shadow-sm bg-card/50 backdrop-blur-sm rounded-2xl">
+                <CardContent className="p-0">
+                  <div className="px-5 pt-5 pb-3">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-1 ring-border/50"
                         onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
                       >
-                        {post.author?.full_name || post.author?.username || "Utente"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(post.created_at).toLocaleDateString("it-IT")}
-                      </p>
+                        {post.author?.avatar_url ? (
+                          <Image
+                            src={post.author.avatar_url}
+                            alt={post.author.username || "User"}
+                            fill
+                            sizes="44px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-primary font-semibold text-sm">
+                              {(post.author?.username || post.author?.full_name || "U")[0].toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p 
+                          className="font-semibold text-sm cursor-pointer hover:underline"
+                          onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
+                        >
+                          {post.author?.full_name || post.author?.username || "Utente"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(post.created_at).toLocaleDateString("it-IT")}
+                        </p>
+                      </div>
+                      {/* Menu a tre puntini per il proprietario del post */}
+                      {session?.user?.id === post.author_id && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button 
+                              className="p-2 md:p-1 hover:bg-accent active:bg-accent rounded-full transition-colors touch-manipulation"
+                              aria-label="Menu opzioni post"
+                            >
+                              <MoreVertical className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 md:w-auto">
+                            <DropdownMenuItem 
+                              onClick={() => handleEditPost(post)}
+                              className="cursor-pointer touch-manipulation"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              <span className="text-sm md:text-base">Modifica</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeletePost(post.id)}
+                              className="text-destructive focus:text-destructive cursor-pointer touch-manipulation"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              <span className="text-sm md:text-base">Elimina</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
-                    {/* Menu a tre puntini per il proprietario del post */}
-                    {session?.user?.id === post.author_id && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button 
-                            className="p-2 md:p-1 hover:bg-accent active:bg-accent rounded-full transition-colors touch-manipulation"
-                            aria-label="Menu opzioni post"
-                          >
-                            <MoreVertical className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 md:w-auto">
-                          <DropdownMenuItem 
-                            onClick={() => handleEditPost(post)}
-                            className="cursor-pointer touch-manipulation"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            <span className="text-sm md:text-base">Modifica</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDeletePost(post.id)}
-                            className="text-destructive focus:text-destructive cursor-pointer touch-manipulation"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            <span className="text-sm md:text-base">Elimina</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
                   </div>
                   
                   {post.content && (
-                    <p className="mb-4">{post.content}</p>
+                    <div className="px-5 py-2">
+                      <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+                    </div>
                   )}
                   
                   {post.images && post.images.length > 0 && (
                     <Link href={`/posts/${post.id}`}>
-                      <div className="relative w-full h-64 rounded-lg overflow-hidden mb-4 cursor-pointer">
+                      <div className="relative w-full aspect-[4/3] overflow-hidden cursor-pointer bg-muted">
                         <Image
                           src={post.images[0]}
                           alt="Post image"
@@ -577,41 +581,43 @@ export default function HomePage() {
                     </Link>
                   )}
                   
-                  <div className="flex items-center gap-6 pt-4 border-t">
-                    {/* Like Button */}
-                    <button 
-                      onClick={() => handleLike(post.id, post.liked)}
-                      className={`flex items-center gap-1 transition-colors ${
-                        post.liked 
-                          ? "text-red-500" 
-                          : "text-muted-foreground hover:text-red-500"
-                      }`}
-                    >
-                      <Heart className={`w-5 h-5 ${post.liked ? "fill-current" : ""}`} />
-                      <span>{post.like_count || 0}</span>
-                    </button>
+                  <div className="px-5 pb-5 pt-2">
+                    <div className="flex items-center gap-8 border-t border-border/50 pt-3.5">
+                      {/* Like Button */}
+                      <button 
+                        onClick={() => handleLike(post.id, post.liked)}
+                        className={`flex items-center gap-2 transition-all active:scale-95 ${
+                          post.liked 
+                            ? "text-red-500" 
+                            : "text-muted-foreground hover:text-red-500"
+                        }`}
+                      >
+                        <Heart className={`w-5 h-5 ${post.liked ? "fill-current" : ""} transition-all`} />
+                        <span className="text-sm font-semibold">{post.like_count || 0}</span>
+                      </button>
 
-                    {/* Comment Button */}
-                    <button 
-                      onClick={() => toggleComments(post.id)}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <MessageCircle className="w-5 h-5" />
-                      <span>{post.comment_count || 0}</span>
-                    </button>
+                      {/* Comment Button */}
+                      <button 
+                        onClick={() => toggleComments(post.id)}
+                        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                        <span className="text-sm font-semibold">{post.comment_count || 0}</span>
+                      </button>
 
-                    {/* Share Button */}
-                    <button 
-                      onClick={() => handleShare(post)}
-                      className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </button>
+                      {/* Share Button */}
+                      <button 
+                        onClick={() => handleShare(post)}
+                        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95"
+                      >
+                        <Share2 className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Comments Section */}
                   {showComments === post.id && (
-                    <div className="mt-4 pt-4 border-t space-y-4">
+                    <div className="px-5 pb-5 pt-2 border-t border-border/50 space-y-4">
                       {/* Comment Input */}
                       <div className="flex gap-2">
                         <input
