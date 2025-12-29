@@ -67,13 +67,17 @@ export async function POST(request: Request) {
 
     // Crea notifica per l'utente
     try {
+      const notificationMessage = messageContent
+        ? messageContent.substring(0, 100) + (messageContent.length > 100 ? "..." : "")
+        : "Nuovo messaggio dall'assistente AI"
+      
       const { error: notifError } = await supabase
         .from("pending_notifications")
         .insert({
           user_id: params.userId,
           notification_type: "message",
           title: "🤖 Nuovo messaggio dall'assistente",
-          message: messageContent.substring(0, 100) + (messageContent.length > 100 ? "..." : ""),
+          message: notificationMessage,
           url: "/messages",
           data: {
             type: "ai_assistant_message",
