@@ -138,3 +138,4 @@ Se hai problemi, controlla i log di Vercel e Supabase per errori.
 
 
 
+

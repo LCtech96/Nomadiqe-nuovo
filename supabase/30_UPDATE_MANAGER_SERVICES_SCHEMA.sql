@@ -60,3 +60,4 @@ COMMENT ON COLUMN public.manager_services.service_metadata IS 'Metadata aggiunti
 -- FINE
 
 
+

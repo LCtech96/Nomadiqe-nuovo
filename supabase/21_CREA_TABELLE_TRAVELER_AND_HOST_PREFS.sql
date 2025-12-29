@@ -77,3 +77,4 @@ FROM pg_tables
 WHERE schemaname = 'public' AND tablename IN ('property_likes', 'saved_properties', 'host_kol_bed_preferences');
 
 
+

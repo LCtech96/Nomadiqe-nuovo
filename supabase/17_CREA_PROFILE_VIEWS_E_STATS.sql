@@ -71,3 +71,4 @@ COMMENT ON FUNCTION increment_post_comments IS 'Increments the comments count fo
 COMMENT ON FUNCTION decrement_post_comments IS 'Decrements the comments count for a post';
 
 
+

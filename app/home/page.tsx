@@ -493,7 +493,7 @@ export default function HomePage() {
         ) : (
           <div className="space-y-4">
             {posts.map((post) => (
-              <Card key={post.id} className="overflow-hidden border-0 shadow-sm bg-card/50 backdrop-blur-sm rounded-2xl">
+              <Card key={post.id} className="overflow-hidden bg-card/50 backdrop-blur-sm">
                 <CardContent className="p-0">
                   <div className="px-5 pt-5 pb-3">
                     <div className="flex items-center gap-3">

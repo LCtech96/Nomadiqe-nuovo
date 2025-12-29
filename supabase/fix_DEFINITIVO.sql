@@ -188,3 +188,4 @@ CREATE TRIGGER update_properties_updated_at
 
 
 
+

@@ -49,3 +49,4 @@ ALTER TABLE public.properties ENABLE ROW LEVEL SECURITY;
 
 
 
+

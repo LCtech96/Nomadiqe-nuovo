@@ -21,6 +21,16 @@ interface Message {
   read: boolean
   created_at: string
   is_ai_message?: boolean // Flag per identificare messaggi AI
+  booking_request_data?: {
+    property_id: string
+    property_name: string
+    check_in: string
+    check_out: string
+    guests: number
+    total_price: number
+    nights: number
+  } | null
+  booking_request_status?: "pending" | "accepted" | "rejected" | null
   sender?: {
     id: string
     username: string | null
@@ -623,6 +633,29 @@ export default function MessagesPage() {
                               </div>
                             )}
                             <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            {/* Mostra bottoni accetta/rifiuta per richieste di prenotazione in attesa ricevute dall'host */}
+                            {!isOwn && msg.booking_request_data && msg.booking_request_status === "pending" && (
+                              <BookingRequestActions
+                                messageId={msg.id}
+                                bookingData={msg.booking_request_data}
+                                onAccepted={() => {
+                                  loadMessages(selectedConversation!)
+                                }}
+                                onRejected={() => {
+                                  loadMessages(selectedConversation!)
+                                }}
+                              />
+                            )}
+                            {/* Mostra status per richieste di prenotazione */}
+                            {msg.booking_request_data && msg.booking_request_status && msg.booking_request_status !== "pending" && (
+                              <div className={`mt-2 text-xs px-2 py-1 rounded ${
+                                msg.booking_request_status === "accepted" 
+                                  ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300" 
+                                  : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300"
+                              }`}>
+                                {msg.booking_request_status === "accepted" ? "✅ Prenotazione accettata" : "❌ Prenotazione rifiutata"}
+                              </div>
+                            )}
                             <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                               {formatDistanceToNow(new Date(msg.created_at), {
                                 addSuffix: true,
