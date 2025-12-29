@@ -30,6 +30,7 @@ const SERVICE_TYPES = [
   "driver",
   "translation",
   "supplier",
+  "pharmacist",
 ] as const
 
 const SERVICE_TYPE_LABELS: Record<string, string> = {
@@ -44,6 +45,7 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   driver: "Autista",
   translation: "Traduzione",
   supplier: "Fornitore",
+  pharmacist: "Farmacista in zona",
 }
 
 // Competenze predefinite per gestione proprietà
@@ -98,6 +100,13 @@ export default function NewServicePage() {
     operating_cities: [] as string[],
     operating_countries: [] as string[],
     skills: [] as string[], // Competenze ordinate per gestione proprietà
+    // Campi per luogo e orari (farmacista e altri servizi con luogo fisico)
+    location_address: "",
+    location_city: "",
+    location_country: "",
+    location_latitude: "",
+    location_longitude: "",
+    operating_hours: {} as Record<string, { open: string; close: string; closed: boolean }>,
   })
 
   const [currentCity, setCurrentCity] = useState("")
@@ -154,12 +163,29 @@ export default function NewServicePage() {
         // Fornitore: non usa prezzi standard, usa catalogo prodotti
         insertData.price_per_hour = null
         insertData.price_per_service = null
+      } else if (formData.service_type === "pharmacist") {
+        // Farmacista: non usa prezzi standard, usa catalogo prodotti
+        insertData.price_per_hour = null
+        insertData.price_per_service = null
       } else {
         // Altri servizi: usa i campi standard
         insertData.price_per_hour = formData.price_per_hour ? parseFloat(formData.price_per_hour) : null
         insertData.price_per_service = formData.price_per_service
           ? parseFloat(formData.price_per_service)
           : null
+      }
+
+      // Aggiungi campi per luogo e orari se presenti
+      if (formData.location_address || formData.location_city || formData.location_country) {
+        insertData.location_address = formData.location_address || null
+        insertData.location_city = formData.location_city || null
+        insertData.location_country = formData.location_country || null
+        insertData.location_latitude = formData.location_latitude ? parseFloat(formData.location_latitude) : null
+        insertData.location_longitude = formData.location_longitude ? parseFloat(formData.location_longitude) : null
+      }
+
+      if (Object.keys(formData.operating_hours).length > 0) {
+        insertData.operating_hours = formData.operating_hours
       }
 
       const { data, error } = await supabase
@@ -175,8 +201,8 @@ export default function NewServicePage() {
         description: "Servizio creato con successo!",
       })
 
-      // Se è un servizio fornitore, reindirizza alla pagina catalogo
-      if (formData.service_type === "supplier") {
+      // Se è un servizio fornitore o farmacista, reindirizza alla pagina catalogo
+      if (formData.service_type === "supplier" || formData.service_type === "pharmacist") {
         router.push(`/dashboard/manager/services/${data.id}/catalog`)
       } else {
         router.push(`/dashboard/manager/services/${data.id}`)
@@ -418,7 +444,7 @@ export default function NewServicePage() {
                     </div>
                   </div>
                 </div>
-              ) : formData.service_type === "supplier" ? (
+              ) : formData.service_type === "supplier" || formData.service_type === "pharmacist" ? (
                 <div className="space-y-2">
                   <div className="p-4 bg-muted rounded-lg">
                     <p className="text-sm text-muted-foreground">
@@ -537,6 +563,125 @@ export default function NewServicePage() {
                   </div>
                 )}
               </div>
+
+              {/* Campi per luogo e orari - per farmacista e supplier */}
+              {(formData.service_type === "pharmacist" || formData.service_type === "supplier") && (
+                <>
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-lg font-semibold">Informazioni sul luogo</h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="location_address">Indirizzo completo *</Label>
+                      <Input
+                        id="location_address"
+                        value={formData.location_address}
+                        onChange={(e) => setFormData({ ...formData, location_address: e.target.value })}
+                        placeholder="Es. Via Roma 123"
+                        required={formData.service_type === "pharmacist"}
+                      />
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="location_city">Città *</Label>
+                        <Input
+                          id="location_city"
+                          value={formData.location_city}
+                          onChange={(e) => setFormData({ ...formData, location_city: e.target.value })}
+                          placeholder="Es. Roma"
+                          required={formData.service_type === "pharmacist"}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="location_country">Paese *</Label>
+                        <Input
+                          id="location_country"
+                          value={formData.location_country}
+                          onChange={(e) => setFormData({ ...formData, location_country: e.target.value })}
+                          placeholder="Es. Italia"
+                          required={formData.service_type === "pharmacist"}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Orari operativi */}
+                  {formData.service_type === "pharmacist" && (
+                    <div className="space-y-4 border-t pt-6">
+                      <h3 className="text-lg font-semibold">Orari operativi</h3>
+                      <div className="space-y-3">
+                        {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"].map((day) => {
+                          const dayLabels: Record<string, string> = {
+                            monday: "Lunedì",
+                            tuesday: "Martedì",
+                            wednesday: "Mercoledì",
+                            thursday: "Giovedì",
+                            friday: "Venerdì",
+                            saturday: "Sabato",
+                            sunday: "Domenica",
+                          }
+                          const dayData = formData.operating_hours[day] || { open: "09:00", close: "19:00", closed: false }
+                          return (
+                            <div key={day} className="flex items-center gap-4">
+                              <div className="w-24">
+                                <Label>{dayLabels[day]}</Label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!dayData.closed}
+                                  onChange={(e) => {
+                                    setFormData({
+                                      ...formData,
+                                      operating_hours: {
+                                        ...formData.operating_hours,
+                                        [day]: { ...dayData, closed: !e.target.checked },
+                                      },
+                                    })
+                                  }}
+                                  className="w-4 h-4"
+                                />
+                                <Label className="text-sm">Aperto</Label>
+                              </div>
+                              {!dayData.closed && (
+                                <>
+                                  <Input
+                                    type="time"
+                                    value={dayData.open}
+                                    onChange={(e) => {
+                                      setFormData({
+                                        ...formData,
+                                        operating_hours: {
+                                          ...formData.operating_hours,
+                                          [day]: { ...dayData, open: e.target.value },
+                                        },
+                                      })
+                                    }}
+                                    className="w-32"
+                                  />
+                                  <span className="text-muted-foreground">-</span>
+                                  <Input
+                                    type="time"
+                                    value={dayData.close}
+                                    onChange={(e) => {
+                                      setFormData({
+                                        ...formData,
+                                        operating_hours: {
+                                          ...formData.operating_hours,
+                                          [day]: { ...dayData, close: e.target.value },
+                                        },
+                                      })
+                                    }}
+                                    className="w-32"
+                                  />
+                                </>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Competenze - diverso per gestione proprietà */}
               {formData.service_type === "property_management" ? (

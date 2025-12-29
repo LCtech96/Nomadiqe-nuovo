@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import Image from "next/image"
 import { Plus, Trash2, Edit2 } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface Product {
   id: string
@@ -24,6 +25,7 @@ interface Product {
   delivery_time_days: number | null
   minimum_order: number
   is_active: boolean
+  publish_to_feed?: boolean
 }
 
 export default function SupplierCatalogPage() {
@@ -49,6 +51,7 @@ export default function SupplierCatalogPage() {
     minimum_order: "1",
     image_url: "",
     imageFile: null as File | null,
+    publish_to_feed: false,
   })
 
   useEffect(() => {
@@ -144,6 +147,7 @@ export default function SupplierCatalogPage() {
         minimum_order: parseInt(formData.minimum_order) || 1,
         image_url: imageUrl || null,
         is_active: true,
+        publish_to_feed: formData.publish_to_feed,
       }
 
       if (editingProduct) {
@@ -181,6 +185,7 @@ export default function SupplierCatalogPage() {
         minimum_order: "1",
         image_url: "",
         imageFile: null,
+        publish_to_feed: false,
       })
       setEditingProduct(null)
       setShowForm(false)
@@ -207,6 +212,7 @@ export default function SupplierCatalogPage() {
       minimum_order: product.minimum_order.toString(),
       image_url: product.image_url || "",
       imageFile: null,
+      publish_to_feed: product.publish_to_feed || false,
     })
     setShowForm(true)
   }
@@ -387,6 +393,19 @@ export default function SupplierCatalogPage() {
                   )}
                 </div>
 
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="publish_to_feed"
+                    checked={formData.publish_to_feed}
+                    onCheckedChange={(checked) => {
+                      setFormData({ ...formData, publish_to_feed: checked === true })
+                    }}
+                  />
+                  <Label htmlFor="publish_to_feed" className="text-sm font-normal cursor-pointer">
+                    Pubblica questo prodotto sul feed principale
+                  </Label>
+                </div>
+
                 <div className="flex gap-4">
                   <Button type="submit" disabled={loading || uploadingImage}>
                     {loading || uploadingImage ? "Salvataggio..." : editingProduct ? "Aggiorna" : "Aggiungi"}
@@ -406,6 +425,7 @@ export default function SupplierCatalogPage() {
                         minimum_order: "1",
                         image_url: "",
                         imageFile: null,
+                        publish_to_feed: false,
                       })
                     }}
                   >
