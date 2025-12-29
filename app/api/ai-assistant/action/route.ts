@@ -35,14 +35,21 @@ export async function POST(request: Request) {
     // Genera il messaggio per l'azione
     const messageContent = await generateActionMessage(params)
 
+    // Verifica che il messaggio sia stato generato
+    if (!messageContent || messageContent.trim().length === 0) {
+      console.error("Errore: il messaggio generato è vuoto o null")
+      return NextResponse.json({
+        success: false,
+        error: "Impossibile generare il messaggio",
+      }, { status: 500 })
+    }
+
     // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
     const supabase = createSupabaseAdminClient()
-    
-    // ID speciale per l'assistente AI (deve essere creato tramite SQL trigger)
-    const AI_ASSISTANT_ID = "00000000-0000-0000-0000-000000000000"
 
     // Inserisci il messaggio
     // Usa is_ai_message = true e sender_id NULL per identificare messaggi AI
+    // NOTA: Richiede che sia stato eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql
     const { data: message, error: messageError } = await supabase
       .from("messages")
       .insert({
@@ -61,7 +68,7 @@ export async function POST(request: Request) {
         success: false,
         error: "Impossibile salvare il messaggio",
         details: messageError.message,
-        note: "Assicurati di aver eseguito supabase/36_CREA_ASSISTENTE_AI_TRIGGER.sql",
+        note: "Assicurati di aver eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql per abilitare i messaggi AI",
       }, { status: 500 })
     }
 
