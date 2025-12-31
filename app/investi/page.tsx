@@ -136,22 +136,29 @@ export default function InvestiPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {hostLevels.map((level, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-semibold">
-                          <div className="flex items-center gap-2">
-                            {index === 0 && <span className="text-gray-500">⬜</span>}
-                            {index === 1 && <span className="text-green-500">💚</span>}
-                            {index === 2 && <span className="text-red-500">❤️</span>}
-                            {index === 3 && <span className="text-blue-500">💙</span>}
-                            {index === 4 && <span className="text-yellow-500">💛</span>}
-                            {level.level}
-                          </div>
-                        </TableCell>
-                        <TableCell>{level.invites}</TableCell>
-                        <TableCell>{level.benefits}</TableCell>
-                      </TableRow>
-                    ))}
+                    {hostLevels.map((level, index) => {
+                      // Colori distintivi per ogni livello senza cuoricini
+                      const levelColors = {
+                        0: "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200",
+                        1: "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200",
+                        2: "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200",
+                        3: "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200",
+                        4: "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200",
+                      }
+                      return (
+                        <TableRow key={index}>
+                          <TableCell className="font-semibold">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${levelColors[index as keyof typeof levelColors]}`}>
+                                {level.level}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>{level.invites}</TableCell>
+                          <TableCell>{level.benefits}</TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>

@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import SharePostDialog from "@/components/share-post-dialog"
 import EditPostDialog from "@/components/edit-post-dialog"
 import UserSearch from "@/components/user-search"
+import { renderLinkContent } from "@/lib/render-link-content"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -303,10 +304,10 @@ export default function HomePage() {
         return
       }
 
-      // Load profiles for authors
+      // Load profiles for authors (include host_level for Prime link feature)
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, username, full_name, avatar_url, role")
+        .select("id, username, full_name, avatar_url, role, host_level")
         .in("id", authorIds)
 
       // Create a map for quick lookup
@@ -576,7 +577,10 @@ export default function HomePage() {
                   
                   {post.content && (
                     <div className="px-5 py-2">
-                      <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+                      {renderLinkContent(
+                        post.content,
+                        post.author?.role === "host" && post.author?.host_level === "Prime"
+                      )}
                     </div>
                   )}
                   
