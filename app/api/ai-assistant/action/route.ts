@@ -54,30 +54,55 @@ export async function POST(request: Request) {
     // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
     const supabase = createSupabaseAdminClient()
 
-    // Inserisci il messaggio
-    // Usa is_ai_message = true e sender_id NULL per identificare messaggi AI
-    // NOTA: Richiede che sia stato eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql
-    const { data: message, error: messageError } = await supabase
+    // Crea messaggio nascosto dall'utente all'AI (non visibile nel frontend)
+    // Usiamo un self-message con hidden_from_ui = true per simulare un messaggio utente->AI nascosto
+    // NOTA: Questo messaggio verrà filtrato dal frontend, quindi non sarà visibile all'utente
+    const hiddenUserMessage = `[Azione automatica: ${params.actionDescription}]`
+    
+    const { data: hiddenMessage, error: hiddenError } = await supabase
       .from("messages")
       .insert({
-        sender_id: null, // NULL per messaggi AI
+        sender_id: params.userId,
+        receiver_id: params.userId, // Self-message (verrà filtrato dal frontend)
+        content: hiddenUserMessage,
+        read: true, // Già letto perché nascosto
+        is_ai_message: false,
+        hidden_from_ui: true, // NASCOSTO nel frontend - non verrà mostrato
+      })
+      .select()
+      .single()
+
+    // Ignora errori sul messaggio nascosto (non critico per il funzionamento)
+    if (hiddenError) {
+      console.warn("Errore nella creazione del messaggio nascosto (non critico):", hiddenError)
+    }
+
+    // Inserisci la risposta dell'AI (visibile nel frontend)
+    // Questo è il messaggio che l'utente vedrà nella chat con l'AI
+    const { data: aiMessage, error: messageError } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: null, // NULL per messaggi AI (identifica l'assistente)
         receiver_id: params.userId,
         content: messageContent,
         read: false,
         is_ai_message: true, // Marca come messaggio AI
+        hidden_from_ui: false, // VISIBILE nel frontend
       })
       .select()
       .single()
 
     if (messageError) {
-      console.error("Errore nell'inserimento del messaggio:", messageError)
+      console.error("Errore nell'inserimento del messaggio AI:", messageError)
       return NextResponse.json({
         success: false,
         error: "Impossibile salvare il messaggio",
         details: messageError.message,
-        note: "Assicurati di aver eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql per abilitare i messaggi AI",
+        note: "Assicurati di aver eseguito supabase/38_MODIFY_MESSAGES_FOR_AI.sql e supabase/44_ADD_HIDDEN_FROM_UI_TO_MESSAGES.sql",
       }, { status: 500 })
     }
+
+    const message = aiMessage
 
     // Crea notifica per l'utente
     try {

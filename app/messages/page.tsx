@@ -22,6 +22,7 @@ interface Message {
   read: boolean
   created_at: string
   is_ai_message?: boolean // Flag per identificare messaggi AI
+  hidden_from_ui?: boolean // Se true, il messaggio non viene mostrato nel frontend
   booking_request_data?: {
     property_id: string
     property_name: string
@@ -102,7 +103,83 @@ export default function MessagesPage() {
         async (payload) => {
           console.log("📨 Messages: Nuovo messaggio ricevuto in tempo reale!", payload.new)
           
-          // Carica i dati del sender
+          // Ignora messaggi nascosti (non devono essere mostrati)
+          if (payload.new.hidden_from_ui === true) {
+            return
+          }
+
+          // Gestisci messaggi AI (sender_id = null)
+          if (payload.new.is_ai_message || payload.new.sender_id === null) {
+            const aiMessage: Message = {
+              id: payload.new.id,
+              sender_id: null,
+              receiver_id: payload.new.receiver_id,
+              content: payload.new.content,
+              read: payload.new.read ?? false,
+              created_at: payload.new.created_at,
+              is_ai_message: true,
+              hidden_from_ui: false,
+              sender: null,
+            }
+
+            // Se abbiamo la conversazione AI aperta, aggiungi il messaggio
+            if (selectedConversation === "ai-assistant") {
+              setMessages((prev) => [...prev, aiMessage])
+              
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+              }, 100)
+              
+              // Marca come letto
+              await supabase
+                .from("messages")
+                .update({ read: true })
+                .eq("id", payload.new.id)
+            }
+
+            // Aggiorna la lista conversazioni
+            setConversations((prev) => {
+              const aiConvId = "ai-assistant"
+              const existingConv = prev.find((c) => c.otherUserId === aiConvId)
+              
+              if (existingConv) {
+                return prev.map((conv) => {
+                  if (conv.otherUserId === aiConvId) {
+                    return {
+                      ...conv,
+                      lastMessage: aiMessage,
+                      unreadCount: selectedConversation === aiConvId ? 0 : conv.unreadCount + 1,
+                    }
+                  }
+                  return conv
+                })
+              } else {
+                return [
+                  {
+                    otherUserId: aiConvId,
+                    otherUser: {
+                      id: aiConvId,
+                      username: "Nomadiqe Assistant",
+                      full_name: "Nomadiqe Assistant",
+                      avatar_url: null,
+                    },
+                    lastMessage: aiMessage,
+                    unreadCount: selectedConversation === aiConvId ? 0 : 1,
+                  },
+                  ...prev,
+                ]
+              }
+            })
+
+            // Mostra notifica toast per messaggi AI
+            toast({
+              title: "🤖 Nuovo messaggio dall'assistente",
+              description: payload.new.content?.substring(0, 50) + (payload.new.content?.length > 50 ? "..." : ""),
+            })
+            return
+          }
+          
+          // Gestisci messaggi normali (da altri utenti)
           const { data: sender } = await supabase
             .from("profiles")
             .select("id, username, full_name, avatar_url")
@@ -116,6 +193,7 @@ export default function MessagesPage() {
             content: payload.new.content,
             read: payload.new.read ?? false,
             created_at: payload.new.created_at,
+            hidden_from_ui: payload.new.hidden_from_ui ?? false,
             sender: sender || undefined,
           }
 
@@ -123,7 +201,6 @@ export default function MessagesPage() {
           if (selectedConversation === payload.new.sender_id) {
             setMessages((prev) => [...prev, newMessage])
             
-            // Scroll to bottom
             setTimeout(() => {
               messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
             }, 100)
@@ -140,7 +217,6 @@ export default function MessagesPage() {
             const existingConv = prev.find((c) => c.otherUserId === payload.new.sender_id)
             
             if (existingConv) {
-              // Aggiorna la conversazione esistente
               return prev.map((conv) => {
                 if (conv.otherUserId === payload.new.sender_id) {
                   return {
@@ -154,25 +230,6 @@ export default function MessagesPage() {
                 return conv
               })
             } else {
-              // Se è un messaggio AI, usa ID speciale
-              if (payload.new.is_ai_message || payload.new.sender_id === null) {
-                const aiConvId = "ai-assistant"
-                return [
-                  {
-                    otherUserId: aiConvId,
-                    otherUser: {
-                      id: aiConvId,
-                      username: "Nomadiqe Assistant",
-                      full_name: "Nomadiqe Assistant",
-                      avatar_url: null,
-                    },
-                    lastMessage: newMessage,
-                    unreadCount: selectedConversation === aiConvId ? 0 : 1,
-                  },
-                  ...prev,
-                ]
-              }
-              
               // Aggiungi nuova conversazione
               return [
                 {
@@ -362,27 +419,51 @@ export default function MessagesPage() {
     if (!session?.user?.id) return
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("messages")
         .select(`
           *,
           sender:profiles!messages_sender_id_fkey(id, username, full_name, avatar_url),
           receiver:profiles!messages_receiver_id_fkey(id, username, full_name, avatar_url)
         `)
-        .or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${session.user.id})`)
-        .order("created_at", { ascending: true })
+
+      // Se è la conversazione con l'AI (otherUserId = "ai-assistant")
+      if (otherUserId === "ai-assistant") {
+        // Per l'AI: solo messaggi dove sender_id è NULL (messaggi AI) e receiver_id è l'utente
+        query = query
+          .is("sender_id", null)
+          .eq("receiver_id", session.user.id)
+          .eq("hidden_from_ui", false) // Filtra messaggi nascosti
+      } else {
+        query = query.or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${session.user.id})`)
+          .eq("hidden_from_ui", false) // Filtra messaggi nascosti
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: true })
 
       if (error) throw error
 
       setMessages(data || [])
 
       // Mark messages as read
-      await supabase
-        .from("messages")
-        .update({ read: true })
-        .eq("receiver_id", session.user.id)
-        .eq("sender_id", otherUserId)
-        .eq("read", false)
+      if (otherUserId === "ai-assistant") {
+        // Per messaggi AI, il sender_id è NULL
+        await supabase
+          .from("messages")
+          .update({ read: true })
+          .eq("receiver_id", session.user.id)
+          .is("sender_id", null)
+          .eq("read", false)
+          .eq("hidden_from_ui", false)
+      } else {
+        await supabase
+          .from("messages")
+          .update({ read: true })
+          .eq("receiver_id", session.user.id)
+          .eq("sender_id", otherUserId)
+          .eq("read", false)
+          .eq("hidden_from_ui", false)
+      }
 
       // Reload conversations to update unread count
       loadConversations()
