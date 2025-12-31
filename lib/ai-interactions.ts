@@ -56,7 +56,7 @@ const roleSpecificSuggestions: Record<string, Record<string, string[]>> = {
   },
 }
 
-export async function sendLikeMessage(userId: string) {
+export async function sendLikeMessage(userId: string): Promise<{ success: boolean; showDisclaimer?: boolean }> {
   try {
     const supabase = createSupabaseClient()
     
@@ -69,7 +69,7 @@ export async function sendLikeMessage(userId: string) {
 
     if (!profile?.role) {
       console.warn("Nessun ruolo trovato per l'utente, skip messaggio AI")
-      return false
+      return { success: false }
     }
 
     const role = profile.role as "traveler" | "host" | "creator" | "manager"
@@ -94,7 +94,7 @@ export async function sendLikeMessage(userId: string) {
     }
 
     // Invia messaggio AI con informazioni sui punti guadagnati
-    await sendActionMessage(
+    const result = await sendActionMessage(
       userId,
       "like",
       "Like messo a un post",
@@ -103,14 +103,17 @@ export async function sendLikeMessage(userId: string) {
       suggestions
     )
 
-    return true
+    return { 
+      success: result.success, 
+      showDisclaimer: result.showDisclaimer || false 
+    }
   } catch (error) {
     console.error("Errore nell'invio del messaggio AI per like:", error)
-    return false
+    return { success: false }
   }
 }
 
-export async function sendCommentMessage(userId: string) {
+export async function sendCommentMessage(userId: string): Promise<{ success: boolean; showDisclaimer?: boolean }> {
   try {
     const supabase = createSupabaseClient()
     
@@ -123,7 +126,7 @@ export async function sendCommentMessage(userId: string) {
 
     if (!profile?.role) {
       console.warn("Nessun ruolo trovato per l'utente, skip messaggio AI")
-      return false
+      return { success: false }
     }
 
     const role = profile.role as "traveler" | "host" | "creator" | "manager"
@@ -133,7 +136,7 @@ export async function sendCommentMessage(userId: string) {
     ]
 
     // I commenti danno 10 XP (dal trigger SQL), ma non punti nel sistema points
-    await sendActionMessage(
+    const result = await sendActionMessage(
       userId,
       "comment",
       "Commento pubblicato",
@@ -142,10 +145,13 @@ export async function sendCommentMessage(userId: string) {
       suggestions
     )
 
-    return true
+    return { 
+      success: result.success, 
+      showDisclaimer: result.showDisclaimer || false 
+    }
   } catch (error) {
     console.error("Errore nell'invio del messaggio AI per commento:", error)
-    return false
+    return { success: false }
   }
 }
 

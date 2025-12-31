@@ -20,6 +20,8 @@ export interface ActionMessageParams {
   role: UserRole
   pointsEarned?: number
   nextSteps?: string[]
+  username?: string
+  fullName?: string
 }
 
 export interface InactivityMessageParams {
@@ -125,7 +127,7 @@ Per iniziare, completa il tuo profilo e esplora la piattaforma. Buon viaggio! �
 }
 
 export async function generateActionMessage(params: ActionMessageParams): Promise<string> {
-  const { action, actionDescription, role, pointsEarned, nextSteps } = params
+  const { action, actionDescription, role, pointsEarned, nextSteps, username, fullName } = params
   
   const actionEmojis: Record<string, string> = {
     post: "📝",
@@ -147,27 +149,35 @@ export async function generateActionMessage(params: ActionMessageParams): Promis
   
   const pointsText = pointsEarned ? ` Hai guadagnato ${pointsEarned} punti!` : ""
   
+  // Usa il nome completo o username, fallback a "utente"
+  const userName = fullName || username || "utente"
+  
   const prompt = `Sei l'assistente AI di Nomadiqe.
 
-L'utente ha appena completato questa azione: ${actionDescription}${pointsText}
+L'utente ${userName} ha appena completato questa azione: ${actionDescription}${pointsText}
 
 Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"}
 
-Scrivi un messaggio BREVE (massimo 100 parole) che:
-1. Complimenta l'utente per l'azione completata
+Scrivi un messaggio BREVE (massimo 100 parole) in italiano con un linguaggio naturale e diretto che:
+1. Complimenta ${userName} per l'azione completata (usa il suo nome)
 2. Spiega brevemente perché è importante${pointsEarned ? " e quanti punti ha guadagnato" : ""}
 3. Suggerisce cosa fare dopo${nextStepsText ? " (usa i prossimi passi forniti)" : ""}
 
-Sii positivo e incoraggiante. Usa max 2 emoji. Scrivi in italiano.
+IMPORTANTE:
+- Scrivi il messaggio DIRETTAMENTE senza virgolette, come se stessi parlando direttamente all'utente
+- Usa il nome ${userName} nell'inizio del messaggio
+- Sii positivo e incoraggiante
+- Usa max 2 emoji
+- Scrivi in italiano con linguaggio naturale
 
-Messaggio:`
+Messaggio (senza virgolette, inizia direttamente con il testo):`
 
   try {
     const completion = await groq.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: "Sei un assistente AI amichevole per Nomadiqe. Scrivi messaggi brevi e incoraggianti in italiano.",
+          content: "Sei l'assistente AI di Nomadiqe. Scrivi messaggi brevi, incoraggianti e naturali in italiano. Scrivi sempre il messaggio direttamente senza virgolette, come se stessi parlando faccia a faccia con l'utente.",
         },
         {
           role: "user",
@@ -179,17 +189,21 @@ Messaggio:`
       max_tokens: 200,
     })
 
-    const message = completion.choices[0]?.message?.content?.trim()
+    let message = completion.choices[0]?.message?.content?.trim() || ""
+    
+    // Rimuovi virgolette all'inizio e alla fine se presenti
+    message = message.replace(/^["'«»]|["'«»]$/g, "").trim()
+    
     if (!message || message.length === 0) {
       // Fallback message se l'AI non genera un messaggio valido
-      return `${emoji} Ottimo lavoro! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
+      return `${emoji} Complimenti ${userName}! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
     }
 
     return `${emoji} ${message}`
   } catch (error) {
     console.error("Errore nella generazione del messaggio di azione:", error)
     // Fallback message
-    return `${emoji} Ottimo lavoro! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
+    return `${emoji} Complimenti ${userName}! Hai completato: ${actionDescription}${pointsText}${nextStepsText}`
   }
 }
 

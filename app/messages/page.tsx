@@ -338,7 +338,7 @@ export default function MessagesPage() {
     if (!session?.user?.id) return
 
     try {
-      // Load all messages where user is sender or receiver
+      // Load all messages where user is sender or receiver (excluding hidden messages)
       const { data: messagesData, error } = await supabase
         .from("messages")
         .select(`
@@ -347,6 +347,7 @@ export default function MessagesPage() {
           receiver:profiles!messages_receiver_id_fkey(id, username, full_name, avatar_url)
         `)
         .or(`sender_id.eq.${session.user.id},receiver_id.eq.${session.user.id}`)
+        .eq("hidden_from_ui", false) // Filtra messaggi nascosti (es. "[Azione automatica: ...]")
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -571,27 +572,27 @@ export default function MessagesPage() {
   const selectedConv = conversations.find((c) => c.otherUserId === selectedConversation)
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="container mx-auto p-4 max-w-6xl">
+    <div className="min-h-screen bg-background pb-20 overflow-x-hidden">
+      <div className="container mx-auto p-4 max-w-6xl w-full overflow-x-hidden">
         <div className="mb-6">
           <h1 className="text-3xl font-bold mb-2">Messaggi</h1>
           <p className="text-muted-foreground">Le tue conversazioni</p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-4 w-full min-w-0">
           {/* Conversations List */}
-          <Card className="md:col-span-1">
+          <Card className="md:col-span-1 w-full min-w-0 overflow-hidden">
             <CardHeader>
               <CardTitle className="text-lg">Conversazioni</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-hidden">
               {conversations.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground">
                   <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>Nessuna conversazione</p>
                 </div>
               ) : (
-                <div className="divide-y">
+                <div className="divide-y overflow-hidden">
                   {conversations.map((conv) => (
                     <button
                       key={conv.otherUserId}
@@ -599,12 +600,12 @@ export default function MessagesPage() {
                         setSelectedConversation(conv.otherUserId)
                         loadMessages(conv.otherUserId)
                       }}
-                      className={`w-full p-4 text-left hover:bg-accent transition-colors ${
+                      className={`w-full p-4 text-left hover:bg-accent transition-colors min-w-0 overflow-hidden ${
                         selectedConversation === conv.otherUserId ? "bg-accent" : ""
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0">
+                      <div className="flex items-start gap-3 w-full min-w-0">
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 flex-shrink-0">
                           {conv.otherUser.avatar_url ? (
                             <Image
                               src={conv.otherUser.avatar_url}
@@ -619,18 +620,18 @@ export default function MessagesPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="font-semibold truncate">
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center justify-between mb-1 gap-2">
+                            <p className="font-semibold truncate min-w-0 flex-1">
                               {conv.otherUser.username || conv.otherUser.full_name || "Utente"}
                             </p>
                             {conv.unreadCount > 0 && (
-                              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                              <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full shrink-0">
                                 {conv.unreadCount}
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground truncate">
+                          <p className="text-sm text-muted-foreground truncate break-words">
                             {conv.lastMessage.content}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
@@ -649,10 +650,10 @@ export default function MessagesPage() {
           </Card>
 
           {/* Messages View */}
-          <Card className="md:col-span-2">
+          <Card className="md:col-span-2 w-full min-w-0 overflow-hidden">
             {selectedConv ? (
               <>
-                <CardHeader className="border-b">
+                <CardHeader className="border-b min-w-0 overflow-hidden">
                   <div className="flex items-center gap-3">
                     <Button
                       variant="ghost"
@@ -691,17 +692,17 @@ export default function MessagesPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {/* Messages */}
-                  <div className="h-[400px] overflow-y-auto p-2 sm:p-4 space-y-4">
+                  <div className="h-[400px] overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-4">
                     {messages.map((msg) => {
                       const isOwn = msg.sender_id === session.user.id
                       const isAIMessage = msg.is_ai_message || msg.sender_id === null
                       return (
                         <div
                           key={msg.id}
-                          className={`flex w-full ${isOwn ? "justify-end" : "justify-start"} px-1`}
+                          className={`flex w-full min-w-0 ${isOwn ? "justify-end" : "justify-start"} px-1`}
                         >
                           <div
-                            className={`max-w-[85%] sm:max-w-[70%] min-w-0 rounded-lg p-3 ${
+                            className={`max-w-[85%] sm:max-w-[70%] min-w-0 rounded-lg p-3 break-words ${
                               isAIMessage
                                 ? "bg-blue-500/10 border border-blue-500/20 text-foreground"
                                 : isOwn
@@ -757,14 +758,14 @@ export default function MessagesPage() {
                       Non puoi rispondere all'assistente AI. Usa questo spazio per ricevere suggerimenti e aggiornamenti.
                     </div>
                   ) : (
-                    <div className="border-t p-4">
-                      <div className="flex gap-2">
+                    <div className="border-t p-4 min-w-0 overflow-hidden">
+                      <div className="flex gap-2 min-w-0">
                         <Textarea
                           placeholder="Scrivi un messaggio..."
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           rows={2}
-                          className="resize-none"
+                          className="resize-none min-w-0 flex-1 break-words"
                           onKeyPress={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault()

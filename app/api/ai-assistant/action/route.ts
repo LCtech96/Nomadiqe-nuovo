@@ -32,38 +32,66 @@ export async function POST(request: Request) {
       )
     }
 
+    // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
+    const supabase = createSupabaseAdminClient()
+
+    // Recupera username e fullName dal profilo
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username, full_name, ai_actions_count")
+      .eq("id", params.userId)
+      .single()
+
+    const username = profile?.username || undefined
+    const fullName = profile?.full_name || undefined
+    const currentActionsCount = profile?.ai_actions_count || 0
+
+    // Incrementa il contatore delle azioni AI
+    const newActionsCount = currentActionsCount + 1
+    await supabase
+      .from("profiles")
+      .update({ ai_actions_count: newActionsCount })
+      .eq("id", params.userId)
+
+    // Determina se mostrare il disclaimer (prime 10 azioni)
+    const showDisclaimer = newActionsCount <= 10
+
+    // Aggiungi username e fullName ai params per l'AI
+    const paramsWithUser = {
+      ...params,
+      username,
+      fullName,
+    }
+
     // Genera il messaggio per l'azione
     let messageContent: string
     try {
-      const generated = await generateActionMessage(params)
+      const generated = await generateActionMessage(paramsWithUser)
       // Garantisce che messageContent sia sempre una stringa non vuota
       messageContent = (generated && typeof generated === 'string' && generated.trim().length > 0)
         ? generated.trim()
-        : `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
+        : `🎉 Ottimo lavoro! Hai completato: ${paramsWithUser.actionDescription}`
     } catch (genError) {
       console.error("Errore nella generazione del messaggio:", genError)
       // Fallback garantito se la generazione fallisce
-      messageContent = `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
+      messageContent = `🎉 Ottimo lavoro! Hai completato: ${paramsWithUser.actionDescription}`
     }
 
     // Verifica finale che il messaggio sia valido (dovrebbe sempre essere valido grazie al fallback sopra)
     if (!messageContent || typeof messageContent !== 'string' || messageContent.trim().length === 0) {
-      messageContent = `🎉 Ottimo lavoro! Hai completato: ${params.actionDescription}`
+      messageContent = `🎉 Ottimo lavoro! Hai completato: ${paramsWithUser.actionDescription}`
     }
-
-    // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
-    const supabase = createSupabaseAdminClient()
 
     // Crea messaggio nascosto dall'utente all'AI (non visibile nel frontend)
     // Usiamo un self-message con hidden_from_ui = true per simulare un messaggio utente->AI nascosto
     // NOTA: Questo messaggio verrà filtrato dal frontend, quindi non sarà visibile all'utente
-    const hiddenUserMessage = `[Azione automatica: ${params.actionDescription}]`
+    const hiddenUserMessage = `[Azione automatica: ${paramsWithUser.actionDescription}]`
     
     const { data: hiddenMessage, error: hiddenError } = await supabase
       .from("messages")
       .insert({
-        sender_id: params.userId,
-        receiver_id: params.userId, // Self-message (verrà filtrato dal frontend)
+        sender_id: paramsWithUser.userId,
+        receiver_id: paramsWithUser.userId, // Self-message (verrà filtrato dal frontend)
         content: hiddenUserMessage,
         read: true, // Già letto perché nascosto
         is_ai_message: false,
@@ -83,7 +111,7 @@ export async function POST(request: Request) {
       .from("messages")
       .insert({
         sender_id: null, // NULL per messaggi AI (identifica l'assistente)
-        receiver_id: params.userId,
+        receiver_id: paramsWithUser.userId,
         content: messageContent,
         read: false,
         is_ai_message: true, // Marca come messaggio AI
@@ -130,7 +158,7 @@ export async function POST(request: Request) {
       const { error: notifError } = await supabase
         .from("pending_notifications")
         .insert({
-          user_id: params.userId,
+          user_id: paramsWithUser.userId,
           notification_type: "message",
           title: "🤖 Nuovo messaggio dall'assistente",
           message: finalNotificationMessage,
@@ -138,7 +166,7 @@ export async function POST(request: Request) {
           data: {
             type: "ai_assistant_message",
             message_id: message.id,
-            action: params.action,
+            action: paramsWithUser.action,
           },
         })
 
@@ -155,6 +183,7 @@ export async function POST(request: Request) {
       success: true,
       messageId: message.id,
       content: messageContent,
+      showDisclaimer,
     })
   } catch (error: any) {
     console.error("Errore nell'API action:", error)
