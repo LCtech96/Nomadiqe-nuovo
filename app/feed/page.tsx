@@ -26,6 +26,8 @@ interface Post {
     username: string
     full_name: string
     avatar_url: string
+    role?: string
+    host_level?: string
   }
   liked: boolean
 }
