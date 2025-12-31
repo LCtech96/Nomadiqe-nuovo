@@ -430,15 +430,63 @@ export default function MessagesPage() {
 
       // Se è la conversazione con l'AI (otherUserId = "ai-assistant")
       if (otherUserId === "ai-assistant") {
-        // Per l'AI: solo messaggi dove sender_id è NULL (messaggi AI) e receiver_id è l'utente
-        query = query
+        // Per l'AI: messaggi AI (sender_id NULL) + messaggi self dell'utente (utente->AI)
+        // Carichiamo i messaggi AI e i messaggi self dell'utente (quelli visibili nella conversazione AI)
+        const { data: aiMessages, error: aiError } = await supabase
+          .from("messages")
+          .select(`
+            *,
+            sender:profiles!messages_sender_id_fkey(id, username, full_name, avatar_url),
+            receiver:profiles!messages_receiver_id_fkey(id, username, full_name, avatar_url)
+          `)
           .is("sender_id", null)
           .eq("receiver_id", session.user.id)
-          .eq("hidden_from_ui", false) // Filtra messaggi nascosti
-      } else {
-        query = query.or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${session.user.id})`)
-          .eq("hidden_from_ui", false) // Filtra messaggi nascosti
+          .eq("hidden_from_ui", false)
+          .order("created_at", { ascending: true })
+        
+        const { data: userMessages, error: userError } = await supabase
+          .from("messages")
+          .select(`
+            *,
+            sender:profiles!messages_sender_id_fkey(id, username, full_name, avatar_url),
+            receiver:profiles!messages_receiver_id_fkey(id, username, full_name, avatar_url)
+          `)
+          .eq("sender_id", session.user.id)
+          .eq("receiver_id", session.user.id)
+          .eq("hidden_from_ui", false)
+          .order("created_at", { ascending: true })
+        
+        if (aiError) throw aiError
+        if (userError) throw userError
+        
+        // Combina e ordina per data
+        const allMessages = [...(aiMessages || []), ...(userMessages || [])]
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        
+        setMessages(allMessages as Message[])
+        
+        // Mark AI messages as read
+        await supabase
+          .from("messages")
+          .update({ read: true })
+          .eq("receiver_id", session.user.id)
+          .is("sender_id", null)
+          .eq("read", false)
+          .eq("hidden_from_ui", false)
+        
+        // Reload conversations to update unread count
+        loadConversations()
+        
+        // Scroll to bottom after messages load
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+        }, 100)
+        return
       }
+      
+      // Query normale per conversazioni non-AI
+      query = query.or(`and(sender_id.eq.${session.user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${session.user.id})`)
+        .eq("hidden_from_ui", false) // Filtra messaggi nascosti
 
       const { data, error } = await query.order("created_at", { ascending: true })
 
@@ -447,24 +495,13 @@ export default function MessagesPage() {
       setMessages(data || [])
 
       // Mark messages as read
-      if (otherUserId === "ai-assistant") {
-        // Per messaggi AI, il sender_id è NULL
-        await supabase
-          .from("messages")
-          .update({ read: true })
-          .eq("receiver_id", session.user.id)
-          .is("sender_id", null)
-          .eq("read", false)
-          .eq("hidden_from_ui", false)
-      } else {
-        await supabase
-          .from("messages")
-          .update({ read: true })
-          .eq("receiver_id", session.user.id)
-          .eq("sender_id", otherUserId)
-          .eq("read", false)
-          .eq("hidden_from_ui", false)
-      }
+      await supabase
+        .from("messages")
+        .update({ read: true })
+        .eq("receiver_id", session.user.id)
+        .eq("sender_id", otherUserId)
+        .eq("read", false)
+        .eq("hidden_from_ui", false)
 
       // Reload conversations to update unread count
       loadConversations()
@@ -495,7 +532,30 @@ export default function MessagesPage() {
     setNewMessage("") // Pulisci subito il campo per UX migliore
     
     try {
+      // Se è una conversazione con l'AI, usa l'endpoint chat
+      if (selectedConversation === "ai-assistant") {
+        const response = await fetch("/api/ai-assistant/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: session.user.id,
+            message: messageContent,
+          }),
+        })
 
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Errore nell'invio del messaggio all'AI")
+        }
+
+        // Ricarica i messaggi per mostrare sia il messaggio dell'utente che la risposta dell'AI
+        await loadMessages("ai-assistant")
+        return
+      }
+
+      // Per messaggi normali, usa il flusso standard
       const { data, error } = await supabase
         .from("messages")
         .insert({
@@ -752,38 +812,33 @@ export default function MessagesPage() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Send Message - Disabilitato per conversazioni AI */}
-                  {selectedConv.otherUserId === "ai-assistant" ? (
-                    <div className="border-t p-4 bg-muted/50 text-center text-sm text-muted-foreground">
-                      Non puoi rispondere all'assistente AI. Usa questo spazio per ricevere suggerimenti e aggiornamenti.
+                  {/* Send Message */}
+                  <div className="border-t p-4 min-w-0 overflow-hidden">
+                    <div className="flex gap-2 min-w-0">
+                      <Textarea
+                        placeholder={selectedConv.otherUserId === "ai-assistant" ? "Chiedi consigli o informazioni all'assistente..." : "Scrivi un messaggio..."}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        rows={2}
+                        className="resize-none min-w-0 flex-1 break-words"
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault()
+                            handleSendMessage()
+                          }
+                        }}
+                        disabled={sending}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sending || !newMessage.trim()}
+                        size="icon"
+                        className="shrink-0"
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="border-t p-4 min-w-0 overflow-hidden">
-                      <div className="flex gap-2 min-w-0">
-                        <Textarea
-                          placeholder="Scrivi un messaggio..."
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          rows={2}
-                          className="resize-none min-w-0 flex-1 break-words"
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault()
-                              handleSendMessage()
-                            }
-                          }}
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={sending || !newMessage.trim()}
-                          size="icon"
-                          className="shrink-0"
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </CardContent>
               </>
             ) : (

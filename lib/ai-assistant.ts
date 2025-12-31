@@ -32,6 +32,14 @@ export interface InactivityMessageParams {
   hoursInactive?: number
 }
 
+export interface ChatMessageParams {
+  userId: string
+  userMessage: string
+  role: UserRole
+  username?: string
+  fullName?: string
+}
+
 const ROLE_GUIDES: Record<UserRole, string> = {
   traveler: `Sei un Traveler su Nomadiqe. Ecco cosa puoi fare:
 - Cerca e prenota strutture uniche
@@ -69,6 +77,134 @@ const POINTS_INFO = `Guadagni punti completando azioni:
 - Prenotazione: 50 punti
 - Recensione: 25 punti
 - Like: 2 punti per ogni like`
+
+// Conoscenza completa delle funzionalità dell'app per ogni ruolo
+const APP_KNOWLEDGE: Record<UserRole, string> = {
+  traveler: `
+FUNZIONALITÀ DISPONIBILI PER TRAVELER:
+1. HOME: Visualizza feed con post di host e creator, metti like e commenta
+2. ESPLORA: Cerca strutture per destinazione, date, numero ospiti
+3. PROPRIETÀ: Visualizza dettagli strutture, foto, servizi, recensioni, disponibilità calendario
+4. PRENOTAZIONI: Richiedi prenotazione tramite messaggi all'host, gestisci le tue prenotazioni
+5. MESSAGGI: Comunica con host, creator, manager e assistente AI
+6. PROFILO: Gestisci profilo, visualizza post pubblicati, strutture salvate
+7. POST: Crea post con testo, immagini, tag posizione, condividi esperienze
+8. RECENSIONI: Lascia recensioni per strutture visitate (dopo prenotazione completata)
+9. COLLABORAZIONI: Visualizza collaborazioni con host (se creator anche)
+10. PUNTI: Accumula punti con azioni, visualizza storia punti e livello
+11. NOTIFICHE: Ricevi notifiche per messaggi, like, commenti, prenotazioni
+12. NAVIGAZIONE: Home, Esplora, Feed, Collabora, Profilo
+13. LIVELLI: Sistema di livellamento basato su punti per privilegi esclusivi
+
+COME GUADAGNARE PUNTI:
+- Registrazione: 100 punti
+- Onboarding: 75 punti  
+- Post: 15 punti (max 5/giorno)
+- Check-in giornaliero: 10 punti (1/giorno)
+- Prenotazione: 50 punti
+- Recensione: 25 punti
+- Like: 2 punti per like
+
+ASSISTENZA: Per domande specifiche o problemi tecnici, contatta l'assistenza traveler su Nomadiqe.`,
+
+  host: `
+FUNZIONALITÀ DISPONIBILI PER HOST:
+1. DASHBOARD: Pannello principale per gestire strutture, prenotazioni, collaborazioni
+2. PROPRIETÀ: Aggiungi/modifica strutture con foto, descrizioni, servizi, prezzi, disponibilità
+3. CALENDARIO: Gestisci disponibilità strutture, blocca date, visualizza prenotazioni
+4. PRENOTAZIONI: Ricevi richieste prenotazione via messaggi, accetta/rifiuta, gestisci conferme
+5. COLLABORAZIONI KOL&BED: Crea collaborazioni con creator per FREE STAY, sconti, partnership
+6. COMMUNITY HOST: Crea/partecipa community con altri host nella tua zona, scambia messaggi
+7. MESSAGGI: Comunica con viaggiatori, creator, manager e assistente AI
+8. PROFILO: Gestisci profilo host, visualizza strutture pubblicate, statistiche
+9. POST: Crea post per promuovere strutture, condividere esperienze
+10. RECENSIONI: Visualizza e rispondi a recensioni degli ospiti
+11. GESTIONE STRUTTURE: Aggiungi/modifica/elimina strutture, gestisci foto, servizi
+12. LISTINO PREZZI: Imposta prezzi per notte, gestisci tariffe stagionali
+13. PUNTI: Accumula punti con azioni, visualizza storia punti e livello
+14. NOTIFICHE: Ricevi notifiche per prenotazioni, messaggi, recensioni, collaborazioni
+15. NAVIGAZIONE: Home, Dashboard, Esplora, Feed, Collabora, Profilo
+16. LIVELLI HOST: Sistema di livellamento basato su utenti invitati (Base, Advanced, Rubino, Zaffiro, Prime)
+
+COME GUADAGNARE PUNTI:
+- Registrazione: 100 punti
+- Onboarding: 75 punti
+- Post: 15 punti (max 5/giorno)
+- Check-in: 10 punti (1/giorno)
+- Prenotazione completata: 50 punti
+- Recensione ricevuta: 25 punti
+
+ASSISTENZA: Per domande specifiche su gestione strutture, prenotazioni o problemi tecnici, contatta l'assistenza host su Nomadiqe.`,
+
+  creator: `
+FUNZIONALITÀ DISPONIBILI PER CREATOR:
+1. PROFILO: Gestisci profilo creator, aggiungi foto/video, descrizioni, analitiche manuali
+2. KOL&BED: Cerca collaborazioni con host per FREE STAY, richiedi collaborazioni
+3. POST: Crea post con contenuti di viaggio, foto, video, tag posizione
+4. ANALITICHE: Inserisci manualmente follower, engagement, views per mostrare statistiche
+5. VISIBILITÀ: Nascondi/mostra contenuti (post, foto, video) a specifiche audience (managers, hosts, travelers, creators)
+6. COLLABORAZIONI: Gestisci richieste collaborazioni, accetta/rifiuta proposte host
+7. MESSAGGI: Comunica con host, manager, altri creator e assistente AI
+8. FEED: Visualizza post di altri creator e host, interagisci con like/commenti
+9. SEGUI UTENTI: Segui host e creator interessanti
+10. PROFILO PUBBLICO: Mostra analitiche, collaborazioni, contenuti (con privacy settings)
+11. GESTIONE CONTENUTI: Pubblica/modifica/elimina post, gestisci visibilità
+12. PUNTI: Accumula punti con azioni, visualizza storia punti e livello
+13. NOTIFICHE: Ricevi notifiche per collaborazioni, messaggi, like, commenti
+14. NAVIGAZIONE: Home, Feed, Collabora, Profilo
+15. LIVELLI: Sistema di livellamento basato su punti per privilegi esclusivi
+
+COME GUADAGNARE PUNTI:
+- Registrazione: 100 punti
+- Onboarding: 75 punti
+- Post: 15 punti (max 5/giorno)
+- Check-in: 10 punti (1/giorno)
+- Like: 2 punti per like
+- Commento: 10 XP (sistema separato)
+
+ASSISTENZA: Per domande specifiche su collaborazioni, analitiche o problemi tecnici, contatta l'assistenza creator su Nomadiqe.`,
+
+  manager: `
+FUNZIONALITÀ DISPONIBILI PER MANAGER:
+1. DASHBOARD: Pannello principale per gestire servizi e prodotti
+2. SERVIZI: Crea/gestisci servizi (pulizia, manutenzione, fotografia, videografia, social media, concierge, cucina, autista, traduzione, farmacista)
+3. PRODOTTI: Crea catalogo prodotti con prezzi, descrizioni, immagini
+4. PUBBLICA FEED: Pubblica prodotti sul feed principale per visibilità
+5. LOCATION: Specifica indirizzo, città, paese, coordinate GPS per servizi locali
+6. ORARI: Imposta orari operativi giornalieri per servizi locali
+7. LISTINI PREZZI: Crea listini prezzi per host, gestisci commissioni
+8. PARTNERSHIP: Connettiti con host per offrire servizi/prodotti
+9. MESSAGGI: Comunica con host, creator, altri manager e assistente AI
+10. PROFILO: Gestisci profilo manager, mostra servizi e prodotti
+11. CATALOGO: Organizza prodotti in categorie, gestisci disponibilità
+12. COLLABORAZIONI: Visualizza e gestisci partnership attive con host
+13. PUNTI: Accumula punti con azioni, visualizza storia punti e livello
+14. NOTIFICHE: Ricevi notifiche per messaggi, richieste partnership
+15. NAVIGAZIONE: Home, Dashboard, Feed, Collabora, Profilo
+16. LIVELLI: Sistema di livellamento basato su punti per privilegi esclusivi
+
+TIPI SERVIZI DISPONIBILI:
+- Pulizia (cleaning)
+- Gestione proprietà (property_management)
+- Fotografia (photography)
+- Videografia (videography)
+- Social media (social_media)
+- Manutenzione (maintenance)
+- Concierge (concierge)
+- Cucina (cooking)
+- Autista (driver)
+- Traduzione (translation)
+- Farmacista (pharmacist)
+
+COME GUADAGNARE PUNTI:
+- Registrazione: 100 punti
+- Onboarding: 75 punti
+- Post: 15 punti (max 5/giorno)
+- Check-in: 10 punti (1/giorno)
+- Like: 2 punti per like
+
+ASSISTENZA: Per domande specifiche su servizi, prodotti, partnership o problemi tecnici, contatta l'assistenza manager su Nomadiqe.`,
+}
 
 export async function generateWelcomeMessage(params: WelcomeMessageParams): Promise<string> {
   const { role, username, fullName } = params
@@ -331,6 +467,84 @@ Messaggio:`
     console.error("Errore nella generazione del messaggio di inattività:", error)
     // Fallback message
     return `👋 Ciao ${userName}! Non ti vedo da un po'. ${suggestions[0] || "Esplora la piattaforma"} per tornare attivo!`
+  }
+}
+
+export async function generateChatResponse(params: ChatMessageParams): Promise<string> {
+  const { userId, userMessage, role, username, fullName } = params
+  
+  const userName = fullName || username || "utente"
+  const roleName = role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"
+  const appKnowledge = APP_KNOWLEDGE[role]
+  const roleGuide = ROLE_GUIDES[role]
+  
+  // Determina il tipo di assistenza da suggerire
+  const supportContact = role === "traveler" 
+    ? "assistenza traveler" 
+    : role === "host" 
+    ? "assistenza host" 
+    : role === "creator"
+    ? "assistenza creator"
+    : "assistenza manager"
+  
+  const prompt = `Sei l'assistente AI di Nomadiqe, una piattaforma per viaggiatori, host, creator e manager del turismo.
+
+L'utente ${userName} (ruolo: ${roleName}) ti ha scritto questo messaggio:
+"${userMessage}"
+
+CONOSCENZA COMPLETA DELL'APP PER ${roleName.toUpperCase()}:
+${appKnowledge}
+
+GUIDA RUOLO:
+${roleGuide}
+
+SISTEMA PUNTI:
+${POINTS_INFO}
+
+ISTRUZIONI IMPORTANTI:
+1. Rispondi in modo utile, amichevole e professionale in italiano
+2. Usa il nome ${userName} quando ti rivolgi all'utente
+3. Se la domanda riguarda funzionalità che conosci (descritte sopra), fornisci una risposta dettagliata
+4. Se NON sei sicuro di qualcosa o la domanda è troppo specifica/tecnica/complessa, devi dire:
+   "Per questa domanda specifica o per assistenza tecnica, ti consiglio di contattare ${supportContact} su Nomadiqe, che potrà aiutarti meglio."
+5. Se la domanda riguarda guadagnare punti, spiega il sistema punti e suggerisci azioni
+6. Se la domanda riguarda funzionalità dell'app, spiega come usarle basandoti sulla conoscenza sopra
+7. Sii conciso ma completo (massimo 200 parole)
+8. Usa emoji con moderazione (max 2-3)
+9. Scrivi in italiano con linguaggio naturale, senza virgolette
+
+Risposta (senza virgolette, inizia direttamente con il testo):`
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `Sei l'assistente AI di Nomadiqe. Rispondi sempre in italiano con linguaggio naturale e diretto. Se non sei sicuro di qualcosa, di' all'utente di contattare l'assistenza specifica per il loro ruolo. Non usare virgolette nel testo.`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "llama-3.1-8b-instant",
+      temperature: 0.7,
+      max_tokens: 400,
+    })
+
+    let message = completion.choices[0]?.message?.content?.trim() || ""
+    
+    // Rimuovi virgolette all'inizio e alla fine se presenti
+    message = message.replace(/^["'«»]|["'«»]$/g, "").trim()
+    
+    if (!message || message.length === 0) {
+      return `Ciao ${userName}! Mi dispiace, non sono sicuro di come rispondere alla tua domanda. Per assistenza specifica, ti consiglio di contattare ${supportContact} su Nomadiqe.`
+    }
+
+    return message
+  } catch (error) {
+    console.error("Errore nella generazione della risposta chat:", error)
+    return `Ciao ${userName}! Mi dispiace, c'è stato un problema nel generare la risposta. Per assistenza specifica, ti consiglio di contattare ${supportContact} su Nomadiqe.`
   }
 }
 
