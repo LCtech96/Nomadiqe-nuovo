@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Heart, MessageCircle, Share2, MapPin } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { renderLinkContent } from "@/lib/render-link-content"
 
 interface Post {
   id: string
@@ -48,7 +49,7 @@ export default function FeedPage() {
         .from("posts")
         .select(`
           *,
-          author:profiles!posts_author_id_fkey(username, full_name, avatar_url)
+          author:profiles!posts_author_id_fkey(username, full_name, avatar_url, role, host_level)
         `)
         .order("created_at", { ascending: false })
         .limit(50)
@@ -261,7 +262,10 @@ export default function FeedPage() {
               <CardContent className="px-5 pb-5">
                 {post.content && (
                   <div className="pb-3">
-                    <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">{post.content}</p>
+                    {renderLinkContent(
+                      post.content,
+                      post.author?.role === "host" && post.author?.host_level === "Prime"
+                    )}
                   </div>
                 )}
                 {post.location && (

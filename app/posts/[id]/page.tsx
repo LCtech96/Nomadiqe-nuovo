@@ -11,6 +11,7 @@ import { Heart, MessageCircle, Share2, User, ArrowLeft, MoreVertical, Edit, Tras
 import { useToast } from "@/hooks/use-toast"
 import SharePostDialog from "@/components/share-post-dialog"
 import EditPostDialog from "@/components/edit-post-dialog"
+import { renderLinkContent } from "@/lib/render-link-content"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -63,11 +64,11 @@ export default function PostPage() {
 
       setPost(postData)
 
-      // Load author
+      // Load author (include host_level for Prime link feature)
       if (postData.author_id) {
         const { data: authorData } = await supabase
           .from("profiles")
-          .select("id, username, full_name, avatar_url, role")
+          .select("id, username, full_name, avatar_url, role, host_level")
           .eq("id", postData.author_id)
           .single()
 
@@ -392,7 +393,12 @@ export default function PostPage() {
 
             {/* Post Content */}
             {post.content && (
-              <p className="mb-4 whitespace-pre-wrap">{post.content}</p>
+              <div className="mb-4">
+                {renderLinkContent(
+                  post.content,
+                  author?.role === "host" && author?.host_level === "Prime"
+                )}
+              </div>
             )}
 
             {/* Post Images */}
