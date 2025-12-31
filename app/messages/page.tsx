@@ -667,12 +667,10 @@ export default function MessagesPage() {
                       <div className="flex items-start gap-3 w-full min-w-0">
                         <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 flex-shrink-0">
                           {conv.otherUserId === "ai-assistant" ? (
-                            <Image
+                            <img
                               src="/icc.png"
                               alt="Nomadiqe Assistant"
-                              fill
-                              sizes="48px"
-                              className="object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : conv.otherUser.avatar_url ? (
                             <Image
@@ -733,12 +731,10 @@ export default function MessagesPage() {
                     </Button>
                     <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
                       {selectedConv.otherUserId === "ai-assistant" ? (
-                        <Image
+                        <img
                           src="/icc.png"
                           alt="Nomadiqe Assistant"
-                          fill
-                          sizes="40px"
-                          className="object-cover"
+                          className="w-full h-full object-cover"
                         />
                       ) : selectedConv.otherUser.avatar_url ? (
                         <Image
