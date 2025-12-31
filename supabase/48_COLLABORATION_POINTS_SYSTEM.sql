@@ -78,11 +78,10 @@ BEGIN
     WHERE id = NEW.creator_id;
     
     IF v_creator_current_points < v_creator_points_to_deduct THEN
-      -- Creator non ha abbastanza punti, non assegnare punti all'host
-      -- Ma non bloccare l'accettazione della collaborazione
-      RAISE NOTICE 'Creator % non ha abbastanza punti (ha %, necessari %)', 
-        NEW.creator_id, v_creator_current_points, v_creator_points_to_deduct;
-      RETURN NEW;
+      -- Creator non ha abbastanza punti, blocca l'accettazione della collaborazione
+      -- L'API route si occuperà di validare prima, ma questo è un doppio controllo
+      RAISE EXCEPTION 'Creator non ha abbastanza punti per accettare questa collaborazione. Necessari: %, disponibili: %', 
+        v_creator_points_to_deduct, v_creator_current_points;
     END IF;
     
     -- Ottieni i punti attuali dell'host
