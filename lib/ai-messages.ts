@@ -42,7 +42,7 @@ export async function sendActionMessage(
   role: string,
   pointsEarned?: number,
   nextSteps?: string[]
-) {
+): Promise<{ success: boolean; showDisclaimer?: boolean }> {
   try {
     // Usa l'URL relativo per le chiamate interne
     const baseUrl = typeof window !== "undefined"
@@ -67,13 +67,17 @@ export async function sendActionMessage(
     if (!response.ok) {
       const errorText = await response.text()
       console.error("Errore nell'invio del messaggio di azione:", errorText)
-      return false
+      return { success: false }
     }
 
-    return true
+    const data = await response.json()
+    return { 
+      success: true, 
+      showDisclaimer: data.showDisclaimer || false 
+    }
   } catch (error) {
     console.error("Errore nella chiamata API action:", error)
-    return false
+    return { success: false }
   }
 }
 

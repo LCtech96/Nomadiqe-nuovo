@@ -179,7 +179,14 @@ export default function HomePage() {
         // Invia messaggio AI per il like (non bloccare se fallisce)
         try {
           const { sendLikeMessage } = await import("@/lib/ai-interactions")
-          await sendLikeMessage(session.user.id)
+          const result = await sendLikeMessage(session.user.id)
+          if (result.success && result.showDisclaimer) {
+            toast({
+              title: "💬 Controlla i tuoi messaggi",
+              description: "L'assistente AI ti ha inviato un messaggio! Puoi trovarlo nella sezione Messaggi del tuo profilo, accessibile dalla barra di navigazione in alto.",
+              duration: 6000,
+            })
+          }
         } catch (aiError) {
           console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
         }
@@ -244,7 +251,14 @@ export default function HomePage() {
       // Invia messaggio AI per il commento (non bloccare se fallisce)
       try {
         const { sendCommentMessage } = await import("@/lib/ai-interactions")
-        await sendCommentMessage(session.user.id)
+        const result = await sendCommentMessage(session.user.id)
+        if (result.success && result.showDisclaimer) {
+          toast({
+            title: "💬 Controlla i tuoi messaggi",
+            description: "L'assistente AI ti ha inviato un messaggio! Puoi trovarlo nella sezione Messaggi del tuo profilo, accessibile dalla barra di navigazione in alto.",
+            duration: 6000,
+          })
+        }
       } catch (aiError) {
         console.warn("Errore nell'invio del messaggio AI per commento (non critico):", aiError)
       }
