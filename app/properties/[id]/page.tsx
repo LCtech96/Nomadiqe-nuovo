@@ -127,6 +127,16 @@ export default function PropertyDetailPage() {
       return
     }
 
+    // Impedisci all'host di prenotare la propria struttura
+    if (property.owner_id === session.user.id) {
+      toast({
+        title: "Errore",
+        description: "Non puoi prenotare la tua stessa struttura. Puoi prenotare strutture di altri host.",
+        variant: "destructive",
+      })
+      return
+    }
+
     const checkInDate = new Date(checkIn)
     const checkOutDate = new Date(checkOut)
     const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
