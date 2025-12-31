@@ -214,21 +214,20 @@ export default function ProfilePage() {
         setReferralLink(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`)
       } else {
         // Prova a caricare dalla tabella referral_codes (se esiste)
-        try {
-          const { data: refCodeData } = await supabase
-            .from("referral_codes")
-            .select("code")
-            .eq("user_id", session.user.id)
-            .maybeSingle()
-          
-          if (refCodeData?.code) {
-            setReferralCode(refCodeData.code)
-            setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
-          }
-        } catch (error) {
-          // Tabella referral_codes non esiste o errore, ignora silenziosamente
-          console.debug("Tabella referral_codes non disponibile:", error)
+        // Gestisci silenziosamente se la tabella non esiste (404 o altri errori)
+        const { data: refCodeData, error: refCodeError } = await supabase
+          .from("referral_codes")
+          .select("code")
+          .eq("user_id", session.user.id)
+          .maybeSingle()
+        
+        // Ignora errori 404 (tabella non trovata) o altri errori di database
+        if (!refCodeError && refCodeData?.code) {
+          setReferralCode(refCodeData.code)
+          setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
         }
+        // Se c'è un errore (tabella non esiste, 404, ecc.), ignora silenziosamente
+        // Non loggare nulla per evitare errori nella console
       }
 
       // Load posts (don't fail if error, just set empty array)
