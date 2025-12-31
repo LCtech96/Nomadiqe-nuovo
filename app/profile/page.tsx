@@ -863,9 +863,23 @@ export default function ProfilePage() {
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                 <div className="flex flex-col">
-                  <h1 className="text-xl md:text-2xl font-light">
-                    {(isEditing ? username : (username || profile?.username)) || "username"}
-                  </h1>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-xl md:text-2xl font-light">
+                      {(isEditing ? username : (username || profile?.username)) || "username"}
+                    </h1>
+                    {profile?.role === "host" && profile?.host_level && (
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        profile.host_level === "Base" ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200" :
+                        profile.host_level === "Advanced" ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" :
+                        profile.host_level === "Rubino" ? "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200" :
+                        profile.host_level === "Zaffiro" ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200" :
+                        profile.host_level === "Prime" ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" :
+                        "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                      }`}>
+                        {profile.host_level}
+                      </span>
+                    )}
+                  </div>
                   {((isEditing ? fullName : (fullName || profile?.full_name))) && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {isEditing ? fullName : (fullName || profile?.full_name)}
