@@ -741,9 +741,23 @@ export default function PublicProfilePage() {
                 )}
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                  {profile.full_name || profile.username || "Utente"}
-                </h1>
+                <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap mb-2">
+                  <h1 className="text-2xl md:text-3xl font-bold">
+                    {profile.full_name || profile.username || "Utente"}
+                  </h1>
+                  {profile.role === "host" && profile.host_level && (
+                    <span className={`px-3 py-1 rounded text-sm font-bold ${
+                      profile.host_level === "Base" ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200" :
+                      profile.host_level === "Advanced" ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" :
+                      profile.host_level === "Rubino" ? "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200" :
+                      profile.host_level === "Zaffiro" ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200" :
+                      profile.host_level === "Prime" ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" :
+                      "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                    }`}>
+                      {profile.host_level}
+                    </span>
+                  )}
+                </div>
                 {profile.username && (
                   <p className="text-muted-foreground mb-2">@{profile.username}</p>
                 )}

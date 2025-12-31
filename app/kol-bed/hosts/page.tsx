@@ -18,6 +18,7 @@ interface HostProfile {
   avatar_url: string | null
   bio: string | null
   role: string
+  host_level?: string | null
   properties?: Array<{
     id: string
     name: string
@@ -183,9 +184,23 @@ export default function HostsListPage() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">
-                            {host.full_name || host.username || "Host"}
-                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold truncate">
+                              {host.full_name || host.username || "Host"}
+                            </h3>
+                            {host.host_level && (
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold shrink-0 ${
+                                host.host_level === "Base" ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200" :
+                                host.host_level === "Advanced" ? "bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200" :
+                                host.host_level === "Rubino" ? "bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200" :
+                                host.host_level === "Zaffiro" ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200" :
+                                host.host_level === "Prime" ? "bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200" :
+                                "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                              }`}>
+                                {host.host_level}
+                              </span>
+                            )}
+                          </div>
                           {host.username && (
                             <p className="text-sm text-muted-foreground truncate">
                               @{host.username}
