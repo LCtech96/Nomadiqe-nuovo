@@ -161,7 +161,7 @@ export default function MessagesPage() {
                       id: aiConvId,
                       username: "Nomadiqe Assistant",
                       full_name: "Nomadiqe Assistant",
-                      avatar_url: null,
+                      avatar_url: "/icc.png",
                     },
                     lastMessage: aiMessage,
                     unreadCount: selectedConversation === aiConvId ? 0 : 1,
@@ -367,7 +367,7 @@ export default function MessagesPage() {
                 id: aiConversationId,
                 username: "Nomadiqe Assistant",
                 full_name: "Nomadiqe Assistant",
-                avatar_url: null,
+                avatar_url: "/icc.png",
               },
               lastMessage: msg,
               unreadCount: msg.read === false && msg.receiver_id === session.user.id ? 1 : 0,
@@ -666,9 +666,9 @@ export default function MessagesPage() {
                     >
                       <div className="flex items-start gap-3 w-full min-w-0">
                         <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0 flex-shrink-0">
-                          {conv.otherUser.avatar_url ? (
+                          {conv.otherUser.avatar_url || conv.otherUserId === "ai-assistant" ? (
                             <Image
-                              src={conv.otherUser.avatar_url}
+                              src={conv.otherUserId === "ai-assistant" ? "/icc.png" : conv.otherUser.avatar_url || ""}
                               alt={conv.otherUser.username || "User"}
                               fill
                               sizes="48px"
@@ -725,9 +725,13 @@ export default function MessagesPage() {
                     </Button>
                     <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
                       {selectedConv.otherUserId === "ai-assistant" ? (
-                        <div className="w-full h-full bg-blue-500/20 flex items-center justify-center">
-                          <span className="text-xl">🤖</span>
-                        </div>
+                        <Image
+                          src="/icc.png"
+                          alt="Nomadiqe Assistant"
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                        />
                       ) : selectedConv.otherUser.avatar_url ? (
                         <Image
                           src={selectedConv.otherUser.avatar_url}
@@ -744,7 +748,6 @@ export default function MessagesPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
-                        {selectedConv.otherUserId === "ai-assistant" && <span>🤖</span>}
                         {selectedConv.otherUser.username || selectedConv.otherUser.full_name || "Utente"}
                       </CardTitle>
                     </div>
