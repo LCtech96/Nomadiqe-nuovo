@@ -100,6 +100,7 @@ interface PublicProfile {
   avatar_url: string | null
   bio: string | null
   role: string | null
+  host_level?: string | null
   social_accounts?: Array<{
     platform: string
     username: string
