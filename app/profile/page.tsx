@@ -878,6 +878,18 @@ export default function ProfilePage() {
                         {profile.host_level}
                       </span>
                     )}
+                    {profile?.role === "creator" && profile?.creator_level && (
+                      <span className={`px-2 py-1 rounded text-xs font-bold ${
+                        profile.creator_level === "Starter" ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200" :
+                        profile.creator_level === "Rising" ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200" :
+                        profile.creator_level === "Influencer" ? "bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200" :
+                        profile.creator_level === "Elite" ? "bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200" :
+                        profile.creator_level === "Icon" ? "bg-gradient-to-r from-yellow-200 to-orange-200 dark:from-yellow-800 dark:to-orange-800 text-yellow-900 dark:text-yellow-100" :
+                        "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                      }`}>
+                        {profile.creator_level}
+                      </span>
+                    )}
                   </div>
                   {((isEditing ? fullName : (fullName || profile?.full_name))) && (
                     <p className="text-sm text-muted-foreground mt-1">

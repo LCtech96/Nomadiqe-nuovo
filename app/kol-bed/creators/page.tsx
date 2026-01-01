@@ -19,6 +19,7 @@ interface CreatorProfile {
   bio: string | null
   role: string
   points: number
+  creator_level?: string | null
   social_accounts?: Array<{
     platform: string
     username: string
@@ -202,9 +203,23 @@ export default function CreatorsListPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">
-                          {creator.full_name || creator.username || "Creator"}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold truncate">
+                            {creator.full_name || creator.username || "Creator"}
+                          </h3>
+                          {creator.creator_level && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold shrink-0 ${
+                              creator.creator_level === "Starter" ? "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200" :
+                              creator.creator_level === "Rising" ? "bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200" :
+                              creator.creator_level === "Influencer" ? "bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200" :
+                              creator.creator_level === "Elite" ? "bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200" :
+                              creator.creator_level === "Icon" ? "bg-gradient-to-r from-yellow-200 to-orange-200 dark:from-yellow-800 dark:to-orange-800 text-yellow-900 dark:text-yellow-100" :
+                              "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                            }`}>
+                              {creator.creator_level}
+                            </span>
+                          )}
+                        </div>
                         {creator.username && (
                           <p className="text-sm text-muted-foreground truncate">
                             @{creator.username}
