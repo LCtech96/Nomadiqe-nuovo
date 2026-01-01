@@ -176,7 +176,7 @@ DROP TRIGGER IF EXISTS trigger_update_creator_level_on_collaborations ON public.
 CREATE TRIGGER trigger_update_creator_level_on_collaborations
   AFTER INSERT OR UPDATE OF status ON public.collaborations
   FOR EACH ROW
-  WHEN (NEW.creator_id IS NOT NULL AND (NEW.status = 'completed' OR OLD.status IS DISTINCT FROM NEW.status))
+  WHEN (NEW.creator_id IS NOT NULL AND (NEW.status = 'completed' OR (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status)))
   EXECUTE FUNCTION public.on_creator_metrics_changed();
 
 -- Crea trigger per aggiornare livello quando vengono pubblicati post
