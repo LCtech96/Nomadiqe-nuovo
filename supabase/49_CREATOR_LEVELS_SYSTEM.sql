@@ -196,7 +196,6 @@ DROP TRIGGER IF EXISTS trigger_update_creator_level_on_posts ON public.posts;
 CREATE TRIGGER trigger_update_creator_level_on_posts
   AFTER INSERT ON public.posts
   FOR EACH ROW
-  WHEN (EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.author_id AND role = 'creator'))
   EXECUTE FUNCTION public.on_creator_metrics_changed();
 
 -- Crea trigger per aggiornare livello quando cambiano le analitiche
@@ -211,7 +210,6 @@ DROP TRIGGER IF EXISTS trigger_update_creator_level_on_social ON public.social_a
 CREATE TRIGGER trigger_update_creator_level_on_social
   AFTER INSERT OR UPDATE OF follower_count ON public.social_accounts
   FOR EACH ROW
-  WHEN (EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator'))
   EXECUTE FUNCTION public.on_creator_metrics_changed();
 
 -- Crea trigger per aggiornare livello quando vengono assegnati punti
@@ -219,7 +217,6 @@ DROP TRIGGER IF EXISTS trigger_update_creator_level_on_points_history ON public.
 CREATE TRIGGER trigger_update_creator_level_on_points_history
   AFTER INSERT ON public.points_history
   FOR EACH ROW
-  WHEN (EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator'))
   EXECUTE FUNCTION public.on_creator_metrics_changed();
 
 -- Funzione per aggiornare tutti i livelli creator esistenti (da eseguire una volta)
