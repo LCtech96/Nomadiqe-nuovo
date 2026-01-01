@@ -123,40 +123,52 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Trigger per aggiornare automaticamente il livello quando cambiano metriche rilevanti
 CREATE OR REPLACE FUNCTION public.on_creator_metrics_changed()
 RETURNS TRIGGER AS $$
+DECLARE
+  creator_id_to_update UUID;
+  should_update BOOLEAN := FALSE;
 BEGIN
-  -- Se è un creator, aggiorna il livello
-  IF (TG_TABLE_NAME = 'profiles' AND NEW.role = 'creator') OR
-     (TG_TABLE_NAME = 'collaborations' AND NEW.creator_id IS NOT NULL) OR
-     (TG_TABLE_NAME = 'posts' AND EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.author_id AND role = 'creator')) OR
-     (TG_TABLE_NAME = 'creator_manual_analytics' AND NEW.creator_id IS NOT NULL) OR
-     (TG_TABLE_NAME = 'social_accounts' AND EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator')) OR
-     (TG_TABLE_NAME = 'points_history' AND EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator')) THEN
-    
-    DECLARE
-      creator_id_to_update UUID;
-    BEGIN
-      -- Determina creator_id in base alla tabella
-      CASE TG_TABLE_NAME
-        WHEN 'profiles' THEN
-          creator_id_to_update := NEW.id;
-        WHEN 'collaborations' THEN
-          creator_id_to_update := NEW.creator_id;
-        WHEN 'posts' THEN
-          creator_id_to_update := NEW.author_id;
-        WHEN 'creator_manual_analytics' THEN
-          creator_id_to_update := NEW.creator_id;
-        WHEN 'social_accounts' THEN
-          creator_id_to_update := NEW.user_id;
-        WHEN 'points_history' THEN
-          creator_id_to_update := NEW.user_id;
-        ELSE
-          creator_id_to_update := NULL;
-      END CASE;
-      
-      IF creator_id_to_update IS NOT NULL THEN
-        PERFORM public.update_creator_level(creator_id_to_update);
+  -- Determina se dobbiamo aggiornare e quale creator_id
+  CASE TG_TABLE_NAME
+    WHEN 'profiles' THEN
+      IF NEW.role = 'creator' THEN
+        creator_id_to_update := NEW.id;
+        should_update := TRUE;
       END IF;
-    END;
+    WHEN 'collaborations' THEN
+      IF NEW.creator_id IS NOT NULL THEN
+        -- Per UPDATE, aggiorna solo se lo status è cambiato o è diventato 'completed'
+        -- Per INSERT, aggiorna sempre (potrebbe essere una nuova collaborazione)
+        IF TG_OP = 'INSERT' OR 
+           (TG_OP = 'UPDATE' AND (OLD.status IS DISTINCT FROM NEW.status OR NEW.status = 'completed')) THEN
+          creator_id_to_update := NEW.creator_id;
+          should_update := TRUE;
+        END IF;
+      END IF;
+    WHEN 'posts' THEN
+      IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.author_id AND role = 'creator') THEN
+        creator_id_to_update := NEW.author_id;
+        should_update := TRUE;
+      END IF;
+    WHEN 'creator_manual_analytics' THEN
+      IF NEW.creator_id IS NOT NULL THEN
+        creator_id_to_update := NEW.creator_id;
+        should_update := TRUE;
+      END IF;
+    WHEN 'social_accounts' THEN
+      IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator') THEN
+        creator_id_to_update := NEW.user_id;
+        should_update := TRUE;
+      END IF;
+    WHEN 'points_history' THEN
+      IF EXISTS (SELECT 1 FROM public.profiles WHERE id = NEW.user_id AND role = 'creator') THEN
+        creator_id_to_update := NEW.user_id;
+        should_update := TRUE;
+      END IF;
+  END CASE;
+  
+  -- Aggiorna il livello se necessario
+  IF should_update AND creator_id_to_update IS NOT NULL THEN
+    PERFORM public.update_creator_level(creator_id_to_update);
   END IF;
   
   RETURN NEW;
@@ -176,7 +188,7 @@ DROP TRIGGER IF EXISTS trigger_update_creator_level_on_collaborations ON public.
 CREATE TRIGGER trigger_update_creator_level_on_collaborations
   AFTER INSERT OR UPDATE OF status ON public.collaborations
   FOR EACH ROW
-  WHEN (NEW.creator_id IS NOT NULL AND (NEW.status = 'completed' OR (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM NEW.status)))
+  WHEN (NEW.creator_id IS NOT NULL)
   EXECUTE FUNCTION public.on_creator_metrics_changed();
 
 -- Crea trigger per aggiornare livello quando vengono pubblicati post
