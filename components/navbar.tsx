@@ -6,10 +6,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Menu, ChevronDown, Trash2, Bell, Mail, LayoutDashboard } from "lucide-react"
+import { Moon, Sun, Menu, ChevronDown, Trash2, Bell, Mail, LayoutDashboard, BellRing } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { getMessaging, getToken, isSupported } from "firebase/messaging"
+import { VAPID_KEY } from "@/lib/firebase/config"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +51,7 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [enablingPush, setEnablingPush] = useState(false)
   const supabase = createSupabaseClient()
   const isProfilePage = pathname === "/profile"
 
@@ -219,6 +222,138 @@ export default function Navbar() {
   }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  const handleEnablePushNotifications = async () => {
+    if (!session?.user?.id) {
+      toast({
+        title: "Errore",
+        description: "Devi essere autenticato per attivare le notifiche",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      toast({
+        title: "Errore",
+        description: "Le notifiche push non sono supportate su questo dispositivo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Verifica supporto notifiche
+    if (!("Notification" in window)) {
+      toast({
+        title: "Non supportato",
+        description: "Il tuo browser non supporta le notifiche push",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Verifica supporto Service Worker
+    if (!("serviceWorker" in navigator)) {
+      toast({
+        title: "Non supportato",
+        description: "Il tuo browser non supporta i Service Worker necessari per le notifiche push",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setEnablingPush(true)
+
+    try {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+      // Verifica che FCM sia supportato
+      const supported = await isSupported()
+      if (!supported) {
+        toast({
+          title: "Non supportato",
+          description: isIOS
+            ? "Su iOS, le notifiche push richiedono iOS 16.4+ e Safari. Aggiungi il sito alla home screen per un'esperienza migliore."
+            : "Il tuo browser non supporta le notifiche push FCM",
+          variant: "destructive",
+        })
+        setEnablingPush(false)
+        return
+      }
+
+      // Verifica che il service worker sia attivo
+      const registration = await navigator.serviceWorker.ready
+
+      // Richiedi permesso
+      const permission = await Notification.requestPermission()
+
+      if (permission === "granted") {
+        // Aspetta un attimo per assicurarsi che il service worker sia completamente attivo
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        // Ottieni il token FCM
+        const messaging = getMessaging()
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY })
+
+        if (token) {
+          // Salva il token in Supabase
+          const { error } = await supabase.from("push_subscriptions").upsert(
+            {
+              user_id: session.user.id,
+              fcm_token: token,
+              onesignal_player_id: null,
+              updated_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "user_id",
+            }
+          )
+
+          if (error) {
+            console.error("Error saving FCM token:", error)
+            toast({
+              title: "Errore",
+              description: "Errore durante il salvataggio del token",
+              variant: "destructive",
+            })
+          } else {
+            toast({
+              title: "Notifiche attivate!",
+              description: "Riceverai notifiche push quando qualcuno ti invia un messaggio o interagisce con i tuoi contenuti.",
+            })
+            setMobileMenuOpen(false)
+          }
+        } else {
+          toast({
+            title: "Errore",
+            description: "Impossibile ottenere il token di notifica. Riprova più tardi.",
+            variant: "destructive",
+          })
+        }
+      } else if (permission === "denied") {
+        toast({
+          title: "Permesso negato",
+          description: "Le notifiche sono state negate. Puoi abilitarle nelle impostazioni del browser.",
+          variant: "destructive",
+        })
+      } else {
+        toast({
+          title: "Permesso non concesso",
+          description: "Non è stato possibile ottenere il permesso per le notifiche.",
+        })
+      }
+    } catch (error: any) {
+      console.error("Error enabling push notifications:", error)
+      toast({
+        title: "Errore",
+        description: error?.message || "Si è verificato un errore durante l'attivazione delle notifiche",
+        variant: "destructive",
+      })
+    } finally {
+      setEnablingPush(false)
+    }
+  }
 
   return (
     <>
@@ -484,6 +619,14 @@ export default function Navbar() {
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </Link>
+                  <button
+                    onClick={handleEnablePushNotifications}
+                    disabled={enablingPush}
+                    className="w-full flex items-center gap-2 py-2 text-base text-left hover:bg-accent rounded-md px-2 transition-colors disabled:opacity-50"
+                  >
+                    <BellRing className="h-4 w-4" />
+                    {enablingPush ? "Attivazione in corso..." : "Attiva notifiche push"}
+                  </button>
                   <div className="space-y-1">
                     <button
                       onClick={() => setSettingsOpen(!settingsOpen)}
