@@ -3,16 +3,11 @@
 import React from "react"
 
 /**
- * Rende il contenuto del post con link cliccabili se l'autore è un host Prime
+ * Rende il contenuto del post con link cliccabili per tutti gli utenti
  * @param content - Il contenuto del post
- * @param isHostPrime - Se l'autore è un host Prime
+ * @param isHostPrime - Parametro legacy mantenuto per compatibilità (non più utilizzato)
  */
-export function renderLinkContent(content: string, isHostPrime: boolean) {
-  if (!isHostPrime) {
-    // Se non è Prime, restituisci il contenuto normale
-    return <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">{content}</p>
-  }
-
+export function renderLinkContent(content: string, isHostPrime?: boolean) {
   // Regex per trovare URL (http/https)
   const urlRegex = /(https?:\/\/[^\s]+)/g
   const parts = content.split(urlRegex)

@@ -264,10 +264,7 @@ export default function FeedPage() {
               <CardContent className="px-5 pb-5">
                 {post.content && (
                   <div className="pb-3">
-                    {renderLinkContent(
-                      post.content,
-                      post.author?.role === "host" && post.author?.host_level === "Prime"
-                    )}
+                    {renderLinkContent(post.content)}
                   </div>
                 )}
                 {post.location && (

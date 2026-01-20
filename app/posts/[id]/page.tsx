@@ -394,10 +394,7 @@ export default function PostPage() {
             {/* Post Content */}
             {post.content && (
               <div className="mb-4">
-                {renderLinkContent(
-                  post.content,
-                  author?.role === "host" && author?.host_level === "Prime"
-                )}
+                {renderLinkContent(post.content)}
               </div>
             )}
 

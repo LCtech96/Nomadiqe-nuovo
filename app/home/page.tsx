@@ -577,10 +577,7 @@ export default function HomePage() {
                   
                   {post.content && (
                     <div className="px-5 py-2">
-                      {renderLinkContent(
-                        post.content,
-                        post.author?.role === "host" && post.author?.host_level === "Prime"
-                      )}
+                      {renderLinkContent(post.content)}
                     </div>
                   )}
                   

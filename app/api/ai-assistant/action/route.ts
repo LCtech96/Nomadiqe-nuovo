@@ -35,6 +35,47 @@ export async function POST(request: Request) {
     // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
     const supabase = createSupabaseAdminClient()
 
+    // Controlla se è già stato inviato un messaggio per la stessa azione negli ultimi 30 secondi (evita duplicati)
+    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString()
+    const { data: recentActionMessage } = await supabase
+      .from("messages")
+      .select("id")
+      .is("sender_id", null)
+      .eq("receiver_id", params.userId)
+      .eq("is_ai_message", true)
+      .gte("created_at", thirtySecondsAgo)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    // Se c'è già un messaggio recente per questa azione, verifica se è simile
+    if (recentActionMessage) {
+      // Controlla se il contenuto del messaggio recente menziona la stessa azione
+      const { data: recentContent } = await supabase
+        .from("messages")
+        .select("content")
+        .eq("id", recentActionMessage.id)
+        .single()
+
+      // Se il messaggio recente contiene la descrizione dell'azione o una parte di essa, skip
+      if (recentContent?.content && params.actionDescription) {
+        const actionKeywords = params.actionDescription.toLowerCase().split(' ')
+        const contentLower = recentContent.content.toLowerCase()
+        // Se almeno una parola chiave dell'azione è presente nel messaggio recente, è un duplicato
+        const isDuplicate = actionKeywords.some(keyword => 
+          keyword.length > 3 && contentLower.includes(keyword)
+        )
+        
+        if (isDuplicate) {
+          return NextResponse.json({
+            success: true,
+            message: "Messaggio già inviato per questa azione",
+            duplicate: true,
+          })
+        }
+      }
+    }
+
     // Recupera username e fullName dal profilo
     const { data: profile } = await supabase
       .from("profiles")
