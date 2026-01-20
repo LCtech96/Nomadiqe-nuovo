@@ -4,27 +4,25 @@ import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import { createSupabaseAdminClient } from "@/lib/supabase/server"
 
-const buildApprovalEmail = (fullName: string, signupUrl: string) => {
+const buildStandbyEmail = () => {
   return `
     <div style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 32px;">
       <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
-        <h1 style="margin: 0 0 12px; font-size: 24px; color: #111827;">Benvenuto in Nomadiqe</h1>
-        <p style="margin: 0 0 16px; font-size: 16px; color: #374151;">
-          ${fullName ? `Ciao ${fullName},` : "Ciao,"} la tua richiesta è stata approvata.
+        <h1 style="margin: 0 0 12px; font-size: 24px; color: #111827;">Sei in standby</h1>
+        <p style="margin: 0 0 16px; font-size: 16px; color: #374151; line-height: 1.6;">
+          Stiamo lavorando per te e per offrirti il miglior accesso possibile all’ecosistema Nomadiqe.
         </p>
         <p style="margin: 0 0 20px; font-size: 16px; color: #374151; line-height: 1.6;">
-          Sei stato selezionato per entrare nell’ecosistema Nomadiqe. È il momento di creare il tuo account, iniziare a cercare collaborazioni sulla piattaforma e iniziare a guadagnare punti convertibili in token dopo il lancio sulla blockchain.
+          Nel frattempo puoi già iniziare a guadagnare invitando altre persone a iscriversi sulla piattaforma: per ogni iscrizione accumulerai punti.
         </p>
-        <a href="${signupUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-          Completa la registrazione
-        </a>
-        <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280;">
-          Se il pulsante non funziona, copia e incolla questo link nel browser:
-          <br />
-          <span style="color: #2563eb;">${signupUrl}</span>
-        </p>
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="margin: 0; font-size: 15px; color: #92400e; line-height: 1.6;">
+            Ti avviseremo appena sarà il tuo turno per accedere e completare la registrazione.
+          </p>
+        </div>
         <p style="margin: 28px 0 0; font-size: 14px; color: #9ca3af;">
-          Nomadiqe Team
+          A presto,<br />
+          <strong>Il Team Nomadiqe</strong>
         </p>
       </div>
     </div>
@@ -50,28 +48,18 @@ export async function POST(request: NextRequest) {
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
       .from("waitlist_requests")
-      .update({ status: "approved" })
+      .update({ status: "standby" })
       .eq("id", id)
-      .select("id, full_name, email")
+      .select("id, email")
       .single()
 
     if (error || !data) {
-      console.error("Error approving waitlist request:", error)
+      console.error("Error setting standby:", error)
       return NextResponse.json(
-        { error: "Errore durante l'approvazione" },
+        { error: "Errore durante l'aggiornamento" },
         { status: 500 }
       )
     }
-
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      request.headers.get("origin") ||
-      "http://localhost:3000"
-
-    const signupUrl = `${baseUrl}/auth/signup?email=${encodeURIComponent(
-      data.email
-    )}`
 
     const resendApiKey = process.env.RESEND_API_KEY
     if (!resendApiKey) {
@@ -93,8 +81,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         from: fromEmail,
         to: data.email,
-        subject: "Nomadiqe — Accesso approvato",
-        html: buildApprovalEmail(data.full_name || "", signupUrl),
+        subject: "Nomadiqe — Sei in standby",
+        html: buildStandbyEmail(),
       }),
     })
 
@@ -109,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Error in waitlist approve API:", error)
+    console.error("Error in waitlist standby API:", error)
     return NextResponse.json(
       { error: error.message || "Errore interno del server" },
       { status: 500 }
