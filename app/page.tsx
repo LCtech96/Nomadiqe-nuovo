@@ -8,6 +8,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { GridBackground } from "@/components/ui/grid-background"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -21,6 +28,7 @@ export default function HomePage() {
   const [waitlistForm, setWaitlistForm] = useState({
     email: "",
     phone_number: "",
+    role: "",
   })
   const [submittingWaitlist, setSubmittingWaitlist] = useState(false)
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
@@ -115,40 +123,63 @@ export default function HomePage() {
             </div>
 
             {!waitlistSubmitted ? (
-              <form onSubmit={handleWaitlistSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-                <Input
-                  type="email"
-                  placeholder="Inserisci la tua email"
-                  className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
-                  value={waitlistForm.email}
-                  onChange={(e) =>
+              <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-3 max-w-md mx-auto">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="email"
+                    placeholder="Inserisci la tua email"
+                    className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
+                    value={waitlistForm.email}
+                    onChange={(e) =>
+                      setWaitlistForm((prev) => ({
+                        ...prev,
+                        email: e.target.value,
+                      }))
+                    }
+                    required
+                    disabled={submittingWaitlist}
+                  />
+                  <Input
+                    type="tel"
+                    placeholder="Numero di cellulare"
+                    className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
+                    value={waitlistForm.phone_number}
+                    onChange={(e) =>
+                      setWaitlistForm((prev) => ({
+                        ...prev,
+                        phone_number: e.target.value,
+                      }))
+                    }
+                    required
+                    disabled={submittingWaitlist}
+                  />
+                </div>
+                <Select
+                  value={waitlistForm.role}
+                  onValueChange={(value) =>
                     setWaitlistForm((prev) => ({
                       ...prev,
-                      email: e.target.value,
+                      role: value,
                     }))
                   }
                   required
                   disabled={submittingWaitlist}
-                />
-                <Input
-                  type="tel"
-                  placeholder="Numero di cellulare"
-                  className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
-                  value={waitlistForm.phone_number}
-                  onChange={(e) =>
-                    setWaitlistForm((prev) => ({
-                      ...prev,
-                      phone_number: e.target.value,
-                    }))
-                  }
-                  required
-                  disabled={submittingWaitlist}
-                />
+                >
+                  <SelectTrigger className="h-12 bg-gray-950/50 border-gray-800 text-white">
+                    <SelectValue placeholder="Seleziona il tuo ruolo" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-800 text-white">
+                    <SelectItem value="traveler">Traveler</SelectItem>
+                    <SelectItem value="host">Host</SelectItem>
+                    <SelectItem value="creator">Creator</SelectItem>
+                    <SelectItem value="manager">Jolly</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   type="submit"
                   className="h-12 px-6 bg-black hover:bg-black/90 text-white"
                   variant="ghost"
-                  disabled={submittingWaitlist}
+                  disabled={submittingWaitlist || !waitlistForm.role}
                 >
                   {submittingWaitlist ? "Invio..." : "Iscriviti"}
                 </Button>

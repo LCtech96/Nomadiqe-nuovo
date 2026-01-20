@@ -36,11 +36,12 @@ export async function POST(request: NextRequest) {
       email,
       phone_number,
       country,
+      role,
     } = body
 
-    if (!email || !phone_number) {
+    if (!email || !phone_number || !role) {
       return NextResponse.json(
-        { error: "Email e numero di cellulare sono obbligatori" },
+        { error: "Email, numero di cellulare e ruolo sono obbligatori" },
         { status: 400 }
       )
     }
@@ -49,6 +50,15 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: "Formato email non valido" },
+        { status: 400 }
+      )
+    }
+
+    // Validate role
+    const validRoles = ["traveler", "host", "creator", "manager"]
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { error: "Ruolo non valido" },
         { status: 400 }
       )
     }
@@ -63,7 +73,7 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       username: "",
       phone_number: String(phone_number).trim(),
-      role: "traveler",
+      role: String(role).trim(),
       status: "pending",
     }
 
@@ -91,7 +101,7 @@ export async function POST(request: NextRequest) {
             email: normalizedEmail,
             username: "",
             phone_number: String(phone_number).trim(),
-            role: "traveler",
+            role: String(role).trim(),
             status: "pending",
           })
           .select()

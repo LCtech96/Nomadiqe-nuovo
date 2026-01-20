@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { isAdminEmail } from "@/lib/admin"
 import Image from "next/image"
 import { 
   Settings, 
@@ -24,7 +25,8 @@ import {
   Copy,
   Check,
   Upload,
-  ImageIcon
+  ImageIcon,
+  Shield
 } from "lucide-react"
 import Link from "next/link"
 import ImageCropper from "@/components/image-cropper"
@@ -946,6 +948,18 @@ export default function ProfilePage() {
                       title="Impostazioni"
                     >
                       <Settings className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {session?.user?.email && isAdminEmail(session.user.email) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push("/admin-panel")}
+                      className="text-sm bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 border-purple-200 dark:border-purple-800"
+                      title="Admin Panel - Gestisci Waitlist"
+                    >
+                      <Shield className="w-4 h-4 mr-1" />
+                      Admin
                     </Button>
                   )}
                 </div>
