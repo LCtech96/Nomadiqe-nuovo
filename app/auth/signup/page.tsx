@@ -120,11 +120,53 @@ function SignUpContent() {
         return
       }
 
-      // signUp() dovrebbe aver già inviato automaticamente l'email con il codice OTP
-      // Non chiamiamo resend() qui per evitare conflitti o doppi invii
+      // Assicurati che l'email di verifica venga inviata
+      // Se signUp non ha inviato l'email automaticamente, proviamo con signInWithOtp
+      let emailSent = false
+      if (!signUpData.session) {
+        // L'utente non è ancora verificato, invia l'email di verifica
+        try {
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              shouldCreateUser: false, // L'utente esiste già
+              emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+            },
+          })
+
+          if (!otpError) {
+            emailSent = true
+          } else {
+            console.error("signInWithOtp error:", otpError)
+            
+            // Fallback: prova con resend
+            const { error: resendError } = await supabase.auth.resend({
+              type: 'signup',
+              email: email,
+              options: {
+                emailRedirectTo: `${window.location.origin}/auth/verify-email`,
+              },
+            })
+
+            if (!resendError) {
+              emailSent = true
+            } else {
+              console.error("Resend error:", resendError)
+            }
+          }
+        } catch (emailError) {
+          console.error("Error sending verification email:", emailError)
+        }
+      } else {
+        // Se c'è già una sessione, l'email è stata inviata
+        emailSent = true
+      }
+
       toast({
         title: "Account creato!",
-        description: "Controlla la tua email (anche spam) per il codice di verifica a 6 cifre. Se non arriva entro qualche minuto, usa il pulsante 'Rinvia il codice' nella pagina successiva.",
+        description: emailSent 
+          ? "Controlla la tua email (anche spam) per il codice di verifica a 6 cifre. Se non arriva entro qualche minuto, usa il pulsante 'Rinvia il codice' nella pagina successiva."
+          : "Account creato! Vai alla pagina di verifica e usa il pulsante 'Rinvia il codice' se non ricevi l'email.",
       })
 
       // Salva il referral code se fornito (lo useremo dopo la verifica email)
