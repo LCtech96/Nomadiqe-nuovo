@@ -52,6 +52,14 @@ function VerifyEmailContent() {
 
   // Funzione per creare profilo base dopo verifica email
   const handleFirstVerificationComplete = async (userEmail: string, userId: string) => {
+    // Recupera i dati dalla waitlist se disponibili
+    const { data: waitlistData } = await supabase
+      .from("waitlist_requests")
+      .select("full_name, role, phone_number")
+      .eq("email", userEmail.toLowerCase())
+      .eq("status", "approved")
+      .maybeSingle()
+
     // Crea o aggiorna il profilo base
     const { data: existingProfile } = await supabase
       .from("profiles")
@@ -61,17 +69,46 @@ function VerifyEmailContent() {
 
     if (!existingProfile) {
       const emailParts = userEmail.split("@")
+      const profileData: any = {
+        id: userId,
+        email: userEmail,
+        full_name: waitlistData?.full_name || emailParts[0],
+        username: emailParts[0],
+      }
+
+      // Se abbiamo dati dalla waitlist, includiamo anche il ruolo
+      if (waitlistData?.role) {
+        profileData.role = waitlistData.role
+      }
+
       const { error: profileError } = await supabase
         .from("profiles")
-        .insert({
-          id: userId,
-          email: userEmail,
-          full_name: emailParts[0],
-          username: emailParts[0],
-        })
+        .insert(profileData)
 
       if (profileError) {
         console.error("Error creating profile:", profileError)
+      }
+    } else if (waitlistData) {
+      // Se il profilo esiste già ma abbiamo dati dalla waitlist, aggiorniamolo
+      const updateData: any = {}
+      
+      if (waitlistData.full_name) {
+        updateData.full_name = waitlistData.full_name
+      }
+      
+      if (waitlistData.role) {
+        updateData.role = waitlistData.role
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", userId)
+
+        if (updateError) {
+          console.error("Error updating profile with waitlist data:", updateError)
+        }
       }
     }
 

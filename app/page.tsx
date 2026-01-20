@@ -32,6 +32,11 @@ export default function HomePage() {
   })
   const [submittingWaitlist, setSubmittingWaitlist] = useState(false)
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
+  const [emailChecked, setEmailChecked] = useState(false)
+  const [emailStatus, setEmailStatus] = useState<{
+    approved: boolean
+    hasProfile: boolean
+  } | null>(null)
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -64,8 +69,58 @@ export default function HomePage() {
     }
   }
 
+  const checkEmailStatus = async (email: string) => {
+    if (!email || !email.includes("@")) {
+      setEmailChecked(false)
+      setEmailStatus(null)
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/waitlist/check?email=${encodeURIComponent(email)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setEmailStatus({
+          approved: data.approved || false,
+          hasProfile: data.hasProfile || false,
+        })
+        setEmailChecked(true)
+      }
+    } catch (error) {
+      console.error("Error checking email status:", error)
+      setEmailChecked(false)
+      setEmailStatus(null)
+    }
+  }
+
+  useEffect(() => {
+    // Debounce per evitare troppe chiamate API
+    const timeoutId = setTimeout(() => {
+      if (waitlistForm.email) {
+        checkEmailStatus(waitlistForm.email)
+      } else {
+        setEmailChecked(false)
+        setEmailStatus(null)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [waitlistForm.email])
+
   const handleWaitlistSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+
+    // Se l'email è già approvata e ha un profilo, reindirizza al signin
+    if (emailStatus?.approved && emailStatus?.hasProfile) {
+      window.location.href = `/auth/signin?email=${encodeURIComponent(waitlistForm.email)}`
+      return
+    }
+
+    // Se l'email è già approvata ma non ha ancora un profilo, reindirizza al signup
+    if (emailStatus?.approved && !emailStatus?.hasProfile) {
+      window.location.href = `/auth/signup?email=${encodeURIComponent(waitlistForm.email)}`
+      return
+    }
 
     setSubmittingWaitlist(true)
 
@@ -124,6 +179,37 @@ export default function HomePage() {
 
             {!waitlistSubmitted ? (
               <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-3 max-w-md mx-auto">
+                {emailChecked && emailStatus?.approved && (
+                  <div className="mb-4 p-4 bg-blue-950/50 border border-blue-700 rounded-lg">
+                    {emailStatus.hasProfile ? (
+                      <div className="text-center space-y-3">
+                        <p className="text-blue-200">
+                          🎉 La tua email è già approvata e hai già completato la registrazione!
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => window.location.href = `/auth/signin?email=${encodeURIComponent(waitlistForm.email)}`}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Accedi
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-3">
+                        <p className="text-blue-200">
+                          ✅ La tua email è già approvata! Completa la registrazione per accedere.
+                        </p>
+                        <Button
+                          type="button"
+                          onClick={() => window.location.href = `/auth/signup?email=${encodeURIComponent(waitlistForm.email)}`}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          Completa la registrazione
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     type="email"
@@ -137,7 +223,7 @@ export default function HomePage() {
                       }))
                     }
                     required
-                    disabled={submittingWaitlist}
+                    disabled={submittingWaitlist || (emailStatus?.approved && emailStatus?.hasProfile)}
                   />
                   <Input
                     type="tel"
@@ -175,14 +261,16 @@ export default function HomePage() {
                     <SelectItem value="jolly">Jolly</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button
-                  type="submit"
-                  className="h-12 px-6 bg-black hover:bg-black/90 text-white"
-                  variant="ghost"
-                  disabled={submittingWaitlist || !waitlistForm.role}
-                >
-                  {submittingWaitlist ? "Invio..." : "Iscriviti"}
-                </Button>
+                {!emailStatus?.approved && (
+                  <Button
+                    type="submit"
+                    className="h-12 px-6 bg-black hover:bg-black/90 text-white"
+                    variant="ghost"
+                    disabled={submittingWaitlist || !waitlistForm.role}
+                  >
+                    {submittingWaitlist ? "Invio..." : "Iscriviti"}
+                  </Button>
+                )}
               </form>
             ) : (
               <div className="max-w-md mx-auto text-center">
