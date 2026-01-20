@@ -50,14 +50,6 @@ function VerifyEmailContent() {
     }
   }
 
-  useEffect(() => {
-    const token = searchParams.get("token")
-    if (token) {
-      // Auto-verify if token is present
-      handleVerifyToken(token)
-    }
-  }, [searchParams])
-
   // Funzione per creare profilo base dopo verifica email
   const handleFirstVerificationComplete = async (userEmail: string, userId: string) => {
     // Crea o aggiorna il profilo base
@@ -133,15 +125,14 @@ function VerifyEmailContent() {
       .eq("id", userId)
       .maybeSingle()
 
-      toast({
-        title: "Successo",
-        description: "Email verificata con successo!",
-      })
+    toast({
+      title: "Successo",
+      description: "Email verificata con successo!",
+    })
 
-      // Sempre reindirizza alla home dopo la registrazione
-      // L'utente vedrà la selezione dei ruoli sulla home se non ne ha ancora uno
-      router.push("/home")
-    }
+    // Sempre reindirizza alla home dopo la registrazione
+    // L'utente vedrà la selezione dei ruoli sulla home se non ne ha ancora uno
+    router.push("/home")
   }
 
   const handleVerifyToken = async (token: string) => {
@@ -180,6 +171,15 @@ function VerifyEmailContent() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const token = searchParams.get("token")
+    if (token) {
+      // Auto-verify if token is present
+      handleVerifyToken(token)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
