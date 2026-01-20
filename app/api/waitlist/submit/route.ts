@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role
-    const validRoles = ["traveler", "host", "creator", "manager"]
+    const validRoles = ["traveler", "host", "creator", "jolly"]
     if (!validRoles.includes(role)) {
       return NextResponse.json(
         { error: "Ruolo non valido" },

@@ -121,37 +121,43 @@ function SignUpContent() {
       }
 
       // Assicurati che l'email di verifica venga inviata
-      // Se signUp non ha inviato l'email automaticamente, proviamo con signInWithOtp
+      // Se signUp non ha inviato l'email automaticamente, proviamo con resend
       let emailSent = false
       if (!signUpData.session) {
         // L'utente non è ancora verificato, invia l'email di verifica
+        // Aspetta un attimo per assicurarsi che l'utente sia stato creato
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
         try {
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            email,
+          // Usa resend per inviare l'email di verifica
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
             options: {
-              shouldCreateUser: false, // L'utente esiste già
               emailRedirectTo: `${window.location.origin}/auth/verify-email`,
             },
           })
 
-          if (!otpError) {
+          if (!resendError) {
             emailSent = true
+            console.log("Email di verifica inviata con resend")
           } else {
-            console.error("signInWithOtp error:", otpError)
+            console.error("Resend error:", resendError)
             
-            // Fallback: prova con resend
-            const { error: resendError } = await supabase.auth.resend({
-              type: 'signup',
-              email: email,
+            // Fallback: prova con signInWithOtp
+            const { error: otpError } = await supabase.auth.signInWithOtp({
+              email,
               options: {
+                shouldCreateUser: false,
                 emailRedirectTo: `${window.location.origin}/auth/verify-email`,
               },
             })
 
-            if (!resendError) {
+            if (!otpError) {
               emailSent = true
+              console.log("Email di verifica inviata con signInWithOtp")
             } else {
-              console.error("Resend error:", resendError)
+              console.error("signInWithOtp error:", otpError)
             }
           }
         } catch (emailError) {

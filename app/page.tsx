@@ -172,7 +172,7 @@ export default function HomePage() {
                     <SelectItem value="traveler">Traveler</SelectItem>
                     <SelectItem value="host">Host</SelectItem>
                     <SelectItem value="creator">Creator</SelectItem>
-                    <SelectItem value="manager">Jolly</SelectItem>
+                    <SelectItem value="jolly">Jolly</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
