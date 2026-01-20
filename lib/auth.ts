@@ -99,22 +99,16 @@ export const authOptions: NextAuthOptions = {
             console.log("User has completed onboarding, allowing login without email verification")
             // Utente ha completato l'onboarding, procedi con il login
           } else {
-            // Utente non ha ancora completato l'onboarding, verifica che abbia completato la prima verifica email
+            // Utente non ha ancora completato l'onboarding, verifica che abbia completato la verifica email
             const { data: emailVerification } = await supabase
               .from("email_verifications")
-              .select("first_verification_completed, second_verification_required, second_verification_completed")
+              .select("first_verification_completed")
               .eq("user_id", data.user.id)
               .maybeSingle()
 
             // Se non esiste il record di verifica, significa che l'utente non ha completato la registrazione
             if (!emailVerification || !emailVerification.first_verification_completed) {
-              console.error("User has not completed first email verification and has no role")
-              return null
-            }
-
-            // Se richiede seconda verifica (domini personalizzati), verifica che sia completata
-            if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
-              console.error("User has not completed second email verification and has no role")
+              console.error("User has not completed email verification and has no role")
               return null
             }
           }

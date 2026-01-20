@@ -71,10 +71,10 @@ export default function SignInPage() {
         // Utente ha completato l'onboarding, procedi direttamente con il login
         // Non richiedere la verifica email ogni volta
       } else {
-        // Utente non ha ancora completato l'onboarding, verifica che abbia completato la prima verifica email
+        // Utente non ha ancora completato l'onboarding, verifica che abbia completato la verifica email
         const { data: emailVerification } = await supabase
           .from("email_verifications")
-          .select("first_verification_completed, second_verification_required, second_verification_completed")
+          .select("first_verification_completed")
           .eq("user_id", userData.id)
           .maybeSingle()
 
@@ -82,17 +82,6 @@ export default function SignInPage() {
           toast({
             title: "Registrazione non completata",
             description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
-            variant: "destructive",
-          })
-          setLoading(false)
-          return
-        }
-
-        // Se richiede seconda verifica, verifica che sia completata
-        if (emailVerification.second_verification_required && !emailVerification.second_verification_completed) {
-          toast({
-            title: "Verifica email richiesta",
-            description: "Devi completare la seconda verifica email. Controlla la tua casella email per il codice di verifica.",
             variant: "destructive",
           })
           setLoading(false)

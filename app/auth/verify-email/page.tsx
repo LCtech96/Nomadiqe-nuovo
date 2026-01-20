@@ -58,13 +58,7 @@ function VerifyEmailContent() {
     }
   }, [searchParams])
 
-  // Funzione helper per verificare se un dominio richiede seconda verifica
-  const requiresSecondVerification = (emailDomain: string): boolean => {
-    const trustedDomains = ['gmail.com', 'outlook.it', 'libero.it', 'hotmail.com']
-    return !trustedDomains.includes(emailDomain.toLowerCase())
-  }
-
-  // Funzione per creare profilo base e gestire seconda verifica
+  // Funzione per creare profilo base dopo verifica email
   const handleFirstVerificationComplete = async (userEmail: string, userId: string) => {
     // Crea o aggiorna il profilo base
     const { data: existingProfile } = await supabase
@@ -89,10 +83,6 @@ function VerifyEmailContent() {
       }
     }
 
-    // Estrai dominio email
-    const emailDomain = userEmail.split("@")[1] || ""
-    const needsSecondVerification = requiresSecondVerification(emailDomain)
-
     // Crea o aggiorna record in email_verifications
     const { data: emailVerification } = await supabase
       .from("email_verifications")
@@ -101,14 +91,7 @@ function VerifyEmailContent() {
       .maybeSingle()
 
     if (!emailVerification) {
-      // Crea nuovo record
-      const secondCode = needsSecondVerification 
-        ? Math.floor(100000 + Math.random() * 900000).toString()
-        : null
-      const expiresAt = needsSecondVerification
-        ? new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minuti
-        : null
-
+      // Crea nuovo record - NO seconda verifica richiesta
       const { error: insertError } = await supabase
         .from("email_verifications")
         .insert({
@@ -116,45 +99,22 @@ function VerifyEmailContent() {
           email: userEmail,
           first_verification_completed: true,
           first_verification_completed_at: new Date().toISOString(),
-          second_verification_required: needsSecondVerification,
-          second_verification_code: secondCode,
-          second_verification_code_expires_at: expiresAt,
+          second_verification_required: false, // Non richiediamo più seconda verifica
+          second_verification_completed: true, // Consideriamo completata
         })
 
       if (insertError) {
         console.error("Error creating email verification record:", insertError)
-      } else if (needsSecondVerification && secondCode) {
-        // Invia email con il secondo codice
-        try {
-          const response = await fetch("/api/send-second-verification", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: userEmail, code: secondCode }),
-          })
-          
-          if (!response.ok) {
-            console.error("Failed to send second verification email")
-          }
-        } catch (error) {
-          console.error("Error calling send-second-verification API:", error)
-        }
-        
-        toast({
-          title: "Prima verifica completata",
-          description: "Ti abbiamo inviato una seconda email con un nuovo codice di verifica. Controlla la tua casella email.",
-        })
-        
-        // Reindirizza alla pagina di seconda verifica, dopo reindirizzeremo all'onboarding se necessario
-        router.push(`/auth/verify-email-second?email=${encodeURIComponent(userEmail)}&returnTo=/onboarding`)
-        return
       }
     } else {
-      // Aggiorna record esistente
+      // Aggiorna record esistente - marca come completato
       const { error: updateError } = await supabase
         .from("email_verifications")
         .update({
           first_verification_completed: true,
           first_verification_completed_at: new Date().toISOString(),
+          second_verification_required: false, // Non richiediamo più seconda verifica
+          second_verification_completed: true, // Consideriamo completata
         })
         .eq("user_id", userId)
 
@@ -166,14 +126,12 @@ function VerifyEmailContent() {
     // Registra referral se presente
     await registerReferralIfExists()
 
-    // Se non serve seconda verifica, controlla se l'utente ha già un ruolo
-    if (!needsSecondVerification) {
-      // Controlla se l'utente ha già completato l'onboarding (ha un ruolo)
-      const { data: userProfile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .maybeSingle()
+    // Controlla se l'utente ha già completato l'onboarding (ha un ruolo)
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle()
 
       toast({
         title: "Successo",
