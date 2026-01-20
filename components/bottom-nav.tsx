@@ -81,8 +81,16 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t md:hidden">
-        <div className="grid grid-cols-5 h-16 relative">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom">
+        {/* Gradient background with glassmorphism effect */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/98 to-background/95 dark:from-background dark:via-background/98 dark:to-background/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 via-transparent to-transparent" />
+        <div className="absolute inset-0 backdrop-blur-xl backdrop-saturate-150" />
+        
+        {/* Border with gradient */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+        
+        <div className="relative grid grid-cols-5 h-20 pb-safe-area-inset-bottom">
           {/* First two items */}
           {navItems.slice(0, 2).map((item) => {
             const Icon = item.icon
@@ -92,26 +100,72 @@ export default function BottomNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 text-xs transition-colors",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                  "flex flex-col items-center justify-center gap-1.5 text-xs transition-all duration-300 ease-out relative group",
+                  "active:scale-95 touch-manipulation"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
+                {/* Active indicator background */}
+                {isActive && (
+                  <div className="absolute inset-0 mx-2 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent opacity-0 animate-[fadeIn_0.3s_ease-out_forwards]" />
+                )}
+                
+                {/* Icon with smooth transitions */}
+                <div className={cn(
+                  "relative z-10 p-2 rounded-xl transition-all duration-300 ease-out",
+                  isActive 
+                    ? "bg-gradient-to-br from-primary/20 to-primary/10 scale-110 shadow-lg shadow-primary/20" 
+                    : "group-hover:bg-accent/50 group-hover:scale-105"
+                )}>
+                  <Icon className={cn(
+                    "h-5 w-5 transition-all duration-300",
+                    isActive
+                      ? "text-primary scale-110"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  )} />
+                  
+                  {/* Active pulse effect */}
+                  {isActive && (
+                    <div className="absolute inset-0 rounded-xl bg-primary/20 animate-ping opacity-50 pointer-events-none" />
+                  )}
+                </div>
+                
+                {/* Label with gradient text when active */}
+                <span className={cn(
+                  "relative z-10 font-medium transition-all duration-300",
+                  isActive
+                    ? "text-primary font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
+                    : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                  {item.label}
+                </span>
               </Link>
             )
           })}
           
-          {/* Central button for creating post */}
-          <div className="flex items-center justify-center">
+          {/* Central button for creating post - iOS style with gradient */}
+          <div className="flex items-center justify-center relative">
             <button
               onClick={() => setCreatePostOpen(true)}
-              className="absolute -top-4 w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors z-10"
+              className={cn(
+                "absolute -top-6 w-14 h-14 rounded-2xl flex items-center justify-center",
+                "bg-gradient-to-br from-primary via-primary to-primary/90",
+                "shadow-2xl shadow-primary/50",
+                "hover:shadow-primary/70 hover:scale-110",
+                "active:scale-95",
+                "transition-all duration-300 ease-out",
+                "z-20 touch-manipulation",
+                "border-2 border-background/50 dark:border-background/30"
+              )}
               aria-label="Crea post"
             >
-              <Plus className="h-6 w-6" />
+              {/* Glow effect */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/30 to-transparent opacity-50" />
+              
+              {/* Icon */}
+              <Plus className="h-6 w-6 text-primary-foreground relative z-10 transition-transform duration-300 hover:rotate-90" />
+              
+              {/* Pulse animation */}
+              <div className="absolute inset-0 rounded-2xl bg-primary/40 animate-pulse" />
             </button>
           </div>
 
@@ -124,14 +178,44 @@ export default function BottomNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 text-xs transition-colors",
-                  isActive
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                  "flex flex-col items-center justify-center gap-1.5 text-xs transition-all duration-300 ease-out relative group",
+                  "active:scale-95 touch-manipulation"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{item.label}</span>
+                {/* Active indicator background */}
+                {isActive && (
+                  <div className="absolute inset-0 mx-2 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent opacity-0 animate-[fadeIn_0.3s_ease-out_forwards]" />
+                )}
+                
+                {/* Icon with smooth transitions */}
+                <div className={cn(
+                  "relative z-10 p-2 rounded-xl transition-all duration-300 ease-out",
+                  isActive 
+                    ? "bg-gradient-to-br from-primary/20 to-primary/10 scale-110 shadow-lg shadow-primary/20" 
+                    : "group-hover:bg-accent/50 group-hover:scale-105"
+                )}>
+                  <Icon className={cn(
+                    "h-5 w-5 transition-all duration-300",
+                    isActive
+                      ? "text-primary scale-110"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  )} />
+                  
+                  {/* Active pulse effect */}
+                  {isActive && (
+                    <div className="absolute inset-0 rounded-xl bg-primary/20 animate-ping opacity-50 pointer-events-none" />
+                  )}
+                </div>
+                
+                {/* Label with gradient text when active */}
+                <span className={cn(
+                  "relative z-10 font-medium transition-all duration-300",
+                  isActive
+                    ? "text-primary font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent"
+                    : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                  {item.label}
+                </span>
               </Link>
             )
           })}
