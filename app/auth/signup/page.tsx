@@ -21,6 +21,8 @@ function SignUpContent() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [referralCode, setReferralCode] = useState("")
   const [loading, setLoading] = useState(false)
+  const [approvalChecked, setApprovalChecked] = useState(false)
+  const [isApproved, setIsApproved] = useState(false)
 
   // Precompila il referral code se presente nell'URL
   useEffect(() => {
@@ -29,6 +31,38 @@ function SignUpContent() {
       setReferralCode(refParam.toUpperCase().replace(/[^A-Z0-9]/g, ''))
     }
   }, [searchParams])
+
+  useEffect(() => {
+    const emailParam = searchParams.get("email")
+    if (!emailParam) {
+      router.replace("/")
+      return
+    }
+
+    setEmail(emailParam)
+
+    const verifyApproval = async () => {
+      try {
+        const response = await fetch(`/api/waitlist/verify?email=${encodeURIComponent(emailParam)}`)
+        if (!response.ok) {
+          router.replace("/")
+          return
+        }
+        const data = await response.json()
+        if (!data?.approved) {
+          router.replace("/")
+          return
+        }
+        setIsApproved(true)
+      } catch {
+        router.replace("/")
+      } finally {
+        setApprovalChecked(true)
+      }
+    }
+
+    verifyApproval()
+  }, [searchParams, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -115,6 +149,22 @@ function SignUpContent() {
     }
   }
 
+  if (!approvalChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Caricamento...</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!isApproved) {
+    return null
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md">
@@ -150,6 +200,7 @@ function SignUpContent() {
                 placeholder="nome@esempio.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled
                 required
               />
             </div>

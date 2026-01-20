@@ -1,0 +1,28 @@
+import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
+import { authOptions } from "@/lib/auth"
+import { isAdminEmail } from "@/lib/admin"
+import WaitlistAdminPanel from "@/components/admin/waitlist-admin-panel"
+
+export default async function AdminPanelPage() {
+  const session = await getServerSession(authOptions)
+  const email = session?.user?.email || ""
+
+  if (!isAdminEmail(email)) {
+    redirect("/")
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-5xl mx-auto">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2">Admin Panel</h1>
+          <p className="text-muted-foreground mb-8">
+            Gestisci le richieste di accesso in attesa.
+          </p>
+          <WaitlistAdminPanel />
+        </div>
+      </div>
+    </div>
+  )
+}

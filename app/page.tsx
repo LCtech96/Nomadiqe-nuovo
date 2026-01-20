@@ -2,19 +2,28 @@
 
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { GridBackground } from "@/components/ui/grid-background"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function HomePage() {
   const { data: session } = useSession()
-  const router = useRouter()
+  const { toast } = useToast()
   const [profile, setProfile] = useState<any>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const supabase = createSupabaseClient()
+  const [waitlistForm, setWaitlistForm] = useState({
+    email: "",
+    phone_number: "",
+  })
+  const [submittingWaitlist, setSubmittingWaitlist] = useState(false)
+  const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -47,10 +56,129 @@ export default function HomePage() {
     }
   }
 
+  const handleWaitlistSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    setSubmittingWaitlist(true)
+
+    try {
+      const response = await fetch("/api/waitlist/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(waitlistForm),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}))
+        throw new Error(errorBody?.error || "Errore durante l'invio")
+      }
+
+      setWaitlistSubmitted(true)
+      toast({
+        title: "Richiesta inviata",
+        description: "Grazie! Ti contatteremo via email.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error?.message || "Si è verificato un errore",
+        variant: "destructive",
+      })
+    } finally {
+      setSubmittingWaitlist(false)
+    }
+  }
+
   if (loadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div>Caricamento...</div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="relative min-h-screen">
+        <GridBackground />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="w-full max-w-xl mx-auto p-8 space-y-12">
+            <div className="space-y-6 text-center">
+              <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
+                Unisciti alla Waitlist Esclusiva Nomadiqe
+              </h2>
+              <p className="text-xl text-gray-400 max-w-lg mx-auto">
+                Fai parte di qualcosa di straordinario. Unisciti a migliaia di persone che stanno già ottenendo l'accesso anticipato alla nostra piattaforma rivoluzionaria.
+              </p>
+            </div>
+
+            {!waitlistSubmitted ? (
+              <form onSubmit={handleWaitlistSubmit} className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+                <Input
+                  type="email"
+                  placeholder="Inserisci la tua email"
+                  className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
+                  value={waitlistForm.email}
+                  onChange={(e) =>
+                    setWaitlistForm((prev) => ({
+                      ...prev,
+                      email: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={submittingWaitlist}
+                />
+                <Input
+                  type="tel"
+                  placeholder="Numero di cellulare"
+                  className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
+                  value={waitlistForm.phone_number}
+                  onChange={(e) =>
+                    setWaitlistForm((prev) => ({
+                      ...prev,
+                      phone_number: e.target.value,
+                    }))
+                  }
+                  required
+                  disabled={submittingWaitlist}
+                />
+                <Button
+                  type="submit"
+                  className="h-12 px-6 bg-black hover:bg-black/90 text-white"
+                  variant="ghost"
+                  disabled={submittingWaitlist}
+                >
+                  {submittingWaitlist ? "Invio..." : "Iscriviti"}
+                </Button>
+              </form>
+            ) : (
+              <div className="max-w-md mx-auto text-center">
+                <p className="text-lg text-gray-300 mb-4">
+                  Registrazione alla Waitlist completata. Attendi una nostra mail che ti comunicherà se e quando sei stato approvato e ti è stato dato accesso all'ecosistema Nomadiqe
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col items-center gap-8">
+              <div className="flex items-center gap-4">
+                <div className="flex -space-x-3">
+                  <Avatar className="border-2 w-12 h-12">
+                    <AvatarFallback className="text-sm font-semibold border-white/20 bg-purple-600">JD</AvatarFallback>
+                  </Avatar>
+                  <Avatar className="border-2 w-12 h-12">
+                    <AvatarFallback className="text-sm font-semibold border-white/20 bg-blue-600">AS</AvatarFallback>
+                  </Avatar>
+                  <Avatar className="border-2 w-12 h-12">
+                    <AvatarFallback className="text-sm font-semibold border-white/20 bg-blue-700">MK</AvatarFallback>
+                  </Avatar>
+                </div>
+                <span className="font-bold text-gray-300">100+ persone in waitlist</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -67,20 +195,9 @@ export default function HomePage() {
             Soggiorni Più Equi, Connessioni Più Profonde
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {!session ? (
-              <>
-                <Button asChild size="lg" className="w-full sm:w-auto">
-                  <Link href="/auth/signin">Accedi</Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-                  <Link href="/auth/signup">Registrati</Link>
-                </Button>
-              </>
-            ) : (
-              <Button asChild size="lg">
-                <Link href="/home">Vai alla Dashboard</Link>
-              </Button>
-            )}
+            <Button asChild size="lg">
+              <Link href="/home">Vai alla Dashboard</Link>
+            </Button>
           </div>
         </div>
 
