@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { FCMProvider } from "@/components/fcm-provider";
+import { I18nProvider } from "@/lib/i18n/context";
 import { Toaster } from "@/components/ui/toaster";
 import Navbar from "@/components/navbar";
 import BottomNav from "@/components/bottom-nav";
@@ -40,14 +41,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FCMProvider>
-            <Navbar />
-            <main className="pb-16 md:pb-0">{children}</main>
-            <BottomNav />
-            <Toaster />
-            <Analytics />
-            <SpeedInsights />
-          </FCMProvider>
+          <I18nProvider>
+            <FCMProvider>
+              <Navbar />
+              <main className="pb-16 md:pb-0">{children}</main>
+              <BottomNav />
+              <Toaster />
+              <Analytics />
+              <SpeedInsights />
+            </FCMProvider>
+          </I18nProvider>
         </Providers>
       </body>
     </html>

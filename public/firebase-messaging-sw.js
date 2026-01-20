@@ -31,12 +31,22 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon.png',
     tag: payload.data?.type || 'notification',
     data: payload.data,
-    requireInteraction: false,
+    requireInteraction: payload.data?.type === 'message',
     silent: false,
     sound: 'default',
+    vibrate: [200, 100, 200],
+    timestamp: Date.now(),
+    renotify: true,
   }
 
+  // Show notification with promise to ensure sound plays
   self.registration.showNotification(notificationTitle, notificationOptions)
+    .then(() => {
+      console.log('[firebase-messaging-sw.js] Notification shown successfully')
+    })
+    .catch((error) => {
+      console.error('[firebase-messaging-sw.js] Error showing notification:', error)
+    })
 })
 
 

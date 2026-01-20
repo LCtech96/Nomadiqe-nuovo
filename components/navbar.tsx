@@ -12,6 +12,8 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { getMessaging, getToken, isSupported } from "firebase/messaging"
 import { VAPID_KEY } from "@/lib/firebase/config"
+import { useI18n } from "@/lib/i18n/context"
+import { Languages } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +41,7 @@ const roleLabels: Record<string, string> = {
 export default function Navbar() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
+  const { locale, setLocale, t, localeNames, availableLocales } = useI18n()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -387,6 +390,27 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Languages className="h-5 w-5" />
+                  <span className="sr-only">{t('language.select')}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{t('language.title')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {availableLocales.map((loc) => (
+                  <DropdownMenuItem
+                    key={loc}
+                    onClick={() => setLocale(loc)}
+                    className={locale === loc ? "bg-accent" : ""}
+                  >
+                    {localeNames[loc]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="ghost"
               size="icon"
@@ -541,6 +565,27 @@ export default function Navbar() {
               Nomadiqe
             </Link>
             <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Languages className="h-5 w-5" />
+                    <span className="sr-only">{t('language.select')}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{t('language.title')}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {availableLocales.map((loc) => (
+                    <DropdownMenuItem
+                      key={loc}
+                      onClick={() => setLocale(loc)}
+                      className={locale === loc ? "bg-accent" : ""}
+                    >
+                      {localeNames[loc]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="ghost"
                 size="icon"
@@ -592,7 +637,7 @@ export default function Navbar() {
       <Dialog open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Menu</DialogTitle>
+            <DialogTitle>{t('nav.menu')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {session ? (

@@ -100,14 +100,40 @@ async function processNotifications() {
               icon: "/icon.png",
               badge: "/icon.png",
               sound: "default",
+              vibrate: [200, 100, 200],
+              requireInteraction: notification.notification_type === "message",
             },
             data: {
               ...notification.data,
               url: notification.url || "/",
               click_action: notification.url || "/",
+              sound: "default",
             },
             priority: notification.notification_type === "message" ? "high" : "normal",
             content_available: true,
+            android: {
+              priority: notification.notification_type === "message" ? "high" : "normal",
+              notification: {
+                sound: "default",
+                channelId: "default",
+                priority: "high",
+                defaultSound: true,
+                defaultVibrateTimings: true,
+              },
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: "default",
+                  badge: 1,
+                  contentAvailable: true,
+                  alert: {
+                    title: notification.title,
+                    body: notification.message,
+                  },
+                },
+              },
+            },
           }),
         })
 

@@ -18,10 +18,12 @@ import {
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from "@/lib/i18n/context"
 
 export default function HomePage() {
   const { data: session } = useSession()
   const { toast } = useToast()
+  const { t } = useI18n()
   const [profile, setProfile] = useState<any>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const supabase = createSupabaseClient()
@@ -170,10 +172,10 @@ export default function HomePage() {
           <div className="w-full max-w-xl mx-auto p-8 space-y-12">
             <div className="space-y-6 text-center">
               <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
-                Unisciti alla Waitlist Esclusiva Nomadiqe
+                {t('waitlist.title')}
               </h2>
               <p className="text-xl text-gray-400 max-w-lg mx-auto">
-                Fai parte di qualcosa di straordinario. Unisciti a migliaia di persone che stanno già ottenendo l'accesso anticipato alla nostra piattaforma rivoluzionaria.
+                {t('waitlist.description')}
               </p>
             </div>
 
@@ -213,7 +215,7 @@ export default function HomePage() {
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     type="email"
-                    placeholder="Inserisci la tua email"
+                    placeholder={t('waitlist.email')}
                     className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
                     value={waitlistForm.email}
                     onChange={(e) =>
@@ -227,7 +229,7 @@ export default function HomePage() {
                   />
                   <Input
                     type="tel"
-                    placeholder="Numero di cellulare"
+                    placeholder={t('waitlist.phone')}
                     className="h-12 bg-gray-950/50 border-gray-800 text-white placeholder:text-gray-500"
                     value={waitlistForm.phone_number}
                     onChange={(e) =>
@@ -252,24 +254,24 @@ export default function HomePage() {
                   disabled={submittingWaitlist}
                 >
                   <SelectTrigger className="h-12 bg-gray-950/50 border-gray-800 text-white">
-                    <SelectValue placeholder="Seleziona il tuo ruolo" />
+                    <SelectValue placeholder={t('waitlist.role')} />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-900 border-gray-800 text-white">
-                    <SelectItem value="traveler">Traveler</SelectItem>
-                    <SelectItem value="host">Host</SelectItem>
-                    <SelectItem value="creator">Creator</SelectItem>
-                    <SelectItem value="jolly">Jolly</SelectItem>
+                    <SelectItem value="traveler">{t('waitlist.traveler')}</SelectItem>
+                    <SelectItem value="host">{t('waitlist.host')}</SelectItem>
+                    <SelectItem value="creator">{t('waitlist.creator')}</SelectItem>
+                    <SelectItem value="jolly">{t('waitlist.jolly')}</SelectItem>
                   </SelectContent>
                 </Select>
                 {!emailStatus?.approved && (
-                  <Button
-                    type="submit"
-                    className="h-12 px-6 bg-black hover:bg-black/90 text-white"
-                    variant="ghost"
-                    disabled={submittingWaitlist || !waitlistForm.role}
-                  >
-                    {submittingWaitlist ? "Invio..." : "Iscriviti"}
-                  </Button>
+                <Button
+                  type="submit"
+                  className="h-12 px-6 bg-black hover:bg-black/90 text-white"
+                  variant="ghost"
+                  disabled={submittingWaitlist || !waitlistForm.role}
+                >
+                  {submittingWaitlist ? t('waitlist.submitting') : t('waitlist.submit')}
+                </Button>
                 )}
               </form>
             ) : (

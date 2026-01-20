@@ -109,14 +109,40 @@ export async function POST(request: Request) {
           icon: "/icon.png",
           badge: "/icon.png",
           sound: "default",
+          vibrate: [200, 100, 200],
+          requireInteraction: type === "message",
         },
         data: {
           ...notificationData,
           url: url,
           click_action: url,
+          sound: "default",
         },
         priority: type === "message" ? "high" : "normal",
         content_available: true,
+        android: {
+          priority: type === "message" ? "high" : "normal",
+          notification: {
+            sound: "default",
+            channelId: "default",
+            priority: "high",
+            defaultSound: true,
+            defaultVibrateTimings: true,
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+              badge: 1,
+              contentAvailable: true,
+              alert: {
+                title,
+                body: message,
+              },
+            },
+          },
+        },
       }),
     })
 
