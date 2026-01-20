@@ -63,11 +63,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      request.headers.get("origin") ||
-      "http://localhost:3000"
+    // Usa sempre il dominio di produzione per le email di approvazione
+    // In produzione, usa sempre https://www.nomadiqe.com
+    let baseUrl = "https://www.nomadiqe.com"
+    
+    // Solo in sviluppo locale, usa localhost
+    if (process.env.NODE_ENV === "development" && 
+        (process.env.NEXT_PUBLIC_APP_URL?.includes("localhost") || 
+         process.env.NEXTAUTH_URL?.includes("localhost"))) {
+      baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                 process.env.NEXTAUTH_URL || 
+                 request.headers.get("origin") || 
+                 "http://localhost:3000"
+    }
 
     const signupUrl = `${baseUrl}/auth/signup?email=${encodeURIComponent(
       data.email
