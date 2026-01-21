@@ -29,6 +29,38 @@ export default function EditPropertyPage() {
   const supabase = createSupabaseClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [currentAmenity, setCurrentAmenity] = useState("")
+
+  // Lista servizi predefiniti
+  const availableAmenities = [
+    "WiFi",
+    "Parcheggio",
+    "Aria condizionata",
+    "Riscaldamento",
+    "Cucina",
+    "TV",
+    "Lavatrice",
+    "Asciugatrice",
+    "Piscina",
+    "Giardino",
+    "Balcone",
+    "Terrazza",
+    "Camino",
+    "Idromassaggio",
+    "Palestra",
+    "Sauna",
+    "Colazione inclusa",
+    "Animali ammessi",
+    "Accesso disabili",
+    "Servizio di pulizia",
+    "Asciugamani",
+    "Biancheria da letto",
+    "Ferro da stiro",
+    "Asciugacapelli",
+    "Culla",
+    "Seggiolone",
+    "Mensa per bambini",
+  ]
 
   const [formData, setFormData] = useState({
     name: "",
@@ -44,8 +76,6 @@ export default function EditPropertyPage() {
     amenities: [] as string[],
     is_active: true,
   })
-
-  const [currentAmenity, setCurrentAmenity] = useState("")
 
   useEffect(() => {
     if (params.id) {
