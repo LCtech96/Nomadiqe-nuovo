@@ -393,27 +393,27 @@ export default function Navbar() {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden md:block border-b border-gray-100/50 bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 shadow-sm shadow-gray-200/30">
+      <nav className="hidden md:block border-b border-gray-100/50 dark:border-gray-800/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 dark:supports-[backdrop-filter]:bg-gray-900/95 shadow-sm shadow-gray-200/30 dark:shadow-gray-900/50">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
               Nomadiqe
             </Link>
             {session && (
               <div className="hidden md:flex items-center gap-4">
-                <Link href="/explore" className="text-sm font-medium hover:text-primary">
+                <Link href="/explore" className="text-sm font-medium hover:text-primary text-gray-700 dark:text-gray-200">
                   Esplora
                 </Link>
-                <Link href="/home" className="text-sm font-medium hover:text-primary">
+                <Link href="/home" className="text-sm font-medium hover:text-primary text-gray-700 dark:text-gray-200">
                   Home
                 </Link>
-                <Link href="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1">
+                <Link href="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1 text-gray-700 dark:text-gray-200">
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
                 {profile?.role !== "traveler" && (
-                  <Link href="/kol-bed" className="text-sm font-medium hover:text-primary">
+                  <Link href="/kol-bed" className="text-sm font-medium hover:text-primary text-gray-700 dark:text-gray-200">
                     KOL&BED
                   </Link>
                 )}
@@ -447,6 +447,7 @@ export default function Navbar() {
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-gray-700 dark:text-gray-200"
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -458,7 +459,7 @@ export default function Navbar() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="relative"
+                  className="relative text-gray-700 dark:text-gray-200"
                   onClick={() => setNotificationsOpen(true)}
                 >
                   <Bell className="h-5 w-5" />
@@ -473,7 +474,7 @@ export default function Navbar() {
             )}
 
             {session && isProfilePage && (
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="text-gray-700 dark:text-gray-200">
                 <Link href="/messages">
                   <Mail className="h-5 w-5" />
                   <span className="sr-only">Messaggi</span>
@@ -484,10 +485,10 @@ export default function Navbar() {
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2">
+                  <Button variant="ghost" size="sm" className="gap-2 text-gray-700 dark:text-gray-200">
                     <span>{session.user.name || session.user.email}</span>
                     {profile?.role && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary-foreground">
                         {roleLabels[profile.role] || profile.role}
                       </span>
                     )}
@@ -590,7 +591,7 @@ export default function Navbar() {
     </nav>
 
       {/* Mobile Navbar */}
-      <nav className="md:hidden border-b border-gray-100/50 bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 shadow-sm shadow-gray-200/30 sticky top-0 z-50">
+      <nav className="md:hidden border-b border-gray-100/50 dark:border-gray-800/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 dark:supports-[backdrop-filter]:bg-gray-900/95 shadow-sm shadow-gray-200/30 dark:shadow-gray-900/50 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -599,7 +600,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="text-gray-700 dark:text-gray-200">
                     <Languages className="h-5 w-5" />
                     <span className="sr-only">{t('language.select')}</span>
                   </Button>
@@ -622,6 +623,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="text-gray-700 dark:text-gray-200"
               >
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -632,7 +634,7 @@ export default function Navbar() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="relative"
+                    className="relative text-gray-700 dark:text-gray-200"
                     onClick={() => setNotificationsOpen(true)}
                   >
                     <Bell className="h-5 w-5" />
@@ -646,7 +648,7 @@ export default function Navbar() {
                 </>
               )}
               {session && isProfilePage && (
-                <Button variant="ghost" size="icon" asChild>
+                <Button variant="ghost" size="icon" asChild className="text-gray-700 dark:text-gray-200">
                   <Link href="/messages">
                     <Mail className="h-5 w-5" />
                     <span className="sr-only">Messaggi</span>
@@ -657,6 +659,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(true)}
+                className="text-gray-700 dark:text-gray-200"
               >
                 <Menu className="h-6 w-6" />
               </Button>
