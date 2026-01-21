@@ -49,7 +49,8 @@ export default function ExplorePage() {
         .select("*")
         .eq("is_active", true)
         .order("created_at", { ascending: false })
-        .limit(50)
+        // Rimuoviamo il limite per mostrare tutte le properties
+        // .limit(50)
 
       if (error) throw error
       setProperties(data || [])
