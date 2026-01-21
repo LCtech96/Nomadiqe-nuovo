@@ -197,7 +197,7 @@ export default function CreateCommunityDialog({
         const invitations = selectedHosts.map((hostId) => ({
           community_id: community.id,
           invited_host_id: hostId,
-          invited_by: userId,
+          invited_by: session.user.id,
           status: "pending",
         }))
 
