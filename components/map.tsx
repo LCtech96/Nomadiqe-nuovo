@@ -153,8 +153,24 @@ function IOSMapFix() {
   return null
 }
 
+// Helper function to count properties at same location
+function countPropertiesAtLocation(
+  property: Property,
+  allProperties: Property[]
+): number {
+  return allProperties.filter(
+    (p) => 
+      p.latitude === property.latitude && 
+      p.longitude === property.longitude
+  ).length
+}
+
 // Create custom icon with property image and price
-function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
+function createPropertyIcon(
+  property: Property, 
+  size: number = 60,
+  propertiesCount: number = 1
+): L.DivIcon {
   // Get the first image URL - same logic as feed view
   let imageUrl: string | null = null
   
@@ -191,13 +207,17 @@ function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
   const fontSize = Math.max(7, size * 0.15)
   const padding = Math.max(2, size * 0.05)
   
+  // Badge count size
+  const badgeSize = Math.max(18, size * 0.3)
+  const badgeFontSize = Math.max(9, size * 0.15)
+  
   const iconHtml = `
     <div style="
       position: relative;
       width: ${size}px;
       height: ${size}px;
       border-radius: 50%;
-      overflow: hidden;
+      overflow: visible;
       border: ${Math.max(2, size * 0.05)}px solid white;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
       cursor: pointer;
@@ -212,6 +232,7 @@ function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
           height: 100%;
           object-fit: cover;
           display: block;
+          border-radius: 50%;
         "
         loading="lazy"
         onerror="this.onerror=null; this.src='${fallbackSvg}';"
@@ -226,6 +247,7 @@ function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
         display: flex;
         align-items: center;
         justify-content: center;
+        border-radius: 0 0 50% 50%;
       ">
         <span style="
           color: white;
@@ -236,6 +258,31 @@ function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
           letter-spacing: 0.3px;
         ">€${price}</span>
       </div>
+      ${propertiesCount > 1 ? `
+      <div style="
+        position: absolute;
+        top: -${badgeSize * 0.3}px;
+        right: -${badgeSize * 0.3}px;
+        width: ${badgeSize}px;
+        height: ${badgeSize}px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border: 2px solid white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        z-index: 1000;
+      ">
+        <span style="
+          color: white;
+          font-size: ${badgeFontSize}px;
+          font-weight: 800;
+          line-height: 1;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        ">${propertiesCount}</span>
+      </div>
+      ` : ''}
     </div>
   `
   
@@ -278,7 +325,8 @@ function MarkersLayer({
     properties.forEach((property) => {
       const marker = markerRefs.current[property.id]
       if (marker) {
-        const newIcon = createPropertyIcon(property, markerSize)
+        const count = countPropertiesAtLocation(property, properties)
+        const newIcon = createPropertyIcon(property, markerSize, count)
         marker.setIcon(newIcon)
       }
     })
@@ -293,12 +341,15 @@ function MarkersLayer({
           return null
         }
 
+        // Count properties at same location for badge
+        const propertiesCount = countPropertiesAtLocation(property, properties)
+
         // Use exact coordinates from the property (geocoded from address including street number)
         return (
           <Marker
             key={property.id}
             position={[property.latitude, property.longitude]}
-            icon={createPropertyIcon(property, markerSize)}
+            icon={createPropertyIcon(property, markerSize, propertiesCount)}
             eventHandlers={{
               click: () => onPropertySelect(property),
             }}

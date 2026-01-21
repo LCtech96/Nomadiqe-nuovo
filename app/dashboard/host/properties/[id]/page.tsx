@@ -19,6 +19,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import Link from "next/link"
+import { X } from "lucide-react"
 
 export default function EditPropertyPage() {
   const { data: session } = useSession()
@@ -326,41 +327,86 @@ export default function EditPropertyPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="amenities">Servizi</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="amenities"
-                    value={currentAmenity}
-                    onChange={(e) => setCurrentAmenity(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addAmenity()
-                      }
-                    }}
-                    placeholder="Aggiungi un servizio"
-                  />
-                  <Button type="button" onClick={addAmenity}>
-                    Aggiungi
-                  </Button>
-                </div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Seleziona i servizi disponibili nella tua struttura
+                </p>
+                
+                {/* Servizi selezionati */}
                 {formData.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="flex flex-wrap gap-2 mb-4">
                     {formData.amenities.map((amenity) => (
                       <span
                         key={amenity}
-                        className="px-3 py-1 bg-secondary rounded-full text-sm flex items-center gap-2"
+                        className="px-3 py-1 bg-primary text-primary-foreground rounded-full text-sm flex items-center gap-2"
                       >
                         {amenity}
                         <button
                           type="button"
                           onClick={() => removeAmenity(amenity)}
-                          className="text-destructive hover:text-destructive/80"
+                          className="hover:bg-primary/80 rounded-full p-0.5"
+                          disabled={saving}
                         >
-                          ×
+                          <X className="w-3 h-3" />
                         </button>
                       </span>
                     ))}
                   </div>
+                )}
+
+                {/* Servizi predefiniti */}
+                <div className="mb-4">
+                  <p className="text-sm font-medium mb-2">Servizi comuni:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableAmenities
+                      .filter((amenity) => !formData.amenities.includes(amenity))
+                      .map((amenity) => (
+                        <Button
+                          key={amenity}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (!formData.amenities.includes(amenity)) {
+                              setFormData({
+                                ...formData,
+                                amenities: [...formData.amenities, amenity],
+                              })
+                            }
+                          }}
+                          disabled={saving}
+                        >
+                          {amenity}
+                        </Button>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Input per servizi personalizzati */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Aggiungi servizio personalizzato:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      id="amenities"
+                      value={currentAmenity}
+                      onChange={(e) => setCurrentAmenity(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          addAmenity()
+                        }
+                      }}
+                      placeholder="Es: WiFi veloce, Piscina riscaldata..."
+                    />
+                    <Button type="button" onClick={addAmenity} disabled={saving}>
+                      Aggiungi
+                    </Button>
+                  </div>
+                </div>
+
+                {formData.amenities.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Nessun servizio selezionato
+                  </p>
                 )}
               </div>
 
