@@ -265,32 +265,32 @@ export default function CreatorsListPage() {
           )}
         </div>
 
-        {/* Managers Section */}
+        {/* Jollies Section */}
         <div>
           <h2 className="text-2xl font-semibold mb-4">
-            Manager ({filteredManagers.length})
+            Jolly ({filteredJollies.length})
           </h2>
-          {filteredManagers.length === 0 ? (
+          {filteredJollies.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
-                Nessun manager trovato
+                Nessun jolly trovato
               </CardContent>
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredManagers.map((manager) => (
+              {filteredJollies.map((jolly) => (
                 <Card
-                  key={manager.id}
+                  key={jolly.id}
                   className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/profile/${manager.id}`)}
+                  onClick={() => router.push(`/profile/${jolly.id}`)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0">
-                        {manager.avatar_url ? (
+                        {jolly.avatar_url ? (
                           <Image
-                            src={manager.avatar_url}
-                            alt={manager.username || manager.full_name || "Manager"}
+                            src={jolly.avatar_url}
+                            alt={jolly.username || jolly.full_name || "Jolly"}
                             fill
                             sizes="64px"
                             className="object-cover"
@@ -303,21 +303,21 @@ export default function CreatorsListPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">
-                          {manager.full_name || manager.username || "Manager"}
+                          {jolly.full_name || jolly.username || "Jolly"}
                         </h3>
-                        {manager.username && (
+                        {jolly.username && (
                           <p className="text-sm text-muted-foreground truncate">
-                            @{manager.username}
+                            @{jolly.username}
                           </p>
                         )}
-                        {manager.bio && (
+                        {jolly.bio && (
                           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {manager.bio}
+                            {jolly.bio}
                           </p>
                         )}
                         <div className="flex items-center gap-1 mt-2 text-xs text-primary">
                           <span>⭐</span>
-                          <span>{manager.points || 0} punti</span>
+                          <span>{jolly.points || 0} punti</span>
                         </div>
                       </div>
                     </div>
