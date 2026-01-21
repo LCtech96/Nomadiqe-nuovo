@@ -341,7 +341,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     'role.host': 'Хост',
     'role.creator': 'Создатель',
     'role.jolly': 'Джокер',
-    'role.manager': 'Менеджер',
     
     // Errors
     'error.generic': 'Произошла ошибка',
