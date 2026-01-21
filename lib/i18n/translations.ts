@@ -109,7 +109,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'role.host': 'Host',
     'role.creator': 'Creator',
     'role.jolly': 'Jolly',
-    'role.manager': 'Manager',
+    'role.jolly': 'Jolly',
     
     // Errors
     'error.generic': 'Si è verificato un errore',
@@ -225,7 +225,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'role.host': 'Host',
     'role.creator': 'Creator',
     'role.jolly': 'Jolly',
-    'role.manager': 'Manager',
+    'role.jolly': 'Jolly',
     
     // Errors
     'error.generic': 'An error occurred',
@@ -457,7 +457,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'role.host': 'Hôte',
     'role.creator': 'Créateur',
     'role.jolly': 'Joker',
-    'role.manager': 'Manager',
+    'role.jolly': 'Jolly',
     
     // Errors
     'error.generic': 'Une erreur s\'est produite',
@@ -573,7 +573,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'role.host': 'Gastgeber',
     'role.creator': 'Schöpfer',
     'role.jolly': 'Joker',
-    'role.manager': 'Manager',
+    'role.jolly': 'Jolly',
     
     // Errors
     'error.generic': 'Ein Fehler ist aufgetreten',

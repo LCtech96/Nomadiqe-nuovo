@@ -357,11 +357,11 @@ export default function OnboardingPage() {
   if (step === "role-specific" && selectedRole === "manager") {
     return (
       <div className="min-h-screen">
-        {profile?.role === "manager" && (
+        {profile?.role === "jolly" && (
           <div className="container mx-auto p-4 max-w-4xl">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                ✓ Sei già registrato come <strong>Manager</strong>. Completa l'onboarding per iniziare a offrire i tuoi servizi.
+                ✓ Sei già registrato come <strong>Jolly</strong>. Completa l'onboarding per iniziare a offrire i tuoi servizi.
               </p>
             </div>
           </div>

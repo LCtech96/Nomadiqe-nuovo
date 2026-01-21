@@ -30,7 +30,7 @@ const roleLabel = (role: string) => {
       return "Creator"
     case "traveler":
       return "Traveler"
-    case "manager":
+    case "jolly":
       return "Jolly"
     default:
       return role
