@@ -234,7 +234,7 @@ export default function FeedPage() {
             <Card key={post.id} className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1">
               <CardHeader className="px-5 pt-5 pb-3">
                 <div className="flex items-center gap-3">
-                  <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-1 ring-border/50">
+                  <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-2 ring-gray-200/60 hover:ring-4 hover:ring-purple-200/50 transition-all duration-200">
                     {post.author.avatar_url ? (
                       <Image
                         src={post.author.avatar_url}
