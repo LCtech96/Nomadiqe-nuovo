@@ -239,7 +239,7 @@ export default function KOLBedPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate">
+                        <h3 className="font-semibold text-lg truncate text-foreground">
                           {creator.full_name || creator.username || "Creator"}
                         </h3>
                         {creator.username && (
