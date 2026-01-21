@@ -52,6 +52,15 @@ export default function ExplorePage() {
     loadProperties()
   }, [])
 
+  // Carica proprietà disponibili per le date selezionate
+  useEffect(() => {
+    if (checkIn && checkOut) {
+      loadAvailableProperties()
+    } else {
+      setAvailableProperties([])
+    }
+  }, [checkIn, checkOut])
+
   const loadProperties = async () => {
     try {
       const { data, error } = await supabase
@@ -71,11 +80,102 @@ export default function ExplorePage() {
     }
   }
 
-  const filteredProperties = properties.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.country.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const loadAvailableProperties = async () => {
+    if (!checkIn || !checkOut) return
+    
+    try {
+      // Carica tutte le prenotazioni confermate che si sovrappongono con il range di date
+      const { data: bookings } = await supabase
+        .from("bookings")
+        .select("property_id, check_in, check_out")
+        .in("status", ["confirmed", "pending"])
+
+      // Filtra prenotazioni che si sovrappongono con checkIn-checkOut
+      const overlappingBookings = (bookings || []).filter(booking => {
+        const bookingCheckIn = new Date(booking.check_in)
+        const bookingCheckOut = new Date(booking.check_out)
+        const searchCheckIn = new Date(checkIn)
+        const searchCheckOut = new Date(checkOut)
+        
+        // Sovrapposizione: booking inizia prima che la ricerca finisca E booking finisce dopo che la ricerca inizia
+        return bookingCheckIn <= searchCheckOut && bookingCheckOut >= searchCheckIn
+      })
+
+      const bookedPropertyIds = new Set(overlappingBookings.map(b => b.property_id))
+      
+      // Carica disponibilità per le date (tutte le date nel range devono essere disponibili)
+      const { data: availability } = await supabase
+        .from("property_availability")
+        .select("property_id, date")
+        .gte("date", checkIn)
+        .lte("date", checkOut)
+
+      // Raggruppa per property_id e verifica che tutte le date siano disponibili
+      const availabilityByProperty = new Map<string, Set<string>>()
+      availability?.forEach(a => {
+        if (!availabilityByProperty.has(a.property_id)) {
+          availabilityByProperty.set(a.property_id, new Set())
+        }
+        availabilityByProperty.get(a.property_id)?.add(a.date)
+      })
+
+      // Genera tutte le date nel range
+      const dateRange: string[] = []
+      const start = new Date(checkIn)
+      const end = new Date(checkOut)
+      const current = new Date(start)
+      while (current <= end) {
+        dateRange.push(current.toISOString().split('T')[0])
+        current.setDate(current.getDate() + 1)
+      }
+
+      // Filtra proprietà che hanno tutte le date disponibili E non sono prenotate
+      const allPropertyIds = properties.map(p => p.id)
+      const filtered = allPropertyIds.filter(id => {
+        if (bookedPropertyIds.has(id)) return false
+        
+        const propertyDates = availabilityByProperty.get(id) || new Set()
+        // Verifica che tutte le date nel range siano disponibili
+        return dateRange.every(date => propertyDates.has(date))
+      })
+      
+      setAvailableProperties(filtered)
+    } catch (error) {
+      console.error("Error loading available properties:", error)
+      // Se c'è un errore, mostra tutte le proprietà (fallback)
+      setAvailableProperties(properties.map(p => p.id))
+    }
+  }
+
+  const filteredProperties = properties.filter((p) => {
+    // Filtro ricerca base
+    const matchesSearch = 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.country.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    if (!matchesSearch) return false
+
+    // Filtro prezzo
+    if (minPrice && p.price_per_night < parseFloat(minPrice)) return false
+    if (maxPrice && p.price_per_night > parseFloat(maxPrice)) return false
+
+    // Filtro amenities
+    if (selectedAmenities.length > 0) {
+      const propertyAmenities = (p.amenities || []).map(a => a.toLowerCase())
+      const hasAllAmenities = selectedAmenities.every(amenity =>
+        propertyAmenities.some(pa => pa.includes(amenity.toLowerCase()))
+      )
+      if (!hasAllAmenities) return false
+    }
+
+    // Filtro disponibilità date
+    if (checkIn && checkOut && availableProperties.length > 0) {
+      return availableProperties.includes(p.id)
+    }
+
+    return true
+  })
 
   const handlePropertySelect = (property: Property) => {
     setSelectedProperty(property)
