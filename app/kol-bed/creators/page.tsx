@@ -34,7 +34,7 @@ export default function CreatorsListPage() {
   const router = useRouter()
   const supabase = createSupabaseClient()
   const [creators, setCreators] = useState<CreatorProfile[]>([])
-  const [managers, setManagers] = useState<CreatorProfile[]>([])
+  const [jollies, setJollies] = useState<CreatorProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -45,11 +45,11 @@ export default function CreatorsListPage() {
     }
 
     if (status === "authenticated") {
-      loadCreatorsAndManagers()
+      loadCreatorsAndJollies()
     }
   }, [status, session, router])
 
-  const loadCreatorsAndManagers = async () => {
+  const loadCreatorsAndJollies = async () => {
     try {
       // Load creators
       const { data: creatorsData, error: creatorsError } = await supabase
@@ -60,14 +60,14 @@ export default function CreatorsListPage() {
 
       if (creatorsError) throw creatorsError
 
-      // Load managers
-      const { data: managersData, error: managersError } = await supabase
+      // Load jollies
+      const { data: jolliesData, error: jolliesError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("role", "manager")
+        .eq("role", "jolly")
         .order("created_at", { ascending: false })
 
-      if (managersError) throw managersError
+      if (jolliesError) throw jolliesError
 
       // Load social accounts for creators
       const creatorIds = (creatorsData || []).map((c) => c.id)
@@ -104,9 +104,9 @@ export default function CreatorsListPage() {
       })
 
       setCreators(enrichedCreators)
-      setManagers(managersData || [])
+      setJollies(jolliesData || [])
     } catch (error) {
-      console.error("Error loading creators and managers:", error)
+      console.error("Error loading creators and jollies:", error)
     } finally {
       setLoading(false)
     }
@@ -119,7 +119,7 @@ export default function CreatorsListPage() {
       c.bio?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const filteredManagers = managers.filter(
+  const filteredJollies = jollies.filter(
     (m) =>
       m.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -147,9 +147,9 @@ export default function CreatorsListPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Indietro
           </Button>
-          <h1 className="text-3xl font-bold mb-2">Creator e Manager</h1>
+          <h1 className="text-3xl font-bold mb-2">Creator e Jolly</h1>
           <p className="text-muted-foreground">
-            Esplora i creator e manager disponibili per collaborazioni
+            Esplora i creator e jolly disponibili per collaborazioni
           </p>
         </div>
 

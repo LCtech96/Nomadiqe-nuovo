@@ -106,7 +106,7 @@ export default function EditServicePage() {
         description: "Impossibile caricare il servizio",
         variant: "destructive",
       })
-      router.push("/dashboard/manager")
+      router.push("/dashboard/jolly")
     } finally {
       setLoading(false)
     }
@@ -142,7 +142,7 @@ export default function EditServicePage() {
         description: "Servizio aggiornato con successo!",
       })
 
-      router.push("/dashboard/manager")
+      router.push("/dashboard/jolly")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -218,7 +218,7 @@ export default function EditServicePage() {
             <p className="text-muted-foreground">Aggiorna i dettagli del tuo servizio</p>
           </div>
           <Button asChild variant="outline">
-            <Link href="/dashboard/manager">Torna alla dashboard</Link>
+            <Link href="/dashboard/jolly">Torna alla dashboard</Link>
           </Button>
         </div>
 

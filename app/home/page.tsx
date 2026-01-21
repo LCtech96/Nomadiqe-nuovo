@@ -410,7 +410,7 @@ export default function HomePage() {
                   onClick={() => handleRoleSelect("manager")}
                 >
                   <CardContent className="p-4">
-                    <h3 className="font-semibold mb-1">Manager</h3>
+                    <h3 className="font-semibold mb-1">Jolly</h3>
                     <p className="text-sm text-muted-foreground mb-2">Offri servizi</p>
                     <p className="text-xs text-muted-foreground">
                       Offri servizi di gestione, pulizie e altro

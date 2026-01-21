@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole, Profile } from "@/types/user"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
-import ManagerOnboarding from "@/components/onboarding/manager-onboarding"
+import JollyOnboarding from "@/components/onboarding/jolly-onboarding"
 
 type OnboardingStep = "role" | "role-specific"
 
@@ -85,7 +85,7 @@ export default function OnboardingPage() {
           setSelectedRole(data.role)
           if (data.role === "host") {
             setStep("role-specific")
-          } else if (data.role === "manager") {
+          } else if (data.role === "jolly") {
             setStep("role-specific")
           } else {
             // Per altri ruoli, per ora reindirizza alla home
@@ -153,9 +153,9 @@ export default function OnboardingPage() {
           role: selectedRole,
         }
         
-        // Per ruoli non-host e non-manager, segna anche onboarding come completato
-        // Manager e Host hanno onboarding specifici
-        if (selectedRole !== "host" && selectedRole !== "manager") {
+        // Per ruoli non-host e non-jolly, segna anche onboarding come completato
+        // Jolly e Host hanno onboarding specifici
+        if (selectedRole !== "host" && selectedRole !== "jolly") {
           updateData.onboarding_completed = true
         }
         
@@ -204,8 +204,8 @@ export default function OnboardingPage() {
         description: `Ruolo ${selectedRole} selezionato con successo!`,
       })
 
-      // If role is host or manager, go to role-specific onboarding
-      if (selectedRole === "host" || selectedRole === "manager") {
+      // If role is host or jolly, go to role-specific onboarding
+      if (selectedRole === "host" || selectedRole === "jolly") {
         setStep("role-specific")
       } else {
         // For other roles, stay on onboarding to complete profile info
@@ -299,12 +299,12 @@ export default function OnboardingPage() {
 
               <Card
                 className={`cursor-pointer transition-all ${
-                  selectedRole === "manager" ? "ring-2 ring-primary" : ""
+                  selectedRole === "jolly" ? "ring-2 ring-primary" : ""
                 }`}
-                onClick={() => handleRoleSelect("manager")}
+                onClick={() => handleRoleSelect("jolly")}
               >
                 <CardHeader>
-                  <CardTitle>Manager</CardTitle>
+                  <CardTitle>Jolly</CardTitle>
                   <CardDescription>Offri servizi</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -353,8 +353,8 @@ export default function OnboardingPage() {
     )
   }
 
-  // Manager-specific onboarding
-  if (step === "role-specific" && selectedRole === "manager") {
+  // Jolly-specific onboarding
+  if (step === "role-specific" && selectedRole === "jolly") {
     return (
       <div className="min-h-screen">
         {profile?.role === "jolly" && (
@@ -366,9 +366,9 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
-        <ManagerOnboarding
+        <JollyOnboarding
           onComplete={() => {
-            router.push("/dashboard/manager")
+            router.push("/dashboard/jolly")
           }}
         />
       </div>

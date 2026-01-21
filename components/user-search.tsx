@@ -34,12 +34,12 @@ export default function UserSearch({ userRole }: UserSearchProps) {
   // Determina quali ruoli possono essere cercati in base al ruolo dell'utente
   const getAllowedRoles = (): string[] => {
     switch (userRole) {
-      case "manager":
+      case "jolly":
         return ["creator", "host"]
       case "host":
-        return ["traveler", "creator", "host", "manager"]
+        return ["traveler", "creator", "host", "jolly"]
       case "creator":
-        return ["host", "manager"]
+        return ["host", "jolly"]
       case "traveler":
         return ["host"]
       default:
@@ -103,7 +103,7 @@ export default function UserSearch({ userRole }: UserSearchProps) {
         return "bg-purple-500"
       case "traveler":
         return "bg-green-500"
-      case "manager":
+      case "jolly":
         return "bg-orange-500"
       default:
         return "bg-gray-500"

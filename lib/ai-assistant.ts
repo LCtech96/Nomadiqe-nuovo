@@ -4,7 +4,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 })
 
-export type UserRole = "traveler" | "host" | "creator" | "manager"
+export type UserRole = "traveler" | "host" | "creator" | "jolly"
 
 export interface WelcomeMessageParams {
   userId: string
@@ -62,7 +62,7 @@ const ROLE_GUIDES: Record<UserRole, string> = {
 - Gestisci le tue analitiche e visibilità
 - Connettiti con brand e strutture`,
   
-  manager: `Sei un Manager su Nomadiqe. Ecco cosa puoi fare:
+  jolly: `Sei un Jolly su Nomadiqe. Ecco cosa puoi fare:
 - Gestisci servizi per strutture (pulizia, manutenzione, etc.)
 - Crea cataloghi prodotti e servizi
 - Connettiti con host per partnership
@@ -86,7 +86,7 @@ FUNZIONALITÀ DISPONIBILI PER TRAVELER:
 2. ESPLORA: Cerca strutture per destinazione, date, numero ospiti
 3. PROPRIETÀ: Visualizza dettagli strutture, foto, servizi, recensioni, disponibilità calendario
 4. PRENOTAZIONI: Richiedi prenotazione tramite messaggi all'host, gestisci le tue prenotazioni
-5. MESSAGGI: Comunica con host, creator, manager e assistente AI
+5. MESSAGGI: Comunica con host, creator, jolly e assistente AI
 6. PROFILO: Gestisci profilo, visualizza post pubblicati, strutture salvate
 7. POST: Crea post con testo, immagini, tag posizione, condividi esperienze
 8. RECENSIONI: Lascia recensioni per strutture visitate (dopo prenotazione completata)
@@ -142,9 +142,9 @@ FUNZIONALITÀ DISPONIBILI PER CREATOR:
 2. KOL&BED: Cerca collaborazioni con host per FREE STAY, richiedi collaborazioni
 3. POST: Crea post con contenuti di viaggio, foto, video, tag posizione
 4. ANALITICHE: Inserisci manualmente follower, engagement, views per mostrare statistiche
-5. VISIBILITÀ: Nascondi/mostra contenuti (post, foto, video) a specifiche audience (managers, hosts, travelers, creators)
+5. VISIBILITÀ: Nascondi/mostra contenuti (post, foto, video) a specifiche audience (jollies, hosts, travelers, creators)
 6. COLLABORAZIONI: Gestisci richieste collaborazioni, accetta/rifiuta proposte host
-7. MESSAGGI: Comunica con host, manager, altri creator e assistente AI
+7. MESSAGGI: Comunica con host, jolly, altri creator e assistente AI
 8. FEED: Visualizza post di altri creator e host, interagisci con like/commenti
 9. SEGUI UTENTI: Segui host e creator interessanti
 10. PROFILO PUBBLICO: Mostra analitiche, collaborazioni, contenuti (con privacy settings)
@@ -164,8 +164,8 @@ COME GUADAGNARE PUNTI:
 
 ASSISTENZA: Per domande specifiche su collaborazioni, analitiche o problemi tecnici, contatta l'assistenza creator su Nomadiqe.`,
 
-  manager: `
-FUNZIONALITÀ DISPONIBILI PER MANAGER:
+  jolly: `
+FUNZIONALITÀ DISPONIBILI PER JOLLY:
 1. DASHBOARD: Pannello principale per gestire servizi e prodotti
 2. SERVIZI: Crea/gestisci servizi (pulizia, manutenzione, fotografia, videografia, social media, concierge, cucina, autista, traduzione, farmacista)
 3. PRODOTTI: Crea catalogo prodotti con prezzi, descrizioni, immagini
@@ -174,8 +174,8 @@ FUNZIONALITÀ DISPONIBILI PER MANAGER:
 6. ORARI: Imposta orari operativi giornalieri per servizi locali
 7. LISTINI PREZZI: Crea listini prezzi per host, gestisci commissioni
 8. PARTNERSHIP: Connettiti con host per offrire servizi/prodotti
-9. MESSAGGI: Comunica con host, creator, altri manager e assistente AI
-10. PROFILO: Gestisci profilo manager, mostra servizi e prodotti
+9. MESSAGGI: Comunica con host, creator, altri jolly e assistente AI
+10. PROFILO: Gestisci profilo jolly, mostra servizi e prodotti
 11. CATALOGO: Organizza prodotti in categorie, gestisci disponibilità
 12. COLLABORAZIONI: Visualizza e gestisci partnership attive con host
 13. PUNTI: Accumula punti con azioni, visualizza storia punti e livello
@@ -203,7 +203,7 @@ COME GUADAGNARE PUNTI:
 - Check-in: 10 punti (1/giorno)
 - Like: 2 punti per like
 
-ASSISTENZA: Per domande specifiche su servizi, prodotti, partnership o problemi tecnici, contatta l'assistenza manager su Nomadiqe.`,
+ASSISTENZA: Per domande specifiche su servizi, prodotti, partnership o problemi tecnici, contatta l'assistenza jolly su Nomadiqe.`,
 }
 
 export async function generateWelcomeMessage(params: WelcomeMessageParams): Promise<string> {
@@ -212,9 +212,9 @@ export async function generateWelcomeMessage(params: WelcomeMessageParams): Prom
   const userName = fullName || username || "viaggiatore"
   const roleGuide = ROLE_GUIDES[role]
   
-  const prompt = `Sei l'assistente AI di Nomadiqe, una piattaforma per viaggiatori, host, creator e manager del turismo.
+  const prompt = `Sei l'assistente AI di Nomadiqe, una piattaforma per viaggiatori, host, creator e jolly del turismo.
 
-L'utente ${userName} si è appena registrato come ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"} su Nomadiqe.
+L'utente ${userName} si è appena registrato come ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Jolly"} su Nomadiqe.
 
 Scrivi un messaggio di benvenuto BREVE (massimo 150 parole) che:
 1. Dà il benvenuto calorosamente
@@ -252,7 +252,7 @@ Messaggio:`
   } catch (error) {
     console.error("Errore nella generazione del messaggio di benvenuto:", error)
     // Fallback message
-    return `Ciao ${userName}! 👋 Benvenuto su Nomadiqe come ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"}!
+    return `Ciao ${userName}! 👋 Benvenuto su Nomadiqe come ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Jolly"}!
 
 ${roleGuide}
 
@@ -292,7 +292,7 @@ export async function generateActionMessage(params: ActionMessageParams): Promis
 
 L'utente ${userName} ha appena completato questa azione: ${actionDescription}${pointsText}
 
-Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"}
+Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Jolly"}
 
 Scrivi un messaggio BREVE (massimo 100 parole) in italiano con un linguaggio naturale e diretto che:
 1. Complimenta ${userName} per l'azione completata (usa il suo nome)
@@ -395,7 +395,7 @@ const roleSpecificSuggestions: Record<UserRole, Record<string, string[]>> = {
       "Aggiorna le tue analitiche e visibilità",
     ],
   },
-  manager: {
+  jolly: {
     like: [
       "Carica nuovi prodotti e servizi nel tuo catalogo",
       "Invia listini prezzi agli host interessati",
@@ -428,7 +428,7 @@ export async function generateInactivityMessage(params: InactivityMessageParams)
 
 L'utente ${userName} non ha interagito con l'app per circa ${hoursInactive} ${hoursInactive === 1 ? "ora" : "ore"}.
 
-Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Manager"}
+Ruolo dell'utente: ${role === "traveler" ? "Traveler" : role === "host" ? "Host" : role === "creator" ? "Creator" : "Jolly"}
 
 Scrivi un messaggio BREVE e amichevole (massimo 120 parole) che:
 1. Ricorda all'utente che sei qui per aiutarlo
@@ -485,9 +485,9 @@ export async function generateChatResponse(params: ChatMessageParams): Promise<s
     ? "assistenza host" 
     : role === "creator"
     ? "assistenza creator"
-    : "assistenza manager"
+    : "assistenza jolly"
   
-  const prompt = `Sei l'assistente AI di Nomadiqe, una piattaforma per viaggiatori, host, creator e manager del turismo.
+  const prompt = `Sei l'assistente AI di Nomadiqe, una piattaforma per viaggiatori, host, creator e jolly del turismo.
 
 L'utente ${userName} (ruolo: ${roleName}) ti ha scritto questo messaggio:
 "${userMessage}"

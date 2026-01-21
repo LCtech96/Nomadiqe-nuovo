@@ -16,7 +16,7 @@ export async function sendWelcomeMessage(userId: string, role: string, username?
       },
       body: JSON.stringify({
         userId,
-        role: role as "traveler" | "host" | "creator" | "manager",
+        role: role as "traveler" | "host" | "creator" | "jolly",
         username,
         fullName,
       }),
@@ -58,7 +58,7 @@ export async function sendActionMessage(
         userId,
         action,
         actionDescription,
-        role: role as "traveler" | "host" | "creator" | "manager",
+        role: role as "traveler" | "host" | "creator" | "jolly",
         pointsEarned,
         nextSteps,
       }),
@@ -100,7 +100,7 @@ export async function sendInactivityMessage(
       },
       body: JSON.stringify({
         userId,
-        role: role as "traveler" | "host" | "creator" | "manager",
+        role: role as "traveler" | "host" | "creator" | "jolly",
         username,
         fullName,
         hoursInactive,

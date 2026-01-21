@@ -28,18 +28,18 @@ import {
   User
 } from "lucide-react"
 
-type ManagerOnboardingStep = "guide" | "profile"
+type JollyOnboardingStep = "guide" | "profile"
 
-interface ManagerOnboardingProps {
+interface JollyOnboardingProps {
   onComplete: () => void
 }
 
-export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps) {
+export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
-  const [step, setStep] = useState<ManagerOnboardingStep>("guide")
+  const [step, setStep] = useState<JollyOnboardingStep>("guide")
   const [loading, setLoading] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
@@ -238,7 +238,7 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
       })
 
       // Reindirizza alla pagina per creare il primo servizio
-      router.push("/dashboard/manager/services/new")
+      router.push("/dashboard/jolly/services/new")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -260,19 +260,19 @@ export default function ManagerOnboarding({ onComplete }: ManagerOnboardingProps
               <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                 <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <CardTitle className="text-3xl">Benvenuto Manager!</CardTitle>
+              <CardTitle className="text-3xl">Benvenuto Jolly!</CardTitle>
               <CardDescription className="text-lg mt-2">
-                Scopri come funziona la piattaforma per i manager
+                Scopri come funziona la piattaforma per i jolly
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Introduzione */}
               <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
                 <h3 className="font-semibold text-lg mb-2 text-blue-900 dark:text-blue-100">
-                  Cosa puoi fare come Manager?
+                  Cosa puoi fare come Jolly?
                 </h3>
                 <p className="text-blue-800 dark:text-blue-200">
-                  Come Manager puoi offrire una vasta gamma di servizi agli host e ai viaggiatori della piattaforma. 
+                  Come Jolly puoi offrire una vasta gamma di servizi agli host e ai viaggiatori della piattaforma. 
                   Crea il tuo profilo professionale e inizia a ricevere richieste!
                 </p>
               </div>

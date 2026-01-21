@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Nomadiqe - Soggiorni Più Equi, Connessioni Più Profonde",
-  description: "Piattaforma di viaggio che connette Traveler, Host, Creator e Manager",
+  description: "Piattaforma di viaggio che connette Traveler, Host, Creator e Jolly",
   icons: {
     icon: [
       { url: "/publicicon.png", type: "image/png" },

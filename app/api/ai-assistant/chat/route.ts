@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       aiResponse = await generateChatResponse({
         userId,
         userMessage: message,
-        role: profile.role as "traveler" | "host" | "creator" | "manager",
+        role: profile.role as "traveler" | "host" | "creator" | "jolly",
         username: profile.username || undefined,
         fullName: profile.full_name || undefined,
       })

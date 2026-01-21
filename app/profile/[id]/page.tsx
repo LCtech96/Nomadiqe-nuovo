@@ -81,7 +81,7 @@ interface Stats {
   totalInteractions?: number
 }
 
-interface ManagerService {
+interface JollyService {
   id: string
   service_type: string
   title: string
@@ -112,7 +112,7 @@ interface PublicProfile {
   properties?: Property[]
   posts?: Post[]
   collaborations?: Collaboration[]
-  services?: ManagerService[]
+  services?: JollyService[]
   stats?: Stats
 }
 
@@ -601,7 +601,7 @@ export default function PublicProfilePage() {
         return "bg-purple-500"
       case "traveler":
         return "bg-green-500"
-      case "manager":
+      case "jolly":
         return "bg-orange-500"
       default:
         return "bg-gray-500"
@@ -1475,7 +1475,7 @@ export default function PublicProfilePage() {
         )}
 
         {/* TRAVELER/OTHER PROFILE */}
-        {profile.role !== "host" && profile.role !== "creator" && profile.role !== "manager" && (
+        {profile.role !== "host" && profile.role !== "creator" && profile.role !== "jolly" && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-4">Post</h2>
             {profile.posts && profile.posts.length > 0 ? (

@@ -74,11 +74,11 @@ export default function JollyDashboard() {
       <div className="container mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Dashboard Manager</h1>
+            <h1 className="text-3xl font-bold mb-2">Dashboard Jolly</h1>
             <p className="text-muted-foreground">Gestisci i tuoi servizi</p>
           </div>
           <Button asChild>
-            <Link href="/dashboard/manager/services/new">
+            <Link href="/dashboard/jolly/services/new">
               <Plus className="w-4 h-4 mr-2" />
               Nuovo servizio
             </Link>
@@ -131,7 +131,7 @@ export default function JollyDashboard() {
                   Non hai ancora pubblicato nessun servizio
                 </p>
                 <Button asChild>
-                  <Link href="/dashboard/manager/services/new">Crea il primo servizio</Link>
+                  <Link href="/dashboard/jolly/services/new">Crea il primo servizio</Link>
                 </Button>
               </div>
             ) : (
@@ -171,7 +171,7 @@ export default function JollyDashboard() {
                         </p>
                       </div>
                       <Button asChild variant="outline" className="w-full">
-                        <Link href={`/dashboard/manager/services/${service.id}`}>
+                        <Link href={`/dashboard/jolly/services/${service.id}`}>
                           Modifica
                         </Link>
                       </Button>

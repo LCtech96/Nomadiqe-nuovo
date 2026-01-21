@@ -42,7 +42,7 @@ const roleSpecificSuggestions: Record<string, Record<string, string[]>> = {
       "Aggiorna le tue analitiche nel profilo",
     ],
   },
-  manager: {
+  jolly: {
     like: [
       "Carica nuovi prodotti e servizi nel tuo catalogo",
       "Invia listini prezzi agli host interessati",
@@ -72,7 +72,7 @@ export async function sendLikeMessage(userId: string): Promise<{ success: boolea
       return { success: false }
     }
 
-    const role = profile.role as "traveler" | "host" | "creator" | "manager"
+    const role = profile.role as "traveler" | "host" | "creator" | "jolly"
     const suggestions = roleSpecificSuggestions[role]?.like || [
       "Continua a esplorare la piattaforma",
       "Interagisci con altri contenuti",
@@ -129,7 +129,7 @@ export async function sendCommentMessage(userId: string): Promise<{ success: boo
       return { success: false }
     }
 
-    const role = profile.role as "traveler" | "host" | "creator" | "manager"
+    const role = profile.role as "traveler" | "host" | "creator" | "jolly"
     const suggestions = roleSpecificSuggestions[role]?.comment || [
       "Continua a interagire con altri contenuti",
       "Esplora nuove funzionalità",

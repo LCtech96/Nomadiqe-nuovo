@@ -203,9 +203,9 @@ export default function NewServicePage() {
 
       // Se è un servizio fornitore o farmacista, reindirizza alla pagina catalogo
       if (formData.service_type === "supplier" || formData.service_type === "pharmacist") {
-        router.push(`/dashboard/manager/services/${data.id}/catalog`)
+        router.push(`/dashboard/jolly/services/${data.id}/catalog`)
       } else {
-        router.push(`/dashboard/manager/services/${data.id}`)
+        router.push(`/dashboard/jolly/services/${data.id}`)
       }
     } catch (error: any) {
       toast({

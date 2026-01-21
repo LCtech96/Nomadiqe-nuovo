@@ -259,7 +259,7 @@ export default function InteractiveGuide({ onComplete }: InteractiveGuideProps) 
       traveler: "Completa il tuo profilo da Traveler: aggiungi nome, username, bio e avatar per connetterti con altri viaggiatori e scoprire nuove destinazioni",
       creator: "Completa il tuo profilo da Creator: aggiungi informazioni sui tuoi social media, nicchie di contenuto e portfolio per attirare collaborazioni",
       host: "Completa il tuo profilo da Host: aggiungi informazioni sulla tua struttura, servizi offerti e preferenze per collaborazioni con creator",
-      manager: "Completa il tuo profilo da Manager: aggiungi informazioni sui servizi che offri (pulizie, gestione, fotografia, etc.) per trovare clienti"
+      jolly: "Completa il tuo profilo da Jolly: aggiungi informazioni sui servizi che offri (pulizie, gestione, fotografia, etc.) per trovare clienti"
     }
 
     const profileDescription = profileData?.role 
@@ -304,7 +304,7 @@ export default function InteractiveGuide({ onComplete }: InteractiveGuideProps) 
       {
         id: "role",
         title: "Scegli il tuo ruolo",
-        description: "Seleziona come vuoi utilizzare Nomadiqe: Traveler (viaggia e scopri), Creator (collabora con host), Host (pubblica strutture) o Manager (offri servizi)",
+        description: "Seleziona come vuoi utilizzare Nomadiqe: Traveler (viaggia e scopri), Creator (collabora con host), Host (pubblica strutture) o Jolly (offri servizi)",
         icon: <Users className="w-6 h-6" />,
         action: () => router.push("/onboarding"),
         completed: hasRole,

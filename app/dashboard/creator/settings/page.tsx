@@ -762,10 +762,10 @@ export default function CreatorSettingsPage() {
                                   <SelectContent>
                                     <SelectItem value="public">Pubblico (tutti)</SelectItem>
                                     <SelectItem value="host">Solo Host</SelectItem>
-                                    <SelectItem value="manager">Solo Manager</SelectItem>
+                                    <SelectItem value="jolly">Solo Jolly</SelectItem>
                                     <SelectItem value="traveler">Solo Traveler</SelectItem>
                                     <SelectItem value="creator">Solo Creator</SelectItem>
-                                    <SelectItem value="host,manager">Host e Manager</SelectItem>
+                                    <SelectItem value="host,jolly">Host e Jolly</SelectItem>
                                     <SelectItem value="host,creator">Host e Creator</SelectItem>
                                   </SelectContent>
                                 </Select>

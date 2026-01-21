@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         // Invia messaggio di sollecito
         await sendInactivityMessage(
           user.id,
-          user.role as "traveler" | "host" | "creator" | "manager",
+          user.role as "traveler" | "host" | "creator" | "jolly",
           user.username || undefined,
           user.full_name || undefined,
           hoursInactive
