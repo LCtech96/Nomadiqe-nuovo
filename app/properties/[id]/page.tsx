@@ -356,10 +356,10 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
           </div>
 
           <div>
-            <Card className="sticky top-4">
+            <Card className="sticky top-4 bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle>Prenota</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-foreground">Prenota</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   €{property.price_per_night} per notte
                 </CardDescription>
               </CardHeader>
