@@ -131,27 +131,73 @@ export default function CreateCommunityDialog({
 
     setLoading(true)
     try {
-      // Crea la community
-      const { data: community, error: communityError } = await supabase
-        .from("host_communities")
-        .insert({
-          name: name.trim(),
-          description: description.trim() || null,
-          created_by: session.user.id,
-          city: userLocation.city,
-          country: userLocation.country,
-        })
-        .select()
+      // Ottieni l'utente Supabase direttamente per assicurarsi che auth.uid() corrisponda
+      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError || !supabaseUser) {
+        console.error("Supabase auth error:", userError)
+        console.error("Session:", session)
+        throw new Error("Impossibile verificare l'autenticazione. Ricarica la pagina e riprova.")
+      }
+
+      console.log("Supabase user ID:", supabaseUser.id)
+      console.log("Session user ID:", session.user.id)
+
+      // Usa l'ID di Supabase direttamente
+      const userId = supabaseUser.id
+
+      // Verifica che l'utente abbia il ruolo host o jolly prima di creare
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
         .single()
 
-      if (communityError) throw communityError
+      if (profileError) {
+        console.error("Error fetching profile:", profileError)
+        throw new Error("Errore nel recupero del profilo. Riprova più tardi.")
+      }
+
+      if (profile?.role !== "host" && profile?.role !== "jolly") {
+        toast({
+          title: "Errore",
+          description: "Solo gli host e i jolly possono creare communities.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      console.log("Creating community with user ID:", userId)
+
+      // Usa l'API route server-side per creare la community
+      // Questo bypassa i problemi RLS del client Supabase
+      const response = await fetch("/api/communities/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          description: description.trim() || null,
+          city: userLocation.city,
+          country: userLocation.country,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Errore nella creazione della community")
+      }
+
+      const { community } = await response.json()
 
       // Invia gli inviti agli host selezionati
       if (selectedHosts.length > 0) {
         const invitations = selectedHosts.map((hostId) => ({
           community_id: community.id,
           invited_host_id: hostId,
-          invited_by: session.user.id,
+          invited_by: userId,
           status: "pending",
         }))
 

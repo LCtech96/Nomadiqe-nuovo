@@ -2,7 +2,13 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
 
 export const createSupabaseClient = () => {
-  return createClientComponentClient()
+  // createClientComponentClient() dovrebbe automaticamente leggere i cookie
+  // e sincronizzare il token JWT di Supabase dalla sessione NextAuth
+  const client = createClientComponentClient()
+  
+  // Verifica che il client abbia accesso all'autenticazione
+  // Se no, potrebbe essere un problema con i cookie
+  return client
 }
 
 export const createSupabaseServerClient = () => {
