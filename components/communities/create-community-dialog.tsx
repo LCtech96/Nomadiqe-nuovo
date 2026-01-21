@@ -131,47 +131,8 @@ export default function CreateCommunityDialog({
 
     setLoading(true)
     try {
-      // Ottieni l'utente Supabase direttamente per assicurarsi che auth.uid() corrisponda
-      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser()
-      
-      if (userError || !supabaseUser) {
-        console.error("Supabase auth error:", userError)
-        console.error("Session:", session)
-        throw new Error("Impossibile verificare l'autenticazione. Ricarica la pagina e riprova.")
-      }
-
-      console.log("Supabase user ID:", supabaseUser.id)
-      console.log("Session user ID:", session.user.id)
-
-      // Usa l'ID di Supabase direttamente
-      const userId = supabaseUser.id
-
-      // Verifica che l'utente abbia il ruolo host o jolly prima di creare
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .single()
-
-      if (profileError) {
-        console.error("Error fetching profile:", profileError)
-        throw new Error("Errore nel recupero del profilo. Riprova più tardi.")
-      }
-
-      if (profile?.role !== "host" && profile?.role !== "jolly") {
-        toast({
-          title: "Errore",
-          description: "Solo gli host e i jolly possono creare communities.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
-      }
-
-      console.log("Creating community with user ID:", userId)
-
-      // Usa l'API route server-side per creare la community
-      // Questo bypassa i problemi RLS del client Supabase
+      // Usa direttamente l'API route server-side per creare la community
+      // L'API route gestisce l'autenticazione con NextAuth e bypassa i problemi RLS
       const response = await fetch("/api/communities/create", {
         method: "POST",
         headers: {
