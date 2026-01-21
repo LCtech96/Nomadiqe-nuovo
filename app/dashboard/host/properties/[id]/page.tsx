@@ -306,12 +306,22 @@ export default function EditPropertyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Indirizzo *</Label>
+                <Label htmlFor="address">Via/Strada *</Label>
                 <Input
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   required
+                  placeholder="Es: Via Roma, Corso Garibaldi..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="street_number">Numero Civico</Label>
+                <Input
+                  id="street_number"
+                  value={formData.street_number}
+                  onChange={(e) => setFormData({ ...formData, street_number: e.target.value })}
+                  placeholder="Es: 15, 23/A..."
                 />
               </div>
 
