@@ -251,40 +251,6 @@ function createPropertyIcon(property: Property, size: number = 60): L.DivIcon {
   })
 }
 
-// Helper function to calculate offset for markers with same coordinates
-function calculateMarkerOffset(
-  property: Property,
-  allProperties: Property[]
-): [number, number] {
-  // Find all properties with the same coordinates (including this one)
-  const sameLocationProperties = allProperties.filter(
-    (p) => 
-      p.latitude === property.latitude && 
-      p.longitude === property.longitude
-  )
-  
-  // If there are no duplicates, return original coordinates
-  if (sameLocationProperties.length <= 1) {
-    return [property.latitude, property.longitude]
-  }
-  
-  // Find the index of this property among properties with same location
-  const currentIndex = sameLocationProperties.findIndex(p => p.id === property.id)
-  
-  // Offset distance in degrees (approximately 100-200 meters)
-  // Adjust based on latitude for better visual spacing
-  const baseOffsetDistance = 0.0015 // ~150 meters at equator
-  const offsetDistance = baseOffsetDistance / Math.cos(property.latitude * Math.PI / 180)
-  
-  // Create a circular pattern for markers at same location
-  // Distribute evenly in a circle
-  const angle = (currentIndex / sameLocationProperties.length) * 2 * Math.PI
-  const offsetLat = property.latitude + (offsetDistance * Math.cos(angle))
-  const offsetLng = property.longitude + (offsetDistance * Math.sin(angle))
-  
-  return [offsetLat, offsetLng]
-}
-
 // Component to render markers with dynamic sizing
 function MarkersLayer({ 
   properties, 
@@ -320,20 +286,18 @@ function MarkersLayer({
 
   return (
     <>
-      {properties.map((property, index) => {
+      {properties.map((property) => {
         // Only render if property has valid coordinates
         if (!property.latitude || !property.longitude || 
             isNaN(property.latitude) || isNaN(property.longitude)) {
           return null
         }
 
-        // Calculate offset position if there are multiple properties at same location
-        const [lat, lng] = calculateMarkerOffset(property, properties)
-
+        // Use exact coordinates from the property (geocoded from address including street number)
         return (
           <Marker
             key={property.id}
-            position={[lat, lng]}
+            position={[property.latitude, property.longitude]}
             icon={createPropertyIcon(property, markerSize)}
             eventHandlers={{
               click: () => onPropertySelect(property),
