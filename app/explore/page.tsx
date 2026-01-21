@@ -8,7 +8,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
-import { Star, Users, MapPin, Map as MapIcon, List, Search } from "lucide-react"
+import { Star, Users, MapPin, Map as MapIcon, List, Search, Filter, X, Calendar, Euro, Wifi, Car, Heart } from "lucide-react"
 
 // Dynamically import map to avoid SSR issues
 const MapComponent = dynamic(() => import("@/components/map"), { ssr: false })
@@ -27,6 +27,7 @@ interface Property {
   images: string[]
   rating: number
   review_count: number
+  amenities?: string[]
 }
 
 export default function ExplorePage() {
@@ -37,6 +38,15 @@ export default function ExplorePage() {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null)
   const [viewMode, setViewMode] = useState<"map" | "feed">("map")
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
+  
+  // Filtri avanzati
+  const [showFilters, setShowFilters] = useState(false)
+  const [checkIn, setCheckIn] = useState("")
+  const [checkOut, setCheckOut] = useState("")
+  const [minPrice, setMinPrice] = useState("")
+  const [maxPrice, setMaxPrice] = useState("")
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([])
+  const [availableProperties, setAvailableProperties] = useState<string[]>([])
 
   useEffect(() => {
     loadProperties()
@@ -143,7 +153,7 @@ export default function ExplorePage() {
             </form>
             <Button
               onClick={() => setViewMode("feed")}
-              className="shrink-0"
+              className="shrink-0 md:flex hidden"
               variant="outline"
             >
               <List className="h-4 w-4 mr-2" />
@@ -172,15 +182,65 @@ export default function ExplorePage() {
             center={mapCenter || undefined}
           />
         </div>
+
+        {/* Mobile Feed Switch Button - Small button bottom right */}
+        <Button
+          onClick={() => setViewMode("feed")}
+          className="fixed bottom-24 right-4 z-[90] md:hidden rounded-full h-12 w-12 shadow-2xl shadow-purple-500/30 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-purple-500/50"
+          size="icon"
+        >
+          <List className="h-5 w-5 text-white" />
+          <span className="sr-only">Vista Feed</span>
+        </Button>
       </div>
     )
   }
 
   // Feed View
+  const availableAmenities = [
+    "WiFi",
+    "Parcheggio",
+    "Aria condizionata",
+    "Riscaldamento",
+    "Cucina",
+    "TV",
+    "Lavatrice",
+    "Asciugatrice",
+    "Piscina",
+    "Giardino",
+    "Balcone",
+    "Terrazza",
+    "Camino",
+    "Idromassaggio",
+    "Palestra",
+    "Sauna",
+    "Colazione inclusa",
+    "Animali ammessi",
+    "Accesso disabili",
+  ]
+
+  const toggleAmenity = (amenity: string) => {
+    setSelectedAmenities(prev =>
+      prev.includes(amenity)
+        ? prev.filter(a => a !== amenity)
+        : [...prev, amenity]
+    )
+  }
+
+  const clearFilters = () => {
+    setCheckIn("")
+    setCheckOut("")
+    setMinPrice("")
+    setMaxPrice("")
+    setSelectedAmenities([])
+  }
+
+  const hasActiveFilters = checkIn || checkOut || minPrice || maxPrice || selectedAmenities.length > 0
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Search Bar - Sticky at top */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60 border-b">
+      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200/60 shadow-sm">
         <div className="container mx-auto p-4">
           <div className="flex gap-2 items-center">
             <Input
@@ -190,13 +250,128 @@ export default function ExplorePage() {
               className="flex-1"
             />
             <Button
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline"
+              className="relative"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtri
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-xs text-white">
+                  {selectedAmenities.length + (checkIn ? 1 : 0) + (checkOut ? 1 : 0) + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0)}
+                </span>
+              )}
+            </Button>
+            <Button
               onClick={() => setViewMode("map")}
               variant="outline"
+              className="md:flex hidden"
             >
               <MapIcon className="h-4 w-4 mr-2" />
-              Map View
+              Mappa
             </Button>
           </div>
+
+          {/* Filtri Panel */}
+          {showFilters && (
+            <div className="mt-4 p-4 bg-white/98 backdrop-blur-sm rounded-3xl border border-gray-200/60 shadow-xl shadow-gray-200/50 space-y-4">
+              {/* Date Filters */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Check-in
+                  </label>
+                  <Input
+                    type="date"
+                    value={checkIn}
+                    onChange={(e) => setCheckIn(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Check-out
+                  </label>
+                  <Input
+                    type="date"
+                    value={checkOut}
+                    onChange={(e) => setCheckOut(e.target.value)}
+                    min={checkIn || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+              </div>
+
+              {/* Price Filters */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
+                    <Euro className="h-4 w-4" />
+                    Prezzo min
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="€0"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 flex items-center gap-2">
+                    <Euro className="h-4 w-4" />
+                    Prezzo max
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="€1000"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    min="0"
+                  />
+                </div>
+              </div>
+
+              {/* Amenities Filters */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Servizi</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableAmenities.map((amenity) => {
+                    const isSelected = selectedAmenities.includes(amenity)
+                    const Icon = amenity === "WiFi" ? Wifi : 
+                                 amenity === "Parcheggio" ? Car :
+                                 amenity === "Animali ammessi" ? Heart : null
+                    return (
+                      <Button
+                        key={amenity}
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleAmenity(amenity)}
+                        className="rounded-2xl"
+                      >
+                        {Icon && <Icon className="h-3 w-3 mr-1" />}
+                        {amenity}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <Button
+                  onClick={clearFilters}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Rimuovi filtri
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
@@ -292,14 +467,14 @@ export default function ExplorePage() {
         )}
       </div>
 
-      {/* Floating Toggle Button */}
+      {/* Floating Toggle Button - Mobile only */}
       <Button
         onClick={() => setViewMode("map")}
-        className="fixed bottom-20 right-4 z-10 md:hidden rounded-full h-14 w-14 shadow-lg"
+        className="fixed bottom-24 right-4 z-10 md:hidden rounded-full h-12 w-12 shadow-2xl shadow-purple-500/30 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-purple-500/50"
         size="icon"
       >
-        <MapIcon className="h-6 w-6" />
-        <span className="sr-only">Map View</span>
+        <MapIcon className="h-5 w-5 text-white" />
+        <span className="sr-only">Vista Mappa</span>
       </Button>
     </div>
   )
