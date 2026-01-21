@@ -258,21 +258,21 @@ export default function KOLBedPage() {
 
                     {/* Stats */}
                     <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-3">
+                      <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl p-3 border border-blue-100/50 dark:border-blue-800/30">
                         <div className="flex items-center gap-2 mb-1">
                           <Users className="h-4 w-4 text-primary" />
                           <span className="text-xs text-muted-foreground">Follower</span>
                         </div>
-                        <p className="text-lg font-bold">
+                        <p className="text-lg font-bold text-foreground">
                           {(creator.total_followers || 0).toLocaleString()}
                         </p>
                       </div>
-                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-3">
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-3 border border-purple-100/50 dark:border-purple-800/30">
                         <div className="flex items-center gap-2 mb-1">
                           <Eye className="h-4 w-4 text-primary" />
                           <span className="text-xs text-muted-foreground">Views</span>
                         </div>
-                        <p className="text-lg font-bold">
+                        <p className="text-lg font-bold text-foreground">
                           {(creator.profile_views || 0).toLocaleString()}
                         </p>
                       </div>
@@ -287,10 +287,10 @@ export default function KOLBedPage() {
                           return Icon ? (
                             <div
                               key={idx}
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 rounded-xl text-xs"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-xl text-xs border border-gray-200/50 dark:border-gray-700/50"
                             >
-                              <Icon className="h-3 w-3" />
-                              <span className="font-medium">{account.follower_count.toLocaleString()}</span>
+                              <Icon className="h-3 w-3 text-foreground" />
+                              <span className="font-medium text-foreground">{account.follower_count.toLocaleString()}</span>
                             </div>
                           ) : null
                         })}
