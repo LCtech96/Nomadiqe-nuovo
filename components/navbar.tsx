@@ -34,7 +34,7 @@ import {
 const roleLabels: Record<string, string> = {
   host: "Host",
   creator: "Creator",
-  manager: "Manager",
+  jolly: "Jolly",
   traveler: "Traveler",
 }
 
@@ -326,6 +326,38 @@ export default function Navbar() {
               description: "Riceverai notifiche push quando qualcuno ti invia un messaggio o interagisce con i tuoi contenuti.",
             })
             setMobileMenuOpen(false)
+            
+            // Invia una notifica test immediata
+            try {
+              // Crea una notifica test nel database
+              const { error: notifError } = await supabase
+                .from("pending_notifications")
+                .insert({
+                  user_id: session.user.id,
+                  notification_type: "message",
+                  title: "🔔 Notifiche push attivate!",
+                  message: "Questa è una notifica di test. Le notifiche push sono ora attive sul tuo dispositivo.",
+                  url: "/profile",
+                  data: {
+                    type: "push_test",
+                  },
+                })
+
+              if (notifError) {
+                console.error("Error creating test notification:", notifError)
+              } else {
+                // Processa immediatamente la notifica per inviarla via FCM
+                await fetch("/api/notifications/process-fcm", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                })
+              }
+            } catch (testNotifError) {
+              console.error("Error sending test notification:", testNotifError)
+              // Non bloccare il flusso se la notifica test fallisce
+            }
           }
         } else {
           toast({
@@ -664,14 +696,6 @@ export default function Navbar() {
                     <LayoutDashboard className="h-4 w-4" />
                     Dashboard
                   </Link>
-                  <button
-                    onClick={handleEnablePushNotifications}
-                    disabled={enablingPush}
-                    className="w-full flex items-center gap-2 py-2 text-base text-left hover:bg-accent rounded-md px-2 transition-colors disabled:opacity-50"
-                  >
-                    <BellRing className="h-4 w-4" />
-                    {enablingPush ? "Attivazione in corso..." : "Attiva notifiche push"}
-                  </button>
                   <div className="space-y-1">
                     <button
                       onClick={() => setSettingsOpen(!settingsOpen)}
@@ -681,7 +705,15 @@ export default function Navbar() {
                       <ChevronDown className={`h-4 w-4 transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {settingsOpen && (
-                      <div className="pl-4 border-l border-border">
+                      <div className="pl-4 border-l border-border space-y-1">
+                        <button
+                          onClick={handleEnablePushNotifications}
+                          disabled={enablingPush}
+                          className="w-full flex items-center gap-2 py-2 text-sm text-left hover:bg-accent rounded-md px-2 transition-colors disabled:opacity-50"
+                        >
+                          <BellRing className="h-4 w-4" />
+                          {enablingPush ? "Attivazione in corso..." : "Attiva notifiche push"}
+                        </button>
                         {/* Temporaneamente nascosto - Elimina profilo */}
                         {/* <button
                           onClick={() => {

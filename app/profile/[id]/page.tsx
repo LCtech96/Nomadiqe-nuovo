@@ -408,8 +408,8 @@ export default function PublicProfilePage() {
         if (prefsData) {
           setKolBedPreferences(prefsData)
         }
-      } else if (data.role === "manager") {
-        // Load services for managers
+      } else if (data.role === "jolly") {
+        // Load services for jolly
         const { data: servicesData } = await supabase
           .from("manager_services")
           .select("*")
@@ -1341,8 +1341,8 @@ export default function PublicProfilePage() {
           </Tabs>
         )}
 
-        {/* MANAGER PROFILE */}
-        {profile.role === "manager" && (
+        {/* JOLLY PROFILE */}
+        {profile.role === "jolly" && (
           <Tabs defaultValue="servizi" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="servizi">Servizi</TabsTrigger>

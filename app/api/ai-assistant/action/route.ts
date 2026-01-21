@@ -35,43 +35,47 @@ export async function POST(request: Request) {
     // Usa admin client per bypassare RLS e inserire messaggi con sender_id speciale
     const supabase = createSupabaseAdminClient()
 
-    // Controlla se è già stato inviato un messaggio per la stessa azione negli ultimi 30 secondi (evita duplicati)
-    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000).toISOString()
-    const { data: recentActionMessage } = await supabase
+    // Controlla se è già stato inviato un messaggio per la stessa azione negli ultimi 60 secondi (evita duplicati)
+    // Usa un controllo più rigoroso basato sull'azione specifica
+    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString()
+    const { data: recentActionMessages } = await supabase
       .from("messages")
-      .select("id")
+      .select("id, content, created_at")
       .is("sender_id", null)
       .eq("receiver_id", params.userId)
       .eq("is_ai_message", true)
-      .gte("created_at", thirtySecondsAgo)
+      .gte("created_at", sixtySecondsAgo)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(5)
 
-    // Se c'è già un messaggio recente per questa azione, verifica se è simile
-    if (recentActionMessage) {
-      // Controlla se il contenuto del messaggio recente menziona la stessa azione
-      const { data: recentContent } = await supabase
-        .from("messages")
-        .select("content")
-        .eq("id", recentActionMessage.id)
-        .single()
-
-      // Se il messaggio recente contiene la descrizione dell'azione o una parte di essa, skip
-      if (recentContent?.content && params.actionDescription) {
-        const actionKeywords = params.actionDescription.toLowerCase().split(' ')
-        const contentLower = recentContent.content.toLowerCase()
-        // Se almeno una parola chiave dell'azione è presente nel messaggio recente, è un duplicato
-        const isDuplicate = actionKeywords.some(keyword => 
-          keyword.length > 3 && contentLower.includes(keyword)
-        )
-        
-        if (isDuplicate) {
-          return NextResponse.json({
-            success: true,
-            message: "Messaggio già inviato per questa azione",
-            duplicate: true,
-          })
+    // Se ci sono messaggi recenti, verifica se uno di essi è per la stessa azione
+    if (recentActionMessages && recentActionMessages.length > 0) {
+      // Controlla se l'azione è già stata processata recentemente
+      // Usa l'action type come identificatore principale
+      const actionType = params.action?.toLowerCase() || ""
+      const actionDesc = params.actionDescription?.toLowerCase() || ""
+      
+      // Crea un hash semplice dell'azione per confronto
+      const actionSignature = `${actionType}_${actionDesc.substring(0, 50)}`
+      
+      for (const recentMsg of recentActionMessages) {
+        if (recentMsg.content) {
+          const contentLower = recentMsg.content.toLowerCase()
+          // Verifica se il messaggio recente menziona la stessa azione
+          // Controlla sia il tipo di azione che le parole chiave della descrizione
+          const actionKeywords = actionDesc.split(' ').filter(k => k.length > 3)
+          const hasActionType = actionType && contentLower.includes(actionType)
+          const hasActionKeywords = actionKeywords.length > 0 && 
+            actionKeywords.some(keyword => contentLower.includes(keyword))
+          
+          // Se il messaggio recente contiene riferimenti alla stessa azione, è un duplicato
+          if (hasActionType || hasActionKeywords) {
+            return NextResponse.json({
+              success: true,
+              message: "Messaggio già inviato per questa azione",
+              duplicate: true,
+            })
+          }
         }
       }
     }

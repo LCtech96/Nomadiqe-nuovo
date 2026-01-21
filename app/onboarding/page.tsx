@@ -21,8 +21,8 @@ const getDashboardUrl = (role: UserRole | null): string => {
       return "/dashboard/host"
     case "creator":
       return "/dashboard/creator"
-    case "manager":
-      return "/dashboard/manager"
+    case "jolly":
+      return "/dashboard/jolly"
     case "traveler":
     default:
       return "/dashboard/traveler"

@@ -19,7 +19,7 @@ interface Service {
   request_count: number
 }
 
-export default function ManagerDashboard() {
+export default function JollyDashboard() {
   const { data: session } = useSession()
   const supabase = createSupabaseClient()
   const [services, setServices] = useState<Service[]>([])
