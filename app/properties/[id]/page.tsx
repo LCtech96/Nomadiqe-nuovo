@@ -10,6 +10,11 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
+import { ArrowLeft, X, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
 
 interface Property {
   id: string
@@ -41,6 +46,8 @@ export default function PropertyDetailPage() {
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [guests, setGuests] = useState(1)
+  const [imageViewerOpen, setImageViewerOpen] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
   useEffect(() => {
     if (params.id) {
@@ -210,8 +217,36 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
     : 0
   const totalPrice = nights * property.price_per_night
 
+  const openImageViewer = (index: number) => {
+    setSelectedImageIndex(index)
+    setImageViewerOpen(true)
+  }
+
+  const nextImage = () => {
+    if (!property?.images) return
+    setSelectedImageIndex((prev) => (prev + 1) % property.images.length)
+  }
+
+  const prevImage = () => {
+    if (!property?.images) return
+    setSelectedImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length)
+  }
+
   return (
     <div className="min-h-screen">
+      {/* Back Button */}
+      <div className="container mx-auto px-4 pt-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Indietro
+        </Button>
+      </div>
+
       <div className="container mx-auto p-4">
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -224,24 +259,38 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
 
             {property.images && property.images.length > 0 && (
               <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-                <div className="col-span-2">
+                <div 
+                  className="col-span-2 cursor-pointer relative group"
+                  onClick={() => openImageViewer(0)}
+                >
                   <Image
                     src={property.images[0]}
                     alt={property.name}
                     width={800}
                     height={400}
-                    className="w-full h-96 object-cover"
+                    className="w-full h-96 object-cover transition-transform group-hover:scale-105"
                   />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                    <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium">
+                      Clicca per vedere tutte le immagini
+                    </span>
+                  </div>
                 </div>
                 {property.images.slice(1, 3).map((img, idx) => (
-                  <Image
+                  <div
                     key={idx}
-                    src={img}
-                    alt={`${property.name} ${idx + 2}`}
-                    width={400}
-                    height={200}
-                    className="w-full h-48 object-cover"
-                  />
+                    className="cursor-pointer relative group"
+                    onClick={() => openImageViewer(idx + 1)}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${property.name} ${idx + 2}`}
+                      width={400}
+                      height={200}
+                      className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                  </div>
                 ))}
               </div>
             )}
@@ -315,7 +364,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="checkIn">Check-in</Label>
                     <Input
@@ -324,6 +373,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                       value={checkIn}
                       onChange={(e) => setCheckIn(e.target.value)}
                       min={new Date().toISOString().split("T")[0]}
+                      className="w-full"
                     />
                   </div>
                   <div className="space-y-2">
@@ -334,6 +384,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                       value={checkOut}
                       onChange={(e) => setCheckOut(e.target.value)}
                       min={checkIn || new Date().toISOString().split("T")[0]}
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -372,6 +423,67 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
           </div>
         </div>
       </div>
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-50 text-white hover:bg-white/20"
+              onClick={() => setImageViewerOpen(false)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+
+            {/* Previous Button */}
+            {property.images && property.images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-4 z-50 text-white hover:bg-white/20"
+                onClick={prevImage}
+              >
+                <ChevronLeft className="h-8 w-8" />
+              </Button>
+            )}
+
+            {/* Image */}
+            {property.images && property.images[selectedImageIndex] && (
+              <div className="relative w-full h-full flex items-center justify-center">
+                <Image
+                  src={property.images[selectedImageIndex]}
+                  alt={`${property.name} ${selectedImageIndex + 1}`}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                />
+              </div>
+            )}
+
+            {/* Next Button */}
+            {property.images && property.images.length > 1 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 z-50 text-white hover:bg-white/20"
+                onClick={nextImage}
+              >
+                <ChevronRight className="h-8 w-8" />
+              </Button>
+            )}
+
+            {/* Image Counter */}
+            {property.images && property.images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
+                {selectedImageIndex + 1} / {property.images.length}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
