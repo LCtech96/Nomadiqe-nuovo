@@ -340,7 +340,7 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Search Bar - Sticky at top */}
-      <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-200/60 shadow-sm">
+      <div className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/60 dark:border-gray-800/60 shadow-sm">
         <div className="container mx-auto p-4">
           <div className="flex gap-2 items-center">
             <Input
@@ -374,7 +374,7 @@ export default function ExplorePage() {
 
           {/* Filtri Panel */}
           {showFilters && (
-            <div className="mt-4 p-4 bg-white/98 backdrop-blur-sm rounded-3xl border border-gray-200/60 shadow-xl shadow-gray-200/50 space-y-4">
+            <div className="mt-4 p-4 bg-white/98 dark:bg-gray-900/98 backdrop-blur-sm rounded-3xl border border-gray-200/60 dark:border-gray-800/60 shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 space-y-4">
               {/* Date Filters */}
               <div className="grid grid-cols-2 gap-3">
                 <div>

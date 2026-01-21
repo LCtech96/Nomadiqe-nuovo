@@ -295,39 +295,39 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
               </div>
             )}
 
-            <Card>
+            <Card className="bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle>Descrizione</CardTitle>
+                <CardTitle className="text-foreground">Descrizione</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>{property.description}</p>
+                <p className="text-foreground">{property.description}</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle>Dettagli</CardTitle>
+                <CardTitle className="text-foreground">Dettagli</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Tipo</p>
-                    <p className="font-semibold">{property.property_type}</p>
+                    <p className="font-semibold text-foreground">{property.property_type}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Ospiti massimi</p>
-                    <p className="font-semibold">{property.max_guests}</p>
+                    <p className="font-semibold text-foreground">{property.max_guests}</p>
                   </div>
                   {property.bedrooms && (
                     <div>
                       <p className="text-sm text-muted-foreground">Camere da letto</p>
-                      <p className="font-semibold">{property.bedrooms}</p>
+                      <p className="font-semibold text-foreground">{property.bedrooms}</p>
                     </div>
                   )}
                   {property.bathrooms && (
                     <div>
                       <p className="text-sm text-muted-foreground">Bagni</p>
-                      <p className="font-semibold">{property.bathrooms}</p>
+                      <p className="font-semibold text-foreground">{property.bathrooms}</p>
                     </div>
                   )}
                 </div>
@@ -335,16 +335,16 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
             </Card>
 
             {property.amenities && property.amenities.length > 0 && (
-              <Card>
+              <Card className="bg-card dark:bg-gray-900/50">
                 <CardHeader>
-                  <CardTitle>Servizi</CardTitle>
+                  <CardTitle className="text-foreground">Servizi</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {property.amenities.map((amenity, idx) => (
                       <span
                         key={idx}
-                        className="px-3 py-1 bg-secondary rounded-full text-sm"
+                        className="px-3 py-1 bg-secondary dark:bg-gray-800 rounded-full text-sm text-foreground"
                       >
                         {amenity}
                       </span>
