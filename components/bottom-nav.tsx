@@ -83,12 +83,12 @@ export default function BottomNav() {
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom">
         {/* Gradient background with glassmorphism effect */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/98 to-background/95 dark:from-background dark:via-background/98 dark:to-background/95" />
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 via-transparent to-transparent" />
-        <div className="absolute inset-0 backdrop-blur-xl backdrop-saturate-150" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/98 to-white/95 dark:from-background dark:via-background/98 dark:to-background/95" />
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 via-purple-500/3 to-pink-500/5" />
+        <div className="absolute inset-0 backdrop-blur-2xl backdrop-saturate-150" />
         
         {/* Border with gradient */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-200/50 to-transparent" />
         
         <div className="relative grid grid-cols-5 h-20 pb-safe-area-inset-bottom">
           {/* First two items */}

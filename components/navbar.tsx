@@ -393,7 +393,7 @@ export default function Navbar() {
   return (
     <>
       {/* Desktop Navbar */}
-      <nav className="hidden md:block border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="hidden md:block border-b border-gray-100/50 bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 shadow-sm shadow-gray-200/30">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
@@ -590,7 +590,7 @@ export default function Navbar() {
     </nav>
 
       {/* Mobile Navbar */}
-      <nav className="md:hidden border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <nav className="md:hidden border-b border-gray-100/50 bg-white/95 backdrop-blur-xl supports-[backdrop-filter]:bg-white/95 shadow-sm shadow-gray-200/30 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">

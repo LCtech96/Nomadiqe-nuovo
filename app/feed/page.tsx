@@ -204,7 +204,7 @@ export default function FeedPage() {
     <div className="min-h-screen">
       <div className="px-1 md:px-4">
         {session && (
-          <Card className="mb-4 overflow-hidden border-0 shadow-sm bg-card/50 backdrop-blur-sm rounded-2xl">
+          <Card className="mb-6 overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.01]">
             <CardHeader className="px-5 pt-5 pb-3">
               <h2 className="text-xl font-semibold">Crea un post</h2>
             </CardHeader>
@@ -231,7 +231,7 @@ export default function FeedPage() {
 
         <div className="space-y-4">
           {posts.map((post) => (
-            <Card key={post.id} className="overflow-hidden bg-card/50 backdrop-blur-sm">
+            <Card key={post.id} className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1">
               <CardHeader className="px-5 pt-5 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-1 ring-border/50">

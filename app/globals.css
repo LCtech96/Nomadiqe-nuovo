@@ -88,8 +88,11 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply scroll-smooth;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gradient-to-br from-blue-50/60 via-purple-50/40 to-pink-50/60 text-foreground;
   }
 }
 

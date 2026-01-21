@@ -508,12 +508,12 @@ export default function HomePage() {
         ) : (
           <div className="space-y-4">
             {posts.map((post) => (
-              <Card key={post.id} className="overflow-hidden bg-card/50 backdrop-blur-sm">
+              <Card key={post.id} className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1">
                 <CardContent className="p-0">
                   <div className="px-5 pt-5 pb-3">
                     <div className="flex items-center gap-3">
                       <div 
-                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-1 ring-border/50"
+                        className="relative w-11 h-11 rounded-full overflow-hidden shrink-0 cursor-pointer ring-2 ring-gray-200/60 hover:ring-4 hover:ring-purple-200/50 transition-all duration-200"
                         onClick={() => post.author?.id && router.push(`/profile/${post.author.id}`)}
                       >
                         {post.author?.avatar_url ? (
@@ -583,13 +583,13 @@ export default function HomePage() {
                   
                   {post.images && post.images.length > 0 && (
                     <Link href={`/posts/${post.id}`}>
-                      <div className="relative w-full aspect-[4/3] overflow-hidden cursor-pointer bg-muted">
+                      <div className="relative w-full aspect-[4/3] overflow-hidden cursor-pointer bg-muted rounded-2xl">
                         <Image
                           src={post.images[0]}
                           alt="Post image"
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="object-cover"
+                          className="object-cover hover:scale-105 transition-transform duration-500"
                           priority={false}
                         />
                       </div>
@@ -597,35 +597,35 @@ export default function HomePage() {
                   )}
                   
                   <div className="px-5 pb-5 pt-2">
-                    <div className="flex items-center gap-8 border-t border-border/50 pt-3.5">
+                    <div className="flex items-center gap-8 border-t border-gray-200/50 pt-3.5">
                       {/* Like Button */}
                       <button 
                         onClick={() => handleLike(post.id, post.liked)}
-                        className={`flex items-center gap-2 transition-all active:scale-95 ${
+                        className={`flex items-center gap-2 transition-all duration-200 active:scale-95 ${
                           post.liked 
                             ? "text-red-500" 
-                            : "text-muted-foreground hover:text-red-500"
+                            : "text-gray-500 hover:text-red-500"
                         }`}
                       >
-                        <Heart className={`w-5 h-5 ${post.liked ? "fill-current" : ""} transition-all`} />
+                        <Heart className={`w-5 h-5 transition-colors duration-200 ${post.liked ? "fill-current" : ""}`} />
                         <span className="text-sm font-semibold">{post.like_count || 0}</span>
                       </button>
 
                       {/* Comment Button */}
                       <button 
                         onClick={() => toggleComments(post.id)}
-                        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95"
+                        className="flex items-center gap-2 text-gray-500 hover:text-primary transition-all duration-200 active:scale-95"
                       >
-                        <MessageCircle className="w-5 h-5" />
+                        <MessageCircle className="w-5 h-5 transition-colors duration-200" />
                         <span className="text-sm font-semibold">{post.comment_count || 0}</span>
                       </button>
 
                       {/* Share Button */}
                       <button 
                         onClick={() => handleShare(post)}
-                        className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-all active:scale-95"
+                        className="flex items-center gap-2 text-gray-500 hover:text-primary transition-all duration-200 active:scale-95"
                       >
-                        <Share2 className="w-5 h-5" />
+                        <Share2 className="w-5 h-5 transition-colors duration-200" />
                       </button>
                     </div>
                   </div>

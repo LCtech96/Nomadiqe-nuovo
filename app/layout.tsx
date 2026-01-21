@@ -33,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="it" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="it" suppressHydrationWarning className="scroll-smooth">
+      <body className={`${inter.className} scroll-smooth`}>
         <Providers
           attribute="class"
           defaultTheme="system"
