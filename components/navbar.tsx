@@ -424,7 +424,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="text-foreground">
                   <Languages className="h-5 w-5" />
                   <span className="sr-only">{t('language.select')}</span>
                 </Button>
@@ -447,6 +447,7 @@ export default function Navbar() {
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-foreground"
             >
               <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
               <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -458,7 +459,7 @@ export default function Navbar() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="relative"
+                  className="relative text-foreground"
                   onClick={() => setNotificationsOpen(true)}
                 >
                   <Bell className="h-5 w-5" />
@@ -473,7 +474,7 @@ export default function Navbar() {
             )}
 
             {session && isProfilePage && (
-              <Button variant="ghost" size="icon" asChild>
+              <Button variant="ghost" size="icon" asChild className="text-foreground">
                 <Link href="/messages">
                   <Mail className="h-5 w-5" />
                   <span className="sr-only">Messaggi</span>
@@ -599,7 +600,7 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" className="text-foreground">
                     <Languages className="h-5 w-5" />
                     <span className="sr-only">{t('language.select')}</span>
                   </Button>
@@ -622,6 +623,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="text-foreground"
               >
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
@@ -632,7 +634,7 @@ export default function Navbar() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="relative"
+                    className="relative text-foreground"
                     onClick={() => setNotificationsOpen(true)}
                   >
                     <Bell className="h-5 w-5" />
@@ -646,7 +648,7 @@ export default function Navbar() {
                 </>
               )}
               {session && isProfilePage && (
-                <Button variant="ghost" size="icon" asChild>
+                <Button variant="ghost" size="icon" asChild className="text-foreground">
                   <Link href="/messages">
                     <Mail className="h-5 w-5" />
                     <span className="sr-only">Messaggi</span>
@@ -657,6 +659,7 @@ export default function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(true)}
+                className="text-foreground"
               >
                 <Menu className="h-6 w-6" />
               </Button>
