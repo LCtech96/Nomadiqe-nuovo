@@ -33,6 +33,7 @@ export default function NewPropertyPage() {
     description: "",
     property_type: "apartment" as "apartment" | "house" | "b&b" | "hotel" | "villa" | "other",
     address: "",
+    street_number: "",
     city: "",
     country: "",
     price_per_night: "",
@@ -94,8 +95,11 @@ export default function NewPropertyPage() {
     setLoading(true)
     setUploadingImages(true)
     try {
-      // Geocode address
-      const fullAddress = `${formData.address}, ${formData.city}, ${formData.country}`
+      // Geocode address (combine address + street number)
+      const streetAddress = formData.street_number 
+        ? `${formData.address} ${formData.street_number}`.trim()
+        : formData.address
+      const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
       const geocodeResult = await geocodeAddress(fullAddress)
 
       if (!geocodeResult) {
@@ -162,7 +166,9 @@ export default function NewPropertyPage() {
           title: formData.name, // Usato dal frontend
           description: formData.description,
           property_type: formData.property_type, // Richiesto dal database (NOT NULL)
-          address: formData.address, // Richiesto dal database (NOT NULL)
+          address: formData.street_number 
+            ? `${formData.address} ${formData.street_number}`.trim()
+            : formData.address, // Richiesto dal database (NOT NULL)
           city: formData.city, // Richiesto dal database (NOT NULL)
           country: formData.country, // Richiesto dal database (NOT NULL)
           latitude: geocodeResult?.lat || null,
@@ -364,13 +370,22 @@ export default function NewPropertyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Indirizzo *</Label>
+                <Label htmlFor="address">Via/Strada *</Label>
                 <Input
                   id="address"
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   required
-                  placeholder="Via, numero civico"
+                  placeholder="Es: Via Roma, Corso Garibaldi..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="street_number">Numero Civico</Label>
+                <Input
+                  id="street_number"
+                  value={formData.street_number}
+                  onChange={(e) => setFormData({ ...formData, street_number: e.target.value })}
+                  placeholder="Es: 15, 23/A..."
                 />
               </div>
 

@@ -67,6 +67,7 @@ export default function EditPropertyPage() {
     description: "",
     property_type: "apartment" as "apartment" | "house" | "b&b" | "hotel" | "villa" | "other",
     address: "",
+    street_number: "",
     city: "",
     country: "",
     price_per_night: "",
@@ -110,11 +111,24 @@ export default function EditPropertyPage() {
         return
       }
 
+      // Parse address to separate street name and street number
+      const address = data.address || ""
+      // Try to extract street number (matches patterns like "123", "23/A", "15 bis", etc.)
+      const streetNumberMatch = address.match(/\s+(\d+[\/\-]?[A-Za-z]?(\s+(bis|ter|quater))?)$/i)
+      let parsedAddress = address
+      let parsedStreetNumber = ""
+      
+      if (streetNumberMatch) {
+        parsedStreetNumber = streetNumberMatch[1].trim()
+        parsedAddress = address.substring(0, streetNumberMatch.index).trim()
+      }
+
       setFormData({
         name: data.name || "",
         description: data.description || "",
         property_type: data.property_type || "apartment",
-        address: data.address || "",
+        address: parsedAddress,
+        street_number: parsedStreetNumber,
         city: data.city || "",
         country: data.country || "",
         price_per_night: data.price_per_night?.toString() || "",
@@ -144,8 +158,11 @@ export default function EditPropertyPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      // Geocode address if changed
-      const fullAddress = `${formData.address}, ${formData.city}, ${formData.country}`
+      // Geocode address (combine address + street number)
+      const streetAddress = formData.street_number 
+        ? `${formData.address} ${formData.street_number}`.trim()
+        : formData.address
+      const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
       const geocodeResult = await geocodeAddress(fullAddress)
 
       const { error } = await supabase
@@ -154,7 +171,9 @@ export default function EditPropertyPage() {
           name: formData.name,
           description: formData.description,
           property_type: formData.property_type,
-          address: formData.address,
+          address: formData.street_number 
+            ? `${formData.address} ${formData.street_number}`.trim()
+            : formData.address,
           city: formData.city,
           country: formData.country,
           latitude: geocodeResult?.lat || null,
