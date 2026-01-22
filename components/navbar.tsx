@@ -226,6 +226,50 @@ export default function Navbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const handleInviteHost = async () => {
+    if (!session?.user?.id || profile?.role !== "host") {
+      toast({
+        title: "Errore",
+        description: "Solo gli host possono invitare altri utenti",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Genera o recupera codice referral
+      const response = await fetch("/api/referral/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+
+      if (!response.ok) {
+        throw new Error("Errore nella generazione del codice")
+      }
+
+      const { referralCode } = await response.json()
+
+      // Copia il codice negli appunti
+      const inviteLink = `${window.location.origin}/?ref=${referralCode}`
+      await navigator.clipboard.writeText(inviteLink)
+
+      toast({
+        title: "Link di invito copiato!",
+        description: "Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri host.",
+      })
+
+      // Chiudi il menu mobile
+      setMobileMenuOpen(false)
+    } catch (error: any) {
+      console.error("Error generating referral code:", error)
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile generare il codice di invito",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleEnablePushNotifications = async () => {
     if (!session?.user?.id) {
       toast({
