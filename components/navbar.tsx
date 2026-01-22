@@ -226,11 +226,11 @@ export default function Navbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const handleInviteHost = async () => {
-    if (!session?.user?.id || profile?.role !== "host") {
+  const handleInviteUser = async () => {
+    if (!session?.user?.id || (profile?.role !== "host" && profile?.role !== "creator")) {
       toast({
         title: "Errore",
-        description: "Solo gli host possono invitare altri utenti",
+        description: "Solo host e creator possono invitare altri utenti",
         variant: "destructive",
       })
       return
@@ -287,12 +287,14 @@ export default function Navbar() {
       }
 
       if (copied) {
+        const roleLabel = profile?.role === "host" ? "host" : "creator"
         toast({
           title: "Link di invito copiato!",
-          description: "Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri host.",
+          description: `Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri ${roleLabel}.`,
         })
       } else {
         // Se anche il fallback fallisce, mostra il link
+        const roleLabel = profile?.role === "host" ? "host" : "creator"
         toast({
           title: "Codice referral generato!",
           description: `Link: ${inviteLink}`,
@@ -803,13 +805,13 @@ export default function Navbar() {
                           <BellRing className="h-4 w-4" />
                           {enablingPush ? "Attivazione in corso..." : "Attiva notifiche push"}
                         </button>
-                        {profile?.role === "host" && (
+                        {(profile?.role === "host" || profile?.role === "creator") && (
                           <button
-                            onClick={handleInviteHost}
+                            onClick={handleInviteUser}
                             className="w-full flex items-center gap-2 py-2 text-sm text-left hover:bg-accent rounded-md px-2 transition-colors"
                           >
                             <Users className="h-4 w-4" />
-                            Invita host
+                            {profile?.role === "host" ? "Invita host" : "Invita creator"}
                           </button>
                         )}
                         {/* Temporaneamente nascosto - Elimina profilo */}

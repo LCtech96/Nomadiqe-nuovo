@@ -30,18 +30,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (profile.role !== "host") {
+    if (profile.role !== "host" && profile.role !== "creator") {
       return NextResponse.json(
-        { error: "Solo gli host possono generare codici referral" },
+        { error: "Solo host e creator possono generare codici referral" },
         { status: 403 }
       )
     }
 
-    // Genera o recupera codice referral
-    const { data: referralCode, error: referralError } = await supabase
-      .rpc("get_or_create_host_referral_code", {
+    // Genera o recupera codice referral in base al ruolo
+    let referralCode: string
+    let referralError: any
+
+    if (profile.role === "host") {
+      const result = await supabase.rpc("get_or_create_host_referral_code", {
         p_host_id: session.user.id,
       })
+      referralCode = result.data
+      referralError = result.error
+    } else {
+      // creator
+      const result = await supabase.rpc("get_or_create_creator_referral_code", {
+        p_creator_id: session.user.id,
+      })
+      referralCode = result.data
+      referralError = result.error
+    }
 
     if (referralError) {
       console.error("Error generating referral code:", referralError)
