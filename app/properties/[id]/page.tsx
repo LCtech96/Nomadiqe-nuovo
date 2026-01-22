@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { ArrowLeft, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { useI18n } from "@/lib/i18n/context"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ export default function PropertyDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [property, setProperty] = useState<Property | null>(null)
   const [loading, setLoading] = useState(true)
@@ -97,8 +99,8 @@ export default function PropertyDetailPage() {
       if (error?.code !== "PGRST116" && error?.code !== "PGRST301" && !error?.message?.includes("406")) {
         console.error("Error loading property:", error)
         toast({
-          title: "Errore",
-          description: "Impossibile caricare la proprietà",
+          title: t('general.error'),
+          description: t('property.loadingError'),
           variant: "destructive",
         })
       } else {
@@ -118,8 +120,8 @@ export default function PropertyDetailPage() {
 
     if (!checkIn || !checkOut) {
       toast({
-        title: "Errore",
-        description: "Seleziona le date di check-in e check-out",
+        title: t('general.error'),
+        description: t('property.selectDates'),
         variant: "destructive",
       })
       return
@@ -137,8 +139,8 @@ export default function PropertyDetailPage() {
     // Impedisci all'host di prenotare la propria struttura
     if (property.owner_id === session.user.id) {
       toast({
-        title: "Errore",
-        description: "Non puoi prenotare la tua stessa struttura. Puoi prenotare strutture di altri host.",
+        title: t('general.error'),
+        description: t('property.cannotBookOwn'),
         variant: "destructive",
       })
       return
@@ -187,23 +189,23 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
       if (messageError) throw messageError
 
       toast({
-        title: "Richiesta inviata!",
-        description: "La tua richiesta di prenotazione è stata inviata all'host. Riceverai una risposta nei messaggi.",
+        title: t('general.success'),
+        description: t('property.bookingRequestSent'),
       })
 
       router.push("/messages")
     } catch (error: any) {
       console.error("Error sending booking request:", error)
       toast({
-        title: "Errore",
-        description: error.message || "Impossibile inviare la richiesta di prenotazione",
+        title: t('general.error'),
+        description: error.message || t('property.bookingRequestError'),
         variant: "destructive",
       })
     }
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+    return <div className="min-h-screen flex items-center justify-center">{t('common.loading')}</div>
   }
 
   if (!property) {
@@ -297,7 +299,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
 
             <Card className="bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle className="text-foreground">Descrizione</CardTitle>
+                <CardTitle className="text-foreground">{t('property.description')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-foreground">{property.description}</p>
@@ -306,7 +308,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
 
             <Card className="bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle className="text-foreground">Dettagli</CardTitle>
+                <CardTitle className="text-foreground">{t('property.details')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
@@ -315,7 +317,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                     <p className="font-semibold text-foreground">{property.property_type}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Ospiti massimi</p>
+                    <p className="text-sm text-muted-foreground">{t('property.maxGuests')}</p>
                     <p className="font-semibold text-foreground">{property.max_guests}</p>
                   </div>
                   {property.bedrooms && (
@@ -337,7 +339,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
             {property.amenities && property.amenities.length > 0 && (
               <Card className="bg-card dark:bg-gray-900/50">
                 <CardHeader>
-                  <CardTitle className="text-foreground">Servizi</CardTitle>
+                  <CardTitle className="text-foreground">{t('property.services')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -358,7 +360,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
           <div>
             <Card className="sticky top-4 bg-card dark:bg-gray-900/50">
               <CardHeader>
-                <CardTitle className="text-foreground">Prenota</CardTitle>
+                <CardTitle className="text-foreground">{t('property.book')}</CardTitle>
                 <CardDescription className="text-muted-foreground">
                   €{property.price_per_night} per notte
                 </CardDescription>
@@ -366,7 +368,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="checkIn">Check-in</Label>
+                    <Label htmlFor="checkIn">{t('property.checkIn')}</Label>
                     <Input
                       id="checkIn"
                       type="date"
@@ -377,7 +379,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="checkOut">Check-out</Label>
+                    <Label htmlFor="checkOut">{t('property.checkOut')}</Label>
                     <Input
                       id="checkOut"
                       type="date"
@@ -389,7 +391,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="guests">Ospiti</Label>
+                  <Label htmlFor="guests">{t('property.guests')}</Label>
                   <Input
                     id="guests"
                     type="number"
@@ -406,7 +408,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                       <span>€{totalPrice}</span>
                     </div>
                     <div className="flex justify-between font-bold text-lg">
-                      <span>Totale</span>
+                      <span>{t('property.total')}</span>
                       <span>€{totalPrice}</span>
                     </div>
                   </div>
@@ -416,7 +418,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                   className="w-full"
                   disabled={!checkIn || !checkOut || nights <= 0}
                 >
-                  Prenota
+                  {t('property.book')}
                 </Button>
               </CardContent>
             </Card>
