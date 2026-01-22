@@ -18,7 +18,7 @@ import {
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
-import { X, Upload } from "lucide-react"
+import { X, Upload, VideoIcon, Loader2 } from "lucide-react"
 import ImageCropper from "@/components/image-cropper"
 
 export default function NewPropertyPage() {
@@ -49,6 +49,9 @@ export default function NewPropertyPage() {
   const [showImageCropper, setShowImageCropper] = useState(false)
   const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
   const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
+  const [video, setVideo] = useState<File | null>(null)
+  const [videoPreview, setVideoPreview] = useState<string | null>(null)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
 
   // Lista servizi predefiniti
   const availableAmenities = [
@@ -191,6 +194,7 @@ export default function NewPropertyPage() {
           },
           amenities: formData.amenities,
           images: imageUrls,
+          video_url: videoUrl || null,
           // available_for_collab rimosso temporaneamente per cache PostgREST - default è true
         })
         .select()
@@ -292,6 +296,78 @@ export default function NewPropertyPage() {
     
     setImages(newImages)
     setImagePreviews(newPreviews)
+  }
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Verifica dimensione (max 100MB)
+    const maxSizeMB = 100
+    const fileSizeMB = file.size / (1024 * 1024)
+    
+    if (fileSizeMB > maxSizeMB) {
+      toast({
+        title: "Errore",
+        description: `Il video è troppo grande. Dimensione massima consentita: ${maxSizeMB}MB. Dimensione attuale: ${fileSizeMB.toFixed(2)}MB. Scegli un video più leggero.`,
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica tipo file (solo video)
+    if (!file.type.startsWith("video/")) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un file video valido",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica limite giornaliero
+    try {
+      const response = await fetch("/api/video/check-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadType: "property" }),
+      })
+
+      const { canUpload, error } = await response.json()
+
+      if (!canUpload) {
+        toast({
+          title: "Limite raggiunto",
+          description: error || "Hai già caricato un video oggi. Limite: 1 video al giorno per tipo.",
+          variant: "destructive",
+        })
+        e.target.value = ""
+        return
+      }
+    } catch (error) {
+      console.error("Error checking video limit:", error)
+      toast({
+        title: "Errore",
+        description: "Impossibile verificare il limite video. Riprova.",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    setVideo(file)
+    setVideoPreview(URL.createObjectURL(file))
+    e.target.value = ""
+  }
+
+  const removeVideo = () => {
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview)
+    }
+    setVideo(null)
+    setVideoPreview(null)
   }
 
   return (
@@ -501,6 +577,57 @@ export default function NewPropertyPage() {
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Video upload (solo per host) */}
+              <div className="space-y-2">
+                <Label htmlFor="video">Video della struttura (max 100MB, 1 al giorno)</Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="video"
+                    className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <VideoIcon className="w-4 h-4" />
+                    Carica video
+                  </Label>
+                  <Input
+                    id="video"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoChange}
+                    className="hidden"
+                    disabled={!!video || uploadingVideo || loading}
+                  />
+                </div>
+                {uploadingVideo && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Caricamento video in corso...
+                  </div>
+                )}
+                {videoPreview && (
+                  <div className="relative mt-2">
+                    <video
+                      src={videoPreview}
+                      controls
+                      className="w-full rounded-lg max-h-64"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeVideo}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                      disabled={loading || uploadingVideo}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Dimensione: {(video.size / (1024 * 1024)).toFixed(2)}MB
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Limite: 1 video al giorno. Dimensione massima: 100MB.
+                </p>
               </div>
 
               <div className="space-y-2">

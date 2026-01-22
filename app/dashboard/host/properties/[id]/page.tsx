@@ -19,7 +19,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import Link from "next/link"
-import { X } from "lucide-react"
+import { X, VideoIcon, Loader2 } from "lucide-react"
 
 export default function EditPropertyPage() {
   const { data: session } = useSession()
@@ -30,6 +30,10 @@ export default function EditPropertyPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [currentAmenity, setCurrentAmenity] = useState("")
+  const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null)
+  const [video, setVideo] = useState<File | null>(null)
+  const [videoPreview, setVideoPreview] = useState<string | null>(null)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
 
   // Lista servizi predefiniti
   const availableAmenities = [
@@ -138,6 +142,11 @@ export default function EditPropertyPage() {
         amenities: data.amenities || [],
         is_active: data.is_active ?? true,
       })
+      
+      // Load existing video URL if present
+      if (data.video_url) {
+        setExistingVideoUrl(data.video_url)
+      }
     } catch (error: any) {
       // Only log if it's not a "not found" error
       if (error?.code !== "PGRST116" && error?.code !== "PGRST301" && !error?.message?.includes("406")) {
@@ -165,6 +174,54 @@ export default function EditPropertyPage() {
       const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
       const geocodeResult = await geocodeAddress(fullAddress)
 
+      // Upload video if a new one was selected
+      let videoUrl: string | null = existingVideoUrl
+      const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+
+      if (video && blobToken) {
+        setUploadingVideo(true)
+        try {
+          const { put } = await import("@vercel/blob")
+          const fileExtension = video.name.split(".").pop()
+          const fileName = `${session?.user.id}/properties/videos/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+          const blob = await put(fileName, video, {
+            access: "public",
+            contentType: video.type,
+            token: blobToken,
+          })
+          videoUrl = blob.url
+
+          // Record video upload
+          const fileSizeMB = video.size / (1024 * 1024)
+          const recordResponse = await fetch("/api/video/record-upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uploadType: "property",
+              videoUrl: blob.url,
+              fileSizeMb: fileSizeMB,
+            }),
+          })
+
+          if (!recordResponse.ok) {
+            const { error } = await recordResponse.json()
+            throw new Error(error || "Errore nella registrazione del video")
+          }
+        } catch (uploadError: any) {
+          console.error("Video upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: uploadError.message || "Impossibile caricare il video",
+            variant: "destructive",
+          })
+          setUploadingVideo(false)
+          setSaving(false)
+          return
+        } finally {
+          setUploadingVideo(false)
+        }
+      }
+
       const { error } = await supabase
         .from("properties")
         .update({
@@ -184,6 +241,7 @@ export default function EditPropertyPage() {
           bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : null,
           amenities: formData.amenities,
           is_active: formData.is_active,
+          video_url: videoUrl,
           updated_at: new Date().toISOString(),
         })
         .eq("id", params.id)
@@ -222,6 +280,81 @@ export default function EditPropertyPage() {
       ...formData,
       amenities: formData.amenities.filter((a) => a !== amenity),
     })
+  }
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Verifica dimensione (max 100MB)
+    const maxSizeMB = 100
+    const fileSizeMB = file.size / (1024 * 1024)
+    
+    if (fileSizeMB > maxSizeMB) {
+      toast({
+        title: "Errore",
+        description: `Il video è troppo grande. Dimensione massima consentita: ${maxSizeMB}MB. Dimensione attuale: ${fileSizeMB.toFixed(2)}MB. Scegli un video più leggero.`,
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica tipo file (solo video)
+    if (!file.type.startsWith("video/")) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un file video valido",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica limite giornaliero (solo se non c'è già un video esistente)
+    if (!existingVideoUrl) {
+      try {
+        const response = await fetch("/api/video/check-limit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uploadType: "property" }),
+        })
+
+        const { canUpload, error } = await response.json()
+
+        if (!canUpload) {
+          toast({
+            title: "Limite raggiunto",
+            description: error || "Hai già caricato un video oggi. Limite: 1 video al giorno per tipo.",
+            variant: "destructive",
+          })
+          e.target.value = ""
+          return
+        }
+      } catch (error) {
+        console.error("Error checking video limit:", error)
+        toast({
+          title: "Errore",
+          description: "Impossibile verificare il limite video. Riprova.",
+          variant: "destructive",
+        })
+        e.target.value = ""
+        return
+      }
+    }
+
+    setVideo(file)
+    setVideoPreview(URL.createObjectURL(file))
+    e.target.value = ""
+  }
+
+  const removeVideo = () => {
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview)
+    }
+    setVideo(null)
+    setVideoPreview(null)
+    setExistingVideoUrl(null)
   }
 
   if (loading) {
@@ -382,6 +515,59 @@ export default function EditPropertyPage() {
                     onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
                   />
                 </div>
+              </div>
+
+              {/* Video upload (solo per host) */}
+              <div className="space-y-2">
+                <Label htmlFor="video">Video della struttura (max 100MB, 1 al giorno)</Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="video"
+                    className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <VideoIcon className="w-4 h-4" />
+                    {existingVideoUrl ? "Sostituisci video" : "Carica video"}
+                  </Label>
+                  <Input
+                    id="video"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoChange}
+                    className="hidden"
+                    disabled={uploadingVideo || saving}
+                  />
+                </div>
+                {uploadingVideo && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Caricamento video in corso...
+                  </div>
+                )}
+                {(videoPreview || existingVideoUrl) && (
+                  <div className="relative mt-2">
+                    <video
+                      src={videoPreview || existingVideoUrl || undefined}
+                      controls
+                      className="w-full rounded-lg max-h-64"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeVideo}
+                      className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                      disabled={saving || uploadingVideo}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    {video && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Dimensione: {(video.size / (1024 * 1024)).toFixed(2)}MB
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Limite: 1 video al giorno. Dimensione massima: 100MB.
+                </p>
               </div>
 
               <div className="space-y-2">
