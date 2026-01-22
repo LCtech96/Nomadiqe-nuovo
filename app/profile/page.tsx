@@ -26,7 +26,10 @@ import {
   Check,
   Upload,
   ImageIcon,
-  Shield
+  Shield,
+  VideoIcon,
+  Loader2,
+  X
 } from "lucide-react"
 import Link from "next/link"
 import ImageCropper from "@/components/image-cropper"
@@ -616,6 +619,9 @@ export default function ProfilePage() {
       if (updateData.avatar_url !== undefined) {
         rpcParams.p_avatar_url = updateData.avatar_url
       }
+      if (updateData.presentation_video_url !== undefined) {
+        rpcParams.p_presentation_video_url = updateData.presentation_video_url
+      }
       
       console.log("Calling RPC function with params:", rpcParams)
       
@@ -1044,6 +1050,60 @@ export default function ProfilePage() {
                         placeholder="Racconta qualcosa di te..."
                       />
                     </div>
+                    {/* Video di presentazione (solo per creator) */}
+                    {profile?.role === "creator" && (
+                      <div>
+                        <Label htmlFor="presentationVideo">Video di presentazione (max 100MB, 1 al giorno)</Label>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Label
+                            htmlFor="presentationVideo"
+                            className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                          >
+                            <VideoIcon className="w-4 h-4" />
+                            {existingPresentationVideoUrl ? "Sostituisci video" : "Carica video"}
+                          </Label>
+                          <Input
+                            id="presentationVideo"
+                            type="file"
+                            accept="video/*"
+                            onChange={handlePresentationVideoChange}
+                            className="hidden"
+                            disabled={uploadingPresentationVideo}
+                          />
+                        </div>
+                        {uploadingPresentationVideo && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Caricamento video in corso...
+                          </div>
+                        )}
+                        {(presentationVideoPreview || existingPresentationVideoUrl) && (
+                          <div className="relative mt-2">
+                            <video
+                              src={presentationVideoPreview || existingPresentationVideoUrl || undefined}
+                              controls
+                              className="w-full rounded-lg max-h-64"
+                            />
+                            <button
+                              type="button"
+                              onClick={removePresentationVideo}
+                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                              disabled={uploadingPresentationVideo}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            {presentationVideo && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Dimensione: {(presentationVideo.size / (1024 * 1024)).toFixed(2)}MB
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Limite: 1 video al giorno. Dimensione massima: 100MB.
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <Label htmlFor="avatar">Foto profilo</Label>
                       <div className="flex items-center gap-4 mt-2">
