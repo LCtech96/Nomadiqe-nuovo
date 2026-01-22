@@ -112,9 +112,55 @@ export default function NewPropertyPage() {
         })
       }
 
-      // Upload images to Vercel Blob
+      // Upload video or images to Vercel Blob
+      let videoUrl: string | null = null
       const imageUrls: string[] = []
       const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+
+      // Upload video if present (only for hosts)
+      if (video && blobToken) {
+        setUploadingVideo(true)
+        try {
+          const { put } = await import("@vercel/blob")
+          const fileExtension = video.name.split(".").pop()
+          const fileName = `${session.user.id}/properties/videos/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+          const blob = await put(fileName, video, {
+            access: "public",
+            contentType: video.type,
+            token: blobToken,
+          })
+          videoUrl = blob.url
+
+          // Record video upload
+          const fileSizeMB = video.size / (1024 * 1024)
+          const recordResponse = await fetch("/api/video/record-upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uploadType: "property",
+              videoUrl: blob.url,
+              fileSizeMb: fileSizeMB,
+            }),
+          })
+
+          if (!recordResponse.ok) {
+            const { error } = await recordResponse.json()
+            throw new Error(error || "Errore nella registrazione del video")
+          }
+        } catch (uploadError: any) {
+          console.error("Video upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: uploadError.message || "Impossibile caricare il video",
+            variant: "destructive",
+          })
+          setUploadingVideo(false)
+          setLoading(false)
+          return
+        } finally {
+          setUploadingVideo(false)
+        }
+      }
 
       if (images.length > 0) {
         if (!blobToken) {
