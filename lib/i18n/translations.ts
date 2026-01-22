@@ -294,7 +294,6 @@ export const translations: Record<Locale, Record<string, string>> = {
     'general.submitting': 'Invio...',
     'general.create': 'Crea',
     'general.update': 'Aggiorna',
-    'general.cancel': 'Annulla',
     'general.confirm': 'Conferma',
     'general.continue': 'Continua',
     'general.finish': 'Termina',
