@@ -124,7 +124,7 @@ export default function TravelerDashboard() {
   const completedTrips = bookings.filter((b) => b.status === "completed")
 
   return (
-    <div className="min-h-screen p-8 pb-20">
+    <div className="min-h-screen bg-background dark:bg-gray-900 p-8 pb-20">
       <div className="container mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Dashboard Traveler</h1>

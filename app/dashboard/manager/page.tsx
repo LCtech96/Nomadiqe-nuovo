@@ -70,7 +70,7 @@ export default function JollyDashboard() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen bg-background dark:bg-gray-900 p-8">
       <div className="container mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>

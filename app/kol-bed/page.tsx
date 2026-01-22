@@ -160,8 +160,7 @@ export default function KOLBedPage() {
   const filteredCreators = creators.filter(
     (c) =>
       c.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.bio?.toLowerCase().includes(searchQuery.toLowerCase())
+      c.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (loading || status === "loading" || loadingCreators) {
@@ -191,13 +190,34 @@ export default function KOLBedPage() {
         {/* Search Bar */}
         <div className="mb-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
             <Input
-              placeholder="Cerca creator per nome, username o bio..."
+              id="search-input"
+              placeholder="Cerca creator per nome o username..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-2xl"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  // La ricerca avviene automaticamente tramite filteredCreators
+                }
+              }}
+              className="pl-10 pr-12 rounded-2xl"
             />
+            {searchQuery && (
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 text-primary hover:text-primary"
+                onClick={() => {
+                  // La ricerca avviene automaticamente tramite filteredCreators
+                  document.getElementById("search-input")?.focus()
+                }}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
 

@@ -229,7 +229,7 @@ export default function CommunitiesPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-8 pb-20">
+    <div className="min-h-screen bg-background dark:bg-gray-900 p-4 md:p-8 pb-20">
       <div className="container mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
