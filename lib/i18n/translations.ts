@@ -637,6 +637,26 @@ export const translations: Record<Locale, Record<string, string>> = {
     'job.cvUploadDesc': 'Upload your CV in PDF format (max 10MB)',
     'job.submitApplication': 'Submit application',
     'job.submitting': 'Submitting...',
+    
+    // Video Upload
+    'video.upload': 'Upload video',
+    'video.maxSize': 'Maximum size: 100MB',
+    'video.dailyLimit': 'Limit: 1 video per day per type',
+    'video.uploading': 'Uploading video...',
+    'video.size': 'Size',
+    'video.remove': 'Remove video',
+    'video.selectFile': 'Select a valid video file',
+    'video.tooLarge': 'The video is too large. Maximum allowed size: 100MB. Current size: {size}MB. Choose a lighter video.',
+    'video.limitReached': 'You have already uploaded a video today. Limit: 1 video per day per type.',
+    'video.error': 'Unable to upload video',
+    'video.errorCheckLimit': 'Unable to check video limit. Please try again.',
+    'video.presentation': 'Presentation video',
+    'video.presentationDesc': 'Add a short presentation video (max 100MB, 1 per day)',
+    'video.property': 'Property video',
+    'video.propertyDesc': 'Add a video of your property (max 100MB, 1 per day)',
+    'video.post': 'Video in post',
+    'video.postDesc': 'Add a video to your post (max 100MB, 1 per day)',
+    'video.cannotHaveBoth': 'You cannot upload both images and video in the same post. Choose one.',
   },
   ru: {
     // Navigation
