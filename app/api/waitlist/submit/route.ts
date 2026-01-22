@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       phone_number,
       country,
       role,
+      referral_code,
     } = body
 
     if (!email || !phone_number || !role) {
@@ -79,6 +80,30 @@ export async function POST(request: NextRequest) {
 
     if (country) {
       insertData.country = String(country).trim()
+    }
+
+    // Se c'è un referral_code, registra il referral e aggiungilo alla waitlist
+    if (referral_code) {
+      insertData.referral_code = String(referral_code).trim().toUpperCase()
+      
+      // Registra il referral
+      try {
+        const { error: referralError } = await supabase
+          .rpc("register_host_referral", {
+            p_referral_code: String(referral_code).trim().toUpperCase(),
+            p_email: normalizedEmail,
+            p_phone: String(phone_number).trim(),
+            p_role: String(role).trim(),
+          })
+
+        if (referralError) {
+          console.error("Error registering referral:", referralError)
+          // Non bloccare la registrazione se il referral fallisce
+        }
+      } catch (referralErr) {
+        console.error("Referral registration exception:", referralErr)
+        // Non bloccare la registrazione se il referral fallisce
+      }
     }
 
     const insertResult = await supabase

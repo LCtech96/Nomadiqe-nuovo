@@ -418,7 +418,7 @@ export default function NewPropertyPage() {
 
   return (
     <>
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 dark:bg-gray-900">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Nuova struttura</h1>

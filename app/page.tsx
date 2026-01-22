@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,6 +25,7 @@ export default function HomePage() {
   const { data: session } = useSession()
   const { toast } = useToast()
   const { t } = useI18n()
+  const searchParams = useSearchParams()
   const [profile, setProfile] = useState<any>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const supabase = createSupabaseClient()
@@ -31,6 +33,7 @@ export default function HomePage() {
     email: "",
     phone_number: "",
     role: "",
+    referral_code: "",
   })
   const [submittingWaitlist, setSubmittingWaitlist] = useState(false)
   const [waitlistSubmitted, setWaitlistSubmitted] = useState(false)
@@ -46,7 +49,16 @@ export default function HomePage() {
     } else {
       setLoadingProfile(false)
     }
-  }, [session])
+
+    // Leggi referral_code dall'URL
+    const refCode = searchParams.get("ref")
+    if (refCode) {
+      setWaitlistForm((prev) => ({
+        ...prev,
+        referral_code: refCode.toUpperCase(),
+      }))
+    }
+  }, [session, searchParams])
 
   const loadProfile = async () => {
     if (!session?.user?.id) return

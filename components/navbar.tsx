@@ -717,6 +717,15 @@ export default function Navbar() {
                           <BellRing className="h-4 w-4" />
                           {enablingPush ? "Attivazione in corso..." : "Attiva notifiche push"}
                         </button>
+                        {profile?.role === "host" && (
+                          <button
+                            onClick={handleInviteHost}
+                            className="w-full flex items-center gap-2 py-2 text-sm text-left hover:bg-accent rounded-md px-2 transition-colors"
+                          >
+                            <Users className="h-4 w-4" />
+                            Invita host
+                          </button>
+                        )}
                         {/* Temporaneamente nascosto - Elimina profilo */}
                         {/* <button
                           onClick={() => {

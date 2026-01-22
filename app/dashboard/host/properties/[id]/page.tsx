@@ -362,7 +362,7 @@ export default function EditPropertyPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 dark:bg-gray-900">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8 flex justify-between items-center">
           <div>

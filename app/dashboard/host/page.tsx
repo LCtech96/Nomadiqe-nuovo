@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Plus, Home, Users, Settings, Save, MessageSquare } from "lucide-react"
+import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle } from "lucide-react"
 
 interface Property {
   id: string
@@ -45,11 +45,15 @@ export default function HostDashboard() {
   const [freeStayNightsInput, setFreeStayNightsInput] = useState<string>("")
   const [savingPreferences, setSavingPreferences] = useState(false)
   const [showPreferencesForm, setShowPreferencesForm] = useState(false)
+  const [referrals, setReferrals] = useState<any[]>([])
+  const [loadingReferrals, setLoadingReferrals] = useState(false)
+  const [activeReferralsCount, setActiveReferralsCount] = useState(0)
 
   useEffect(() => {
     if (session?.user?.id) {
       loadProperties()
       loadPreferences()
+      loadReferrals()
     }
   }, [session])
 
@@ -170,6 +174,33 @@ export default function HostDashboard() {
     }))
   }
 
+  const loadReferrals = async () => {
+    if (!session?.user?.id) return
+
+    setLoadingReferrals(true)
+    try {
+      const { data, error } = await supabase
+        .from("host_referrals")
+        .select("*")
+        .eq("host_id", session.user.id)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      setReferrals(data || [])
+      
+      // Conta referral attivi (con profilo creato)
+      const activeCount = (data || []).filter(
+        (r) => r.status === "profile_created" || r.status === "first_booking_received"
+      ).length
+      setActiveReferralsCount(activeCount)
+    } catch (error) {
+      console.error("Error loading referrals:", error)
+    } finally {
+      setLoadingReferrals(false)
+    }
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
@@ -190,7 +221,7 @@ export default function HostDashboard() {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle>Strutture totali</CardTitle>
@@ -221,7 +252,97 @@ export default function HostDashboard() {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Host invitati attivi</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{activeReferralsCount}</p>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Referrals Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Inviti Host</CardTitle>
+            <CardDescription>
+              Visualizza lo stato degli utenti che hai invitato
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingReferrals ? (
+              <div className="text-center py-4">Caricamento...</div>
+            ) : referrals.length === 0 ? (
+              <div className="text-center py-8">
+                <UserPlus className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-4">
+                  Non hai ancora invitato nessun utente
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Vai su Impostazioni nel menu per generare un link di invito
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {referrals.map((referral) => (
+                  <div
+                    key={referral.id}
+                    className="p-4 border rounded-lg space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {referral.invited_email || "Email non disponibile"}
+                        </p>
+                        {referral.invited_phone && (
+                          <p className="text-sm text-muted-foreground">
+                            {referral.invited_phone}
+                          </p>
+                        )}
+                        {referral.invited_role && (
+                          <p className="text-xs text-muted-foreground">
+                            Ruolo: {referral.invited_role}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {referral.status === "pending" && (
+                          <Clock className="w-5 h-5 text-yellow-500" />
+                        )}
+                        {referral.status === "waitlist_registered" && (
+                          <CheckCircle className="w-5 h-5 text-blue-500" />
+                        )}
+                        {referral.status === "approved" && (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        )}
+                        {referral.status === "profile_created" && (
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        )}
+                        {referral.status === "first_booking_received" && (
+                          <CheckCircle className="w-5 h-5 text-purple-600" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {referral.status === "pending" && "In attesa"}
+                          {referral.status === "waitlist_registered" && "Registrato"}
+                          {referral.status === "approved" && "Approvato"}
+                          {referral.status === "profile_created" && "Profilo creato"}
+                          {referral.status === "first_booking_received" && "Prima prenotazione"}
+                        </span>
+                      </div>
+                    </div>
+                    {referral.registered_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Registrato: {new Date(referral.registered_at).toLocaleDateString("it-IT")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Community Link */}
         <Card className="mb-8">
