@@ -560,7 +560,7 @@ export default function EditPropertyPage() {
                     </button>
                             {video && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                Dimensione: {((video?.size || 0) / (1024 * 1024)).toFixed(2)}MB
+                                Dimensione: {(video.size / (1024 * 1024)).toFixed(2)}MB
                               </p>
                             )}
                   </div>

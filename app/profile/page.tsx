@@ -480,6 +480,76 @@ export default function ProfilePage() {
     return () => clearTimeout(timeoutId)
   }, [username, profile?.username, session?.user?.id, supabase])
 
+  const handlePresentationVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Verifica dimensione (max 100MB)
+    const maxSizeMB = 100
+    const fileSizeMB = file.size / (1024 * 1024)
+    
+    if (fileSizeMB > maxSizeMB) {
+      toast({
+        title: "Errore",
+        description: `Il video è troppo grande. Dimensione massima consentita: ${maxSizeMB}MB. Dimensione attuale: ${fileSizeMB.toFixed(2)}MB. Scegli un video più leggero.`,
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica tipo file (solo video)
+    if (!file.type.startsWith("video/")) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un file video valido",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica limite giornaliero
+    try {
+      const response = await fetch("/api/video/check-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadType: "presentation" }),
+      })
+
+      const { canUpload, error } = await response.json()
+
+      if (!canUpload) {
+        toast({
+          title: "Limite raggiunto",
+          description: error || "Hai già caricato un video oggi. Limite: 1 video al giorno per tipo.",
+          variant: "destructive",
+        })
+        e.target.value = ""
+        return
+      }
+    } catch (error) {
+      console.error("Error checking video limit:", error)
+      toast({
+        title: "Errore",
+        description: "Impossibile verificare il limite giornaliero",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Imposta il video
+    setPresentationVideo(file)
+    const videoUrl = URL.createObjectURL(file)
+    setPresentationVideoPreview(videoUrl)
+  }
+
+  const removePresentationVideo = () => {
+    setPresentationVideo(null)
+    setPresentationVideoPreview(null)
+  }
+
   const handleSave = async () => {
     if (!session?.user?.id) return
 
@@ -1094,7 +1164,7 @@ export default function ProfilePage() {
                             </button>
                             {presentationVideo && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                Dimensione: {((presentationVideo?.size || 0) / (1024 * 1024)).toFixed(2)}MB
+                                Dimensione: {(presentationVideo.size / (1024 * 1024)).toFixed(2)}MB
                               </p>
                             )}
                           </div>
