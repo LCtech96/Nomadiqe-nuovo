@@ -83,10 +83,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Se c'è un referral_code, registra il referral e aggiungilo alla waitlist
+    let referralHostEmail: string | null = null
     if (referral_code) {
       insertData.referral_code = String(referral_code).trim().toUpperCase()
       
-      // Registra il referral
+      // Registra il referral e ottieni l'email dell'host
       try {
         const { error: referralError } = await supabase
           .rpc("register_host_referral", {
@@ -99,6 +100,25 @@ export async function POST(request: NextRequest) {
         if (referralError) {
           console.error("Error registering referral:", referralError)
           // Non bloccare la registrazione se il referral fallisce
+        } else {
+          // Ottieni l'email dell'host che ha generato il referral
+          const { data: referralCodeData } = await supabase
+            .from("host_referral_codes")
+            .select("host_id")
+            .eq("referral_code", String(referral_code).trim().toUpperCase())
+            .single()
+
+          if (referralCodeData?.host_id) {
+            const { data: hostProfile } = await supabase
+              .from("profiles")
+              .select("email")
+              .eq("id", referralCodeData.host_id)
+              .single()
+
+            if (hostProfile?.email) {
+              referralHostEmail = hostProfile.email
+            }
+          }
         }
       } catch (referralErr) {
         console.error("Referral registration exception:", referralErr)
@@ -190,6 +210,53 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error("Resend exception:", emailError)
       // Log but don't fail - the request is already saved
+    }
+
+    // Invia email all'host se c'è un referral
+    if (referralHostEmail) {
+      try {
+        const referralEmailHtml = `
+          <div style="font-family: Arial, sans-serif; background-color: #f8fafc; padding: 32px;">
+            <div style="max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+              <h1 style="margin: 0 0 12px; font-size: 24px; color: #111827;">Nuovo utente invitato!</h1>
+              <p style="margin: 0 0 16px; font-size: 16px; color: #374151; line-height: 1.6;">
+                Un nuovo utente si è registrato alla waitlist tramite il tuo link di invito.
+              </p>
+              <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; font-size: 15px; color: #1f2937; line-height: 1.6;">
+                  <strong>Dettagli utente:</strong><br />
+                  Email: ${normalizedEmail}<br />
+                  Telefono: ${phone_number}<br />
+                  Ruolo: ${role}
+                </p>
+              </div>
+              <p style="margin: 24px 0 0; font-size: 14px; color: #6b7280; line-height: 1.6;">
+                Puoi visualizzare lo stato di registrazione di questo utente nella tua dashboard host.
+              </p>
+              <p style="margin: 28px 0 0; font-size: 14px; color: #9ca3af;">
+                Nomadiqe Team
+              </p>
+            </div>
+          </div>
+        `
+
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: referralHostEmail,
+            subject: "Nomadiqe — Nuovo utente invitato alla waitlist",
+            html: referralEmailHtml,
+          }),
+        })
+      } catch (referralEmailError) {
+        console.error("Error sending referral email to host:", referralEmailError)
+        // Non bloccare la registrazione se l'email all'host fallisce
+      }
     }
 
     // Always return success if the request was saved, even if email failed
