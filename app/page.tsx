@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,7 +21,7 @@ import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-reac
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
 
-export default function HomePage() {
+function HomePageContent() {
   const { data: session } = useSession()
   const { toast } = useToast()
   const { t } = useI18n()
@@ -522,5 +522,13 @@ export default function HomePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <HomePageContent />
+    </Suspense>
   )
 }
