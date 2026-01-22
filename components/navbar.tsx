@@ -249,14 +249,56 @@ export default function Navbar() {
 
       const { referralCode } = await response.json()
 
-      // Copia il codice negli appunti
+      // Crea il link di invito
       const inviteLink = `${window.location.origin}/?ref=${referralCode}`
-      await navigator.clipboard.writeText(inviteLink)
 
-      toast({
-        title: "Link di invito copiato!",
-        description: "Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri host.",
-      })
+      // Funzione di fallback per iOS
+      const fallbackCopyTextToClipboard = (text: string) => {
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        textArea.style.position = "fixed"
+        textArea.style.top = "0"
+        textArea.style.left = "0"
+        textArea.style.opacity = "0"
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+
+        try {
+          const successful = document.execCommand("copy")
+          document.body.removeChild(textArea)
+          return successful
+        } catch (err) {
+          document.body.removeChild(textArea)
+          return false
+        }
+      }
+
+      // Prova prima con l'API moderna, poi fallback per iOS
+      let copied = false
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(inviteLink)
+          copied = true
+        }
+      } catch (err) {
+        // Se fallisce (tipico su iOS), usa il fallback
+        copied = fallbackCopyTextToClipboard(inviteLink)
+      }
+
+      if (copied) {
+        toast({
+          title: "Link di invito copiato!",
+          description: "Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri host.",
+        })
+      } else {
+        // Se anche il fallback fallisce, mostra il link
+        toast({
+          title: "Codice referral generato!",
+          description: `Link: ${inviteLink}`,
+          duration: 10000,
+        })
+      }
 
       // Chiudi il menu mobile
       setMobileMenuOpen(false)
