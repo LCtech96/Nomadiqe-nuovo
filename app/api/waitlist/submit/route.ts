@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
 
     // Validate role
     const validRoles = ["traveler", "host", "creator", "jolly"]
-    if (!validRoles.includes(role)) {
+    const normalizedRole = String(role).trim().toLowerCase()
+    if (!validRoles.includes(normalizedRole)) {
       return NextResponse.json(
         { error: "Ruolo non valido" },
         { status: 400 }
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       email: normalizedEmail,
       username: "",
       phone_number: String(phone_number).trim(),
-      role: String(role).trim(),
+      role: normalizedRole,
       status: "pending",
     }
 
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
             p_referral_code: String(referral_code).trim().toUpperCase(),
             p_email: normalizedEmail,
             p_phone: String(phone_number).trim(),
-            p_role: String(role).trim(),
+            p_role: normalizedRole,
           })
 
         if (referralError) {
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
             email: normalizedEmail,
             username: "",
             phone_number: String(phone_number).trim(),
-            role: String(role).trim(),
+            role: normalizedRole,
             status: "pending",
           })
           .select()
