@@ -1094,7 +1094,7 @@ export default function ProfilePage() {
                             </button>
                             {presentationVideo && (
                               <p className="text-xs text-muted-foreground mt-1">
-                                Dimensione: {(presentationVideo.size / (1024 * 1024)).toFixed(2)}MB
+                                Dimensione: {((presentationVideo?.size || 0) / (1024 * 1024)).toFixed(2)}MB
                               </p>
                             )}
                           </div>
