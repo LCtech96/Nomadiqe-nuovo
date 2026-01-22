@@ -314,6 +314,26 @@ export const translations: Record<Locale, Record<string, string>> = {
     'job.cvUploadDesc': 'Carica il tuo CV in formato PDF (max 10MB)',
     'job.submitApplication': 'Invia candidatura',
     'job.submitting': 'Invio in corso...',
+    
+    // Video Upload
+    'video.upload': 'Carica video',
+    'video.maxSize': 'Dimensione massima: 100MB',
+    'video.dailyLimit': 'Limite: 1 video al giorno per tipo',
+    'video.uploading': 'Caricamento video in corso...',
+    'video.size': 'Dimensione',
+    'video.remove': 'Rimuovi video',
+    'video.selectFile': 'Seleziona un file video valido',
+    'video.tooLarge': 'Il video è troppo grande. Dimensione massima consentita: 100MB. Dimensione attuale: {size}MB. Scegli un video più leggero.',
+    'video.limitReached': 'Hai già caricato un video oggi. Limite: 1 video al giorno per tipo.',
+    'video.error': 'Impossibile caricare il video',
+    'video.errorCheckLimit': 'Impossibile verificare il limite video. Riprova.',
+    'video.presentation': 'Video di presentazione',
+    'video.presentationDesc': 'Aggiungi un breve video di presentazione (max 100MB, 1 al giorno)',
+    'video.property': 'Video della struttura',
+    'video.propertyDesc': 'Aggiungi un video della tua struttura (max 100MB, 1 al giorno)',
+    'video.post': 'Video nel post',
+    'video.postDesc': 'Aggiungi un video al tuo post (max 100MB, 1 al giorno)',
+    'video.cannotHaveBoth': 'Non puoi caricare sia immagini che video nello stesso post. Scegli uno dei due.',
   },
   en: {
     // Navigation

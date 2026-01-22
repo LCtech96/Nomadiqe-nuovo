@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import {
@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { put } from "@vercel/blob"
-import { ImageIcon, X } from "lucide-react"
+import { ImageIcon, X, VideoIcon, Loader2 } from "lucide-react"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 
@@ -42,6 +42,20 @@ export default function CreatePostDialog({
   const { toast } = useToast()
   const supabase = createSupabaseClient()
   const [loading, setLoading] = useState(false)
+
+  // Load user role on mount
+  useEffect(() => {
+    if (session?.user?.id) {
+      supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setUserRole(data.role)
+        })
+    }
+  }, [session?.user?.id, supabase])
   const [content, setContent] = useState("")
   const [location, setLocation] = useState("")
   const [images, setImages] = useState<File[]>([])
@@ -49,6 +63,10 @@ export default function CreatePostDialog({
   const [showCropper, setShowCropper] = useState(false)
   const [fileToCrop, setFileToCrop] = useState<File | null>(null)
   const [cropIndex, setCropIndex] = useState<number>(-1)
+  const [video, setVideo] = useState<File | null>(null)
+  const [videoPreview, setVideoPreview] = useState<string | null>(null)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -117,6 +135,78 @@ export default function CreatePostDialog({
     setImagePreviews(imagePreviews.filter((_, i) => i !== index))
   }
 
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Verifica dimensione (max 100MB)
+    const maxSizeMB = 100
+    const fileSizeMB = file.size / (1024 * 1024)
+    
+    if (fileSizeMB > maxSizeMB) {
+      toast({
+        title: "Errore",
+        description: `Il video è troppo grande. Dimensione massima consentita: ${maxSizeMB}MB. Dimensione attuale: ${fileSizeMB.toFixed(2)}MB. Scegli un video più leggero.`,
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica tipo file (solo video)
+    if (!file.type.startsWith("video/")) {
+      toast({
+        title: "Errore",
+        description: "Seleziona un file video valido",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    // Verifica limite giornaliero
+    try {
+      const response = await fetch("/api/video/check-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uploadType: "post" }),
+      })
+
+      const { canUpload, error } = await response.json()
+
+      if (!canUpload) {
+        toast({
+          title: "Limite raggiunto",
+          description: error || "Hai già caricato un video oggi. Limite: 1 video al giorno per tipo.",
+          variant: "destructive",
+        })
+        e.target.value = ""
+        return
+      }
+    } catch (error) {
+      console.error("Error checking video limit:", error)
+      toast({
+        title: "Errore",
+        description: "Impossibile verificare il limite video. Riprova.",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    setVideo(file)
+    setVideoPreview(URL.createObjectURL(file))
+    e.target.value = ""
+  }
+
+  const removeVideo = () => {
+    if (videoPreview) {
+      URL.revokeObjectURL(videoPreview)
+    }
+    setVideo(null)
+    setVideoPreview(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!session?.user?.id) {
@@ -128,10 +218,20 @@ export default function CreatePostDialog({
       return
     }
 
-    if (!content.trim() && images.length === 0) {
+    if (!content.trim() && images.length === 0 && !video) {
       toast({
         title: "Errore",
-        description: "Inserisci almeno un testo o un'immagine",
+        description: "Inserisci almeno un testo, un'immagine o un video",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Se c'è un video, non possono esserci immagini
+    if (video && images.length > 0) {
+      toast({
+        title: "Errore",
+        description: "Non puoi caricare sia immagini che video nello stesso post. Scegli uno dei due.",
         variant: "destructive",
       })
       return
@@ -139,9 +239,54 @@ export default function CreatePostDialog({
 
     setLoading(true)
     try {
-      // Upload images
+      // Upload video or images
+      let videoUrl: string | null = null
       const imageUrls: string[] = []
       const blobToken = process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+
+      // Upload video if present (only for creators)
+      if (video && userRole === "creator" && blobToken) {
+        setUploadingVideo(true)
+        try {
+          const fileExtension = video.name.split(".").pop()
+          const fileName = `${session.user.id}/posts/videos/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+          const blob = await put(fileName, video, {
+            access: "public",
+            contentType: video.type,
+            token: blobToken,
+          })
+          videoUrl = blob.url
+
+          // Record video upload
+          const fileSizeMB = video.size / (1024 * 1024)
+          const recordResponse = await fetch("/api/video/record-upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              uploadType: "post",
+              videoUrl: blob.url,
+              fileSizeMb: fileSizeMB,
+            }),
+          })
+
+          if (!recordResponse.ok) {
+            const { error } = await recordResponse.json()
+            throw new Error(error || "Errore nella registrazione del video")
+          }
+        } catch (uploadError: any) {
+          console.error("Video upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: uploadError.message || "Impossibile caricare il video",
+            variant: "destructive",
+          })
+          setUploadingVideo(false)
+          setLoading(false)
+          return
+        } finally {
+          setUploadingVideo(false)
+        }
+      }
 
       if (images.length > 0 && blobToken) {
         for (const image of images) {
@@ -174,13 +319,14 @@ export default function CreatePostDialog({
       }
 
       // Create post - usando le colonne corrette del database
-      // Il database usa author_id e images (array)
+      // Il database usa author_id, images (array) e video_url
       const { data, error } = await supabase
         .from("posts")
         .insert({
           author_id: session.user.id,
           content: content.trim() || null,
           images: imageUrls.length > 0 ? imageUrls : null, // Array di immagini
+          video_url: videoUrl || null, // URL del video (solo per creator)
         })
         .select()
         .single()
@@ -207,6 +353,11 @@ export default function CreatePostDialog({
       setContent("")
       setImages([])
       setImagePreviews([])
+      if (videoPreview) {
+        URL.revokeObjectURL(videoPreview)
+      }
+      setVideo(null)
+      setVideoPreview(null)
       onOpenChange(false)
       
       if (onSuccess) {
@@ -253,43 +404,92 @@ export default function CreatePostDialog({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="images">Aggiungi foto (max 5)</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageChange}
-                className="flex-1"
-                disabled={images.length >= 5}
-              />
-              <ImageIcon className="w-5 h-5 text-muted-foreground" />
-            </div>
-            {imagePreviews.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <Image
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      fill
-                      sizes="(max-width: 768px) 33vw, 150px"
-                      className="object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+          {/* Video upload (solo per creator) */}
+          {userRole === "creator" && (
+            <div className="space-y-2">
+              <Label htmlFor="video">Aggiungi video (max 100MB, 1 al giorno)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="video"
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoChange}
+                  className="flex-1"
+                  disabled={!!video || uploadingVideo || loading}
+                />
+                <VideoIcon className="w-5 h-5 text-muted-foreground" />
               </div>
-            )}
-          </div>
+              {uploadingVideo && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Caricamento video in corso...
+                </div>
+              )}
+              {videoPreview && (
+                <div className="relative mt-2">
+                  <video
+                    src={videoPreview}
+                    controls
+                    className="w-full rounded-lg max-h-64"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeVideo}
+                    className="absolute top-2 right-2 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Dimensione: {(video.size / (1024 * 1024)).toFixed(2)}MB
+                  </p>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Limite: 1 video al giorno. Dimensione massima: 100MB.
+              </p>
+            </div>
+          )}
+
+          {/* Image upload (non disponibile se c'è un video) */}
+          {!video && (
+            <div className="space-y-2">
+              <Label htmlFor="images">Aggiungi foto (max 5)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="images"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageChange}
+                  className="flex-1"
+                  disabled={images.length >= 5}
+                />
+                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+              </div>
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative aspect-square">
+                      <Image
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 33vw, 150px"
+                        className="object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-destructive/90"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Button
