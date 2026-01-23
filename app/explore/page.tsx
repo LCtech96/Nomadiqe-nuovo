@@ -8,7 +8,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
-import { Star, Users, MapPin, Map as MapIcon, List, Search, Filter, X, Calendar, Euro, Wifi, Car, Heart } from "lucide-react"
+import { Star, Users, MapPin, Map as MapIcon, List, Search, Filter, X, Calendar, Euro, Wifi, Car, Heart, RefreshCw } from "lucide-react"
 
 // Dynamically import map to avoid SSR issues
 const MapComponent = dynamic(() => import("@/components/map"), { ssr: false })
@@ -52,6 +52,45 @@ export default function ExplorePage() {
     loadProperties()
   }, [])
 
+  // Ricarica le proprietà quando la pagina torna in focus (per aggiornare le coordinate)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadProperties()
+      }
+    }
+
+    const handleFocus = () => {
+      loadProperties()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [])
+
+  // Ricarica le proprietà quando si passa alla vista mappa (per mostrare posizioni aggiornate)
+  useEffect(() => {
+    if (viewMode === 'map') {
+      loadProperties()
+    }
+  }, [viewMode])
+
+  // Refresh periodico delle proprietà ogni 30 secondi quando si è in vista mappa
+  useEffect(() => {
+    if (viewMode !== 'map') return
+
+    const interval = setInterval(() => {
+      loadProperties()
+    }, 30000) // 30 secondi
+
+    return () => clearInterval(interval)
+  }, [viewMode])
+
   // Carica proprietà disponibili per le date selezionate
   useEffect(() => {
     if (checkIn && checkOut) {
@@ -61,7 +100,10 @@ export default function ExplorePage() {
     }
   }, [checkIn, checkOut])
 
-  const loadProperties = async () => {
+  const loadProperties = async (showLoading = false) => {
+    if (showLoading) {
+      setLoading(true)
+    }
     try {
       const { data, error } = await supabase
         .from("properties")
@@ -251,6 +293,16 @@ export default function ExplorePage() {
                 <Search className="h-4 w-4" />
               </Button>
             </form>
+            <Button
+              onClick={() => loadProperties(true)}
+              size="icon"
+              variant="outline"
+              className="shrink-0"
+              title="Aggiorna posizioni"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
             <Button
               onClick={() => setViewMode("feed")}
               className="shrink-0 md:flex hidden"
