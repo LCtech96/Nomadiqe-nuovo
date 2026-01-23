@@ -45,9 +45,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   useEffect(() => {
     const getUserId = async () => {
       if (session?.user?.id) {
-        if (session?.user?.id) {
-          setUserId(session.user.id)
-        }
+        setUserId(session.user.id)
       } else {
         const { data: { user: supabaseUser } } = await supabase.auth.getUser()
         if (supabaseUser?.id) {
