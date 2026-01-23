@@ -53,12 +53,21 @@ function VerifyEmailContent() {
   // Funzione per creare profilo base dopo verifica email
   const handleFirstVerificationComplete = async (userEmail: string, userId: string) => {
     // Recupera i dati dalla waitlist se disponibili
-    const { data: waitlistData } = await supabase
+    const normalizedEmail = userEmail.toLowerCase().trim()
+    console.log("Looking for waitlist data for email:", normalizedEmail)
+    
+    const { data: waitlistData, error: waitlistError } = await supabase
       .from("waitlist_requests")
-      .select("full_name, role, phone_number")
-      .eq("email", userEmail.toLowerCase())
+      .select("full_name, role, phone_number, status")
+      .eq("email", normalizedEmail)
       .eq("status", "approved")
       .maybeSingle()
+    
+    if (waitlistError) {
+      console.error("Error fetching waitlist data:", waitlistError)
+    } else {
+      console.log("Waitlist data found:", waitlistData)
+    }
 
     // Crea o aggiorna il profilo base
     const { data: existingProfile } = await supabase
