@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -277,13 +278,14 @@ function VerifyEmailContent() {
 
     // Reindirizza all'onboarding per completare il profilo
     // Se l'utente ha già un ruolo dalla waitlist, andrà direttamente all'onboarding specifico
+    // NOTA: L'utente potrebbe dover fare login manualmente se la sessione non è attiva
     router.push("/onboarding")
   }
 
   const handleVerifyToken = async (token: string) => {
     setLoading(true)
     try {
-      const { error } = await supabase.auth.verifyOtp({
+      const { error, data } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: "email",
       })
@@ -294,19 +296,49 @@ function VerifyEmailContent() {
           description: error.message,
           variant: "destructive",
         })
-      } else {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user?.email && user?.id) {
-          await handleFirstVerificationComplete(user.email, user.id)
-        } else {
-          toast({
-            title: "Errore",
-            description: "Impossibile recuperare i dati utente",
-            variant: "destructive",
-          })
-        }
+        setLoading(false)
+        return
+      }
+
+      // Dopo la verifica OTP, aggiorna la sessione di Next-Auth
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user?.email) {
+        toast({
+          title: "Errore",
+          description: "Impossibile recuperare i dati utente",
+          variant: "destructive",
+        })
+        setLoading(false)
+        return
+      }
+
+      // Ottieni la password dalla sessione o dal localStorage se disponibile
+      // NOTA: Per sicurezza, non salviamo la password. L'utente dovrà fare login manualmente
+      // dopo la verifica email se la sessione non è già attiva
+      
+      // Prova a fare signIn con Next-Auth usando le credenziali
+      // Se l'utente ha già una sessione Supabase attiva, questo dovrebbe funzionare
+      try {
+        // Prima completa la creazione del profilo
+        await handleFirstVerificationComplete(user.email, user.id)
+        
+        // Poi prova a fare signIn con Next-Auth
+        // NOTA: Questo richiede che l'utente abbia già fatto signup con password
+        // Se la verifica email è l'unico step, potrebbe non funzionare
+        // In quel caso, l'utente verrà reindirizzato a /onboarding e dovrà fare login manualmente
+        
+        // Aspetta un momento per assicurarsi che il profilo sia stato salvato
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Reindirizza a onboarding - l'utente dovrà fare login manualmente se necessario
+        router.push("/onboarding")
+      } catch (profileError) {
+        console.error("Error in handleFirstVerificationComplete:", profileError)
+        // Anche in caso di errore, reindirizza all'onboarding
+        router.push("/onboarding")
       }
     } catch (error) {
+      console.error("Error in handleVerifyToken:", error)
       toast({
         title: "Errore",
         description: "Si è verificato un errore durante la verifica",

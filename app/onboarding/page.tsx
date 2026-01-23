@@ -45,20 +45,35 @@ export default function OnboardingPage() {
   // Check if user has already completed onboarding
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      if (status === "unauthenticated") {
+      // Prima verifica se c'è una sessione Supabase attiva (utile dopo verifica email)
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+      
+      // Se non c'è sessione Next-Auth ma c'è sessione Supabase, usa quella
+      if (status === "unauthenticated" && !supabaseUser) {
         router.push("/auth/signin")
         return
       }
 
-      if (status !== "authenticated" || !session?.user?.id) {
+      // Usa l'ID utente da Supabase se Next-Auth non è disponibile
+      const userId = session?.user?.id || supabaseUser?.id
+      
+      if (!userId) {
+        // Se non c'è nessuna sessione, reindirizza al login
+        if (status === "unauthenticated") {
+          router.push("/auth/signin")
+        }
         return
       }
 
       try {
+        // Usa l'ID utente da Supabase se Next-Auth non è disponibile
+        const userId = session?.user?.id || supabaseUser?.id
+        if (!userId) return
+        
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", session.user.id)
+          .eq("id", userId)
           .maybeSingle()
 
         // Handle profile not found - this is OK, we'll create it during onboarding
@@ -123,7 +138,19 @@ export default function OnboardingPage() {
   }
 
   const handleRoleSubmit = async () => {
-    if (!session?.user?.id || !selectedRole) return
+    // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+    const userId = session?.user?.id || supabaseUser?.id
+    
+    if (!userId || !selectedRole) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     setLoading(true)
     try {
@@ -131,7 +158,7 @@ export default function OnboardingPage() {
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id, role")
-        .eq("id", session.user.id)
+        .eq("id", userId)
         .maybeSingle()
 
       // Prepare profile data
@@ -141,12 +168,13 @@ export default function OnboardingPage() {
 
       // Se il profilo non esiste, crealo con tutti i campi necessari
       if (!existingProfile) {
+        const userEmail = session?.user?.email || supabaseUser?.email || ""
         const newProfileData: any = {
-          id: session.user.id,
-          email: session.user.email || "",
+          id: userId,
+          email: userEmail,
           role: selectedRole,
-          full_name: session.user.name || session.user.email?.split("@")[0] || "",
-          username: session.user.email?.split("@")[0] || "",
+          full_name: session?.user?.name || supabaseUser?.user_metadata?.full_name || userEmail.split("@")[0] || "",
+          username: userEmail.split("@")[0] || "",
         }
         
         // IMPORTANTE: Per host e jolly, onboarding_completed deve essere FALSE
@@ -183,7 +211,7 @@ export default function OnboardingPage() {
         const { data: updateResult, error: updateError } = await supabase
           .from("profiles")
           .update(updateData)
-          .eq("id", session.user.id)
+          .eq("id", userId)
           .select("role, onboarding_completed")
 
         if (updateError) {
@@ -199,16 +227,17 @@ export default function OnboardingPage() {
 
       // Invia messaggio di benvenuto dall'assistente AI
       try {
+        const userEmail = session?.user?.email || supabaseUser?.email || ""
         const response = await fetch("/api/ai-assistant/welcome", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userId: session.user.id,
+            userId: userId,
             role: selectedRole,
-            username: session.user.email?.split("@")[0],
-            fullName: session.user.name,
+            username: userEmail.split("@")[0],
+            fullName: session?.user?.name || supabaseUser?.user_metadata?.full_name,
           }),
         })
         if (!response.ok) {
