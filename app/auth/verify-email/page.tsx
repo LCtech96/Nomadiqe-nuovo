@@ -79,6 +79,7 @@ function VerifyEmailContent() {
       // Se abbiamo dati dalla waitlist, includiamo anche il ruolo
       if (waitlistData?.role) {
         profileData.role = waitlistData.role
+        console.log("Role from waitlist:", waitlistData.role)
       }
 
       const { error: profileError } = await supabase
@@ -87,6 +88,8 @@ function VerifyEmailContent() {
 
       if (profileError) {
         console.error("Error creating profile:", profileError)
+      } else {
+        console.log("Profile created with role:", profileData.role)
       }
     } else if (waitlistData) {
       // Se il profilo esiste già ma abbiamo dati dalla waitlist, aggiorniamolo
@@ -98,6 +101,7 @@ function VerifyEmailContent() {
       
       if (waitlistData.role) {
         updateData.role = waitlistData.role
+        console.log("Updating profile with role from waitlist:", waitlistData.role)
       }
 
       if (Object.keys(updateData).length > 0) {
@@ -108,6 +112,8 @@ function VerifyEmailContent() {
 
         if (updateError) {
           console.error("Error updating profile with waitlist data:", updateError)
+        } else {
+          console.log("Profile updated with role:", updateData.role)
         }
       }
     }
@@ -155,12 +161,35 @@ function VerifyEmailContent() {
     // Registra referral se presente
     await registerReferralIfExists()
 
-    // Controlla se l'utente ha già completato l'onboarding (ha un ruolo)
-    const { data: userProfile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .maybeSingle()
+    // Aspetta un momento per assicurarsi che il profilo sia stato salvato nel database
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    // Ricontrolla il profilo per assicurarsi che il ruolo sia stato salvato
+    let retries = 0
+    let userProfile = null
+    while (retries < 3) {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role, onboarding_completed")
+        .eq("id", userId)
+        .maybeSingle()
+      
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching profile:", error)
+        break
+      }
+      
+      userProfile = data
+      if (userProfile) {
+        console.log("Profile found:", { role: userProfile.role, onboarding_completed: userProfile.onboarding_completed })
+        break
+      }
+      
+      retries++
+      if (retries < 3) {
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
 
     toast({
       title: "Successo",

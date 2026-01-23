@@ -68,6 +68,7 @@ export default function OnboardingPage() {
 
         if (data) {
           setProfile(data)
+          console.log("Profile data in onboarding:", { role: data.role, onboarding_completed: data.onboarding_completed })
           
           // Se l'utente ha già completato l'onboarding, reindirizza alla dashboard
           if (data.onboarding_completed) {
@@ -83,6 +84,7 @@ export default function OnboardingPage() {
 
           // Se l'utente ha un ruolo ma non ha completato l'onboarding, procedi con l'onboarding specifico
           if (data.role) {
+            console.log("User has role:", data.role, "- Starting role-specific onboarding")
             setSelectedRole(data.role)
             if (data.role === "host") {
               setStep("role-specific")
@@ -95,6 +97,7 @@ export default function OnboardingPage() {
             }
           } else {
             // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
+            console.log("User has no role - redirecting to home for role selection")
             router.push("/home")
           }
         } else {
