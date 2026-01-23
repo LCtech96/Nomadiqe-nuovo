@@ -19,7 +19,9 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import Link from "next/link"
-import { X, VideoIcon, Loader2 } from "lucide-react"
+import { X, VideoIcon, Loader2, MapPin } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import LocationPickerMap from "@/components/location-picker-map"
 
 export default function EditPropertyPage() {
   const { data: session } = useSession()
@@ -34,6 +36,10 @@ export default function EditPropertyPage() {
   const [video, setVideo] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [showLocationDialog, setShowLocationDialog] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [savingLocation, setSavingLocation] = useState(false)
 
   // Lista servizi predefiniti
   const availableAmenities = [
@@ -147,6 +153,13 @@ export default function EditPropertyPage() {
       if (data.video_url) {
         setExistingVideoUrl(data.video_url)
       }
+      
+      // Load existing coordinates if present
+      if (data.latitude && data.longitude) {
+        const location = { lat: data.latitude, lng: data.longitude }
+        setCurrentLocation(location)
+        setSelectedLocation(location)
+      }
     } catch (error: any) {
       // Only log if it's not a "not found" error
       if (error?.code !== "PGRST116" && error?.code !== "PGRST301" && !error?.message?.includes("406")) {
@@ -222,6 +235,24 @@ export default function EditPropertyPage() {
         }
       }
 
+      // Usa le coordinate selezionate manualmente se disponibili, altrimenti geocodifica
+      let finalLatitude: number | null = null
+      let finalLongitude: number | null = null
+
+      if (selectedLocation) {
+        // Priorità alle coordinate selezionate manualmente
+        finalLatitude = selectedLocation.lat
+        finalLongitude = selectedLocation.lng
+      } else if (geocodeResult) {
+        // Fallback alla geocodifica
+        finalLatitude = geocodeResult.lat
+        finalLongitude = geocodeResult.lon
+      } else if (currentLocation) {
+        // Mantieni le coordinate esistenti se non c'è né selezione manuale né geocodifica
+        finalLatitude = currentLocation.lat
+        finalLongitude = currentLocation.lng
+      }
+
       const { error } = await supabase
         .from("properties")
         .update({
@@ -233,8 +264,8 @@ export default function EditPropertyPage() {
             : formData.address,
           city: formData.city,
           country: formData.country,
-          latitude: geocodeResult?.lat || null,
-          longitude: geocodeResult?.lon || null,
+          latitude: finalLatitude,
+          longitude: finalLongitude,
           price_per_night: parseFloat(formData.price_per_night),
           max_guests: parseInt(formData.max_guests),
           bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
@@ -478,6 +509,167 @@ export default function EditPropertyPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Posizione sulla mappa</Label>
+                  <Dialog open={showLocationDialog} onOpenChange={setShowLocationDialog}>
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          // Inizializza con la posizione corrente se disponibile
+                          if (currentLocation) {
+                            setSelectedLocation(currentLocation)
+                          }
+                        }}
+                      >
+                        <MapPin className="w-4 h-4 mr-2" />
+                        Riposiziona sulla mappa
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Riposiziona struttura sulla mappa</DialogTitle>
+                        <DialogDescription>
+                          Clicca sulla mappa per selezionare la posizione esatta della struttura. 
+                          Puoi anche cercare l'indirizzo e poi regolare la posizione.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const streetAddress = formData.street_number 
+                                ? `${formData.address} ${formData.street_number}`.trim()
+                                : formData.address
+                              const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
+                              
+                              if (!formData.address || !formData.city || !formData.country) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Compila prima l'indirizzo, la città e il paese",
+                                  variant: "destructive",
+                                })
+                                return
+                              }
+
+                              const geocodeResult = await geocodeAddress(fullAddress)
+                              if (geocodeResult) {
+                                const location = { lat: geocodeResult.lat, lng: geocodeResult.lon }
+                                setSelectedLocation(location)
+                                toast({
+                                  title: "Posizione trovata",
+                                  description: "Clicca sulla mappa per regolare la posizione esatta",
+                                })
+                              } else {
+                                toast({
+                                  title: "Errore",
+                                  description: "Impossibile trovare l'indirizzo. Seleziona manualmente la posizione sulla mappa.",
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                            disabled={savingLocation || !formData.address || !formData.city || !formData.country}
+                          >
+                            <MapPin className="w-4 h-4 mr-2" />
+                            Cerca indirizzo
+                          </Button>
+                        </div>
+                        <LocationPickerMap
+                          initialPosition={selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : null}
+                          onLocationSelect={(lat, lng) => {
+                            setSelectedLocation({ lat, lng })
+                          }}
+                          height="500px"
+                        />
+                        {selectedLocation && (
+                          <p className="text-sm text-muted-foreground">
+                            Posizione selezionata: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                          </p>
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setShowLocationDialog(false)
+                              // Ripristina la posizione originale se non salvata
+                              if (currentLocation) {
+                                setSelectedLocation(currentLocation)
+                              }
+                            }}
+                            disabled={savingLocation}
+                          >
+                            Annulla
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={async () => {
+                              if (!selectedLocation) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Seleziona una posizione sulla mappa",
+                                  variant: "destructive",
+                                })
+                                return
+                              }
+
+                              setSavingLocation(true)
+                              try {
+                                const { error } = await supabase
+                                  .from("properties")
+                                  .update({
+                                    latitude: selectedLocation.lat,
+                                    longitude: selectedLocation.lng,
+                                    updated_at: new Date().toISOString(),
+                                  })
+                                  .eq("id", params.id)
+
+                                if (error) throw error
+
+                                setCurrentLocation(selectedLocation)
+                                setShowLocationDialog(false)
+                                
+                                toast({
+                                  title: "Successo",
+                                  description: "Posizione aggiornata con successo!",
+                                })
+                              } catch (error: any) {
+                                toast({
+                                  title: "Errore",
+                                  description: error.message || "Impossibile aggiornare la posizione",
+                                  variant: "destructive",
+                                })
+                              } finally {
+                                setSavingLocation(false)
+                              }
+                            }}
+                            disabled={savingLocation || !selectedLocation}
+                          >
+                            {savingLocation ? "Salvataggio..." : "Salva posizione"}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                {currentLocation && (
+                  <p className="text-sm text-muted-foreground">
+                    Posizione attuale: {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                  </p>
+                )}
+                {!currentLocation && (
+                  <p className="text-sm text-muted-foreground">
+                    Nessuna posizione impostata. Clicca su "Riposiziona sulla mappa" per impostare la posizione.
+                  </p>
+                )}
               </div>
 
               <div className="grid md:grid-cols-3 gap-4">

@@ -18,8 +18,9 @@ import {
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
-import { X, Upload, VideoIcon, Loader2 } from "lucide-react"
+import { X, Upload, VideoIcon, Loader2, MapPin } from "lucide-react"
 import ImageCropper from "@/components/image-cropper"
+import LocationPickerMap from "@/components/location-picker-map"
 
 export default function NewPropertyPage() {
   const { data: session } = useSession()
@@ -45,6 +46,7 @@ export default function NewPropertyPage() {
 
   const [images, setImages] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [mainImageIndex, setMainImageIndex] = useState<number | null>(null)
   const [uploadingImages, setUploadingImages] = useState(false)
   const [showImageCropper, setShowImageCropper] = useState(false)
   const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
@@ -52,6 +54,8 @@ export default function NewPropertyPage() {
   const [video, setVideo] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
 
   // Lista servizi predefiniti
   const availableAmenities = [
@@ -98,18 +102,31 @@ export default function NewPropertyPage() {
     setLoading(true)
     setUploadingImages(true)
     try {
-      // Geocode address (combine address + street number)
-      const streetAddress = formData.street_number 
-        ? `${formData.address} ${formData.street_number}`.trim()
-        : formData.address
-      const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
-      const geocodeResult = await geocodeAddress(fullAddress)
+      // Usa le coordinate selezionate manualmente se disponibili, altrimenti geocodifica
+      let finalLatitude: number | null = null
+      let finalLongitude: number | null = null
 
-      if (!geocodeResult) {
-        toast({
-          title: "Attenzione",
-          description: "Impossibile geocodificare l'indirizzo. La proprietà verrà salvata senza coordinate.",
-        })
+      if (selectedLocation) {
+        // Priorità alle coordinate selezionate manualmente
+        finalLatitude = selectedLocation.lat
+        finalLongitude = selectedLocation.lng
+      } else {
+        // Fallback alla geocodifica
+        const streetAddress = formData.street_number 
+          ? `${formData.address} ${formData.street_number}`.trim()
+          : formData.address
+        const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
+        const geocodeResult = await geocodeAddress(fullAddress)
+
+        if (geocodeResult) {
+          finalLatitude = geocodeResult.lat
+          finalLongitude = geocodeResult.lon
+        } else {
+          toast({
+            title: "Attenzione",
+            description: "Impossibile geocodificare l'indirizzo. Seleziona la posizione sulla mappa o la proprietà verrà salvata senza coordinate.",
+          })
+        }
       }
 
       // Upload video or images to Vercel Blob
@@ -173,7 +190,15 @@ export default function NewPropertyPage() {
           try {
             const { put } = await import("@vercel/blob")
             
-            for (const image of images) {
+            // Riordina le immagini: l'immagine principale deve essere la prima
+            const orderedImages = [...images]
+            if (mainImageIndex !== null && mainImageIndex > 0) {
+              // Sposta l'immagine principale all'inizio
+              const [mainImage] = orderedImages.splice(mainImageIndex, 1)
+              orderedImages.unshift(mainImage)
+            }
+            
+            for (const image of orderedImages) {
               try {
                 const fileExtension = image.name.split(".").pop()
                 const fileName = `${session.user.id}/properties/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
@@ -223,8 +248,8 @@ export default function NewPropertyPage() {
             : formData.address,
           city: formData.city,
           country: formData.country,
-          latitude: geocodeResult?.lat || null,
-          longitude: geocodeResult?.lon || null,
+          latitude: finalLatitude,
+          longitude: finalLongitude,
           price_per_night: formData.price_per_night,
           max_guests: formData.max_guests,
           bedrooms: formData.bedrooms || null,
@@ -234,8 +259,8 @@ export default function NewPropertyPage() {
             address: formData.address,
             city: formData.city,
             country: formData.country,
-            latitude: geocodeResult?.lat || null,
-            longitude: geocodeResult?.lon || null,
+            latitude: finalLatitude,
+            longitude: finalLongitude,
             price_per_night: parseFloat(formData.price_per_night),
             max_guests: parseInt(formData.max_guests),
             bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
@@ -290,10 +315,10 @@ export default function NewPropertyPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    if (files.length + images.length > 10) {
+    if (files.length + images.length > 30) {
       toast({
         title: "Errore",
-        description: "Puoi caricare massimo 10 immagini",
+        description: "Puoi caricare massimo 30 immagini",
         variant: "destructive",
       })
       return
@@ -311,10 +336,13 @@ export default function NewPropertyPage() {
       return
     }
 
-    // Store pending files and process first one
-    setPendingImageFiles(validFiles)
-    setImageFileToCrop(validFiles[0])
-    setShowImageCropper(true)
+    // Se ci sono più file, aggiungili tutti alla coda
+    // Processa tutte le immagini in sequenza
+    if (validFiles.length > 0) {
+      setPendingImageFiles(validFiles)
+      setImageFileToCrop(validFiles[0])
+      setShowImageCropper(true)
+    }
     
     // Reset input
     e.target.value = ""
@@ -322,9 +350,15 @@ export default function NewPropertyPage() {
 
   const handleImageCropComplete = (croppedFile: File) => {
     const newPreview = URL.createObjectURL(croppedFile)
+    const newIndex = images.length
     
     setImages([...images, croppedFile])
     setImagePreviews([...imagePreviews, newPreview])
+    
+    // Se è la prima immagine, impostala come principale
+    if (newIndex === 0 && mainImageIndex === null) {
+      setMainImageIndex(0)
+    }
 
     // Process next file if available
     if (pendingImageFiles.length > 1) {
@@ -348,6 +382,19 @@ export default function NewPropertyPage() {
     
     setImages(newImages)
     setImagePreviews(newPreviews)
+    
+    // Aggiorna l'indice dell'immagine principale se necessario
+    if (mainImageIndex === index) {
+      // Se era l'immagine principale, imposta la prima disponibile come principale
+      setMainImageIndex(newImages.length > 0 ? 0 : null)
+    } else if (mainImageIndex !== null && mainImageIndex > index) {
+      // Se l'immagine rimossa era prima di quella principale, decrementa l'indice
+      setMainImageIndex(mainImageIndex - 1)
+    }
+  }
+  
+  const setAsMainImage = (index: number) => {
+    setMainImageIndex(index)
   }
 
   const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -539,6 +586,67 @@ export default function NewPropertyPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Posizione sulla mappa *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const streetAddress = formData.street_number 
+                        ? `${formData.address} ${formData.street_number}`.trim()
+                        : formData.address
+                      const fullAddress = `${streetAddress}, ${formData.city}, ${formData.country}`
+                      
+                      if (!formData.address || !formData.city || !formData.country) {
+                        toast({
+                          title: "Errore",
+                          description: "Compila prima l'indirizzo, la città e il paese",
+                          variant: "destructive",
+                        })
+                        return
+                      }
+
+                      const geocodeResult = await geocodeAddress(fullAddress)
+                      if (geocodeResult) {
+                        setMapCenter([geocodeResult.lat, geocodeResult.lon])
+                        setSelectedLocation({ lat: geocodeResult.lat, lng: geocodeResult.lon })
+                        toast({
+                          title: "Posizione trovata",
+                          description: "Clicca sulla mappa per regolare la posizione esatta",
+                        })
+                      } else {
+                        toast({
+                          title: "Errore",
+                          description: "Impossibile trovare l'indirizzo. Seleziona manualmente la posizione sulla mappa.",
+                          variant: "destructive",
+                        })
+                      }
+                    }}
+                    disabled={loading || !formData.address || !formData.city || !formData.country}
+                  >
+                    <MapPin className="w-4 h-4 mr-2" />
+                    Cerca indirizzo
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Clicca sulla mappa per selezionare la posizione esatta della struttura. Puoi anche cercare l'indirizzo e poi regolare la posizione.
+                </p>
+                <LocationPickerMap
+                  initialPosition={mapCenter}
+                  onLocationSelect={(lat, lng) => {
+                    setSelectedLocation({ lat, lng })
+                  }}
+                  height="400px"
+                />
+                {selectedLocation && (
+                  <p className="text-sm text-muted-foreground">
+                    Posizione selezionata: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                  </p>
+                )}
+              </div>
+
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="max_guests">Ospiti massimi *</Label>
@@ -597,29 +705,50 @@ export default function NewPropertyPage() {
                       disabled={loading || uploadingImages}
                     />
                     <span className="text-sm text-muted-foreground">
-                      {images.length}/10 immagini
+                      {images.length}/30 immagini
                     </span>
                   </div>
                   
                   {imagePreviews.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            disabled={loading || uploadingImages}
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        Clicca su un'immagine per impostarla come principale
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div 
+                            key={index} 
+                            className={`relative group cursor-pointer rounded-lg border-2 transition-all ${
+                              mainImageIndex === index 
+                                ? "border-primary ring-2 ring-primary ring-offset-2" 
+                                : "border-border hover:border-primary/50"
+                            }`}
+                            onClick={() => setAsMainImage(index)}
                           >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg"
+                            />
+                            {mainImageIndex === index && (
+                              <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
+                                Principale
+                              </div>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                removeImage(index)
+                              }}
+                              className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              disabled={loading || uploadingImages}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   
