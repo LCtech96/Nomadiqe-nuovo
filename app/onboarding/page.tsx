@@ -102,8 +102,9 @@ export default function OnboardingPage() {
             setStep("role")
           }
         } else {
-          // Profile doesn't exist - redirect to home for role selection
-          router.push("/home")
+          // Profile doesn't exist - show role selection here
+          console.log("Profile doesn't exist - showing role selection")
+          setStep("role")
         }
       } catch (error) {
         console.error("Error checking onboarding status:", error)
