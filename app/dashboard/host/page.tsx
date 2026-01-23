@@ -237,13 +237,16 @@ export default function HostDashboard() {
   }
 
   const loadPreferences = async () => {
-    if (!session?.user?.id) return
+    if (!userId) return
+    return loadPreferencesWithUserId(userId)
+  }
 
+  const loadPreferencesWithUserId = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from("host_kol_bed_preferences")
         .select("*")
-        .eq("host_id", userId || "")
+        .eq("host_id", id)
         .maybeSingle()
 
       if (error && error.code !== "PGRST116") throw error
@@ -320,14 +323,17 @@ export default function HostDashboard() {
   }
 
   const loadReferrals = async () => {
-    if (!session?.user?.id) return
+    if (!userId) return
+    return loadReferralsWithUserId(userId)
+  }
 
+  const loadReferralsWithUserId = async (id: string) => {
     setLoadingReferrals(true)
     try {
       const { data, error } = await supabase
         .from("host_referrals")
         .select("*")
-        .eq("host_id", userId || "")
+        .eq("host_id", id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
