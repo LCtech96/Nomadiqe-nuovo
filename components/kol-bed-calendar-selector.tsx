@@ -164,13 +164,13 @@ export default function KolBedCalendarSelector({
   }
 
   return (
-    <Card>
+    <Card className="dark:bg-gray-900/98">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Calendar className="w-5 h-5" />
           Seleziona le date disponibili per KOL&BED
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="dark:text-gray-400">
           Clicca sulle date per selezionarle. Le date prenotate sono bloccate.
         </CardDescription>
       </CardHeader>
@@ -178,13 +178,13 @@ export default function KolBedCalendarSelector({
         <div className="space-y-4">
           {/* Navigazione mese */}
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={prevMonth}>
+            <Button type="button" variant="outline" size="sm" onClick={prevMonth}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <h3 className="text-lg font-semibold">
               {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
             </h3>
-            <Button variant="outline" size="sm" onClick={nextMonth}>
+            <Button type="button" variant="outline" size="sm" onClick={nextMonth}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -193,15 +193,15 @@ export default function KolBedCalendarSelector({
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 border-2 border-blue-500 dark:border-blue-400 rounded"></div>
-              <span>Selezionata</span>
+              <span className="dark:text-gray-300">Selezionata</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 rounded"></div>
-              <span>Disponibile</span>
+              <span className="dark:text-gray-300">Disponibile</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded"></div>
-              <span>Prenotata</span>
+              <span className="dark:text-gray-300">Prenotata</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"></div>
@@ -213,7 +213,7 @@ export default function KolBedCalendarSelector({
           <div className="grid grid-cols-7 gap-1">
             {/* Intestazioni giorni */}
             {["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"].map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
+              <div key={day} className="text-center text-sm font-medium text-muted-foreground dark:text-gray-400 p-2">
                 {day}
               </div>
             ))}
@@ -236,7 +236,7 @@ export default function KolBedCalendarSelector({
                     ${status === "selected" ? "bg-blue-100 dark:bg-blue-900 border-2 border-blue-500 dark:border-blue-400" : ""}
                     ${status === "available" ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50" : ""}
                     ${status === "booked" ? "bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 cursor-not-allowed opacity-50" : ""}
-                    ${status === "past" ? "bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-50" : ""}
+                    ${status === "past" ? "bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-800 cursor-not-allowed opacity-50" : ""}
                     ${isToday ? "ring-2 ring-blue-500" : ""}
                     disabled:opacity-50 disabled:cursor-not-allowed
                   `}

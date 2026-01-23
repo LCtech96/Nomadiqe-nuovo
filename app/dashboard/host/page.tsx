@@ -80,7 +80,14 @@ export default function HostDashboard() {
         return
       }
 
-      if (status !== "authenticated" || !session?.user?.id) {
+      // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+      const userId = session?.user?.id || supabaseUser?.id
+      
+      if (!userId) {
+        if (status === "unauthenticated") {
+          router.push("/auth/signin")
+        }
         return
       }
 
@@ -88,7 +95,7 @@ export default function HostDashboard() {
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("role, onboarding_completed")
-          .eq("id", session.user.id)
+          .eq("id", userId)
           .maybeSingle()
 
         if (error) {
@@ -112,7 +119,7 @@ export default function HostDashboard() {
 
         // Onboarding completato, procedi con il caricamento dei dati
         setCheckingOnboarding(false)
-        if (session?.user?.id) {
+        if (userId) {
           loadProperties()
           loadPreferences()
           loadReferrals()
@@ -124,14 +131,15 @@ export default function HostDashboard() {
     }
 
     checkOnboarding()
-  }, [session, status, router, supabase])
+  }, [session, status, router, supabase, userId])
 
   const loadProperties = async () => {
+    if (!userId) return
     try {
       const { data, error } = await supabase
         .from("properties")
         .select("*")
-        .eq("owner_id", session!.user.id)
+        .eq("owner_id", userId)
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -161,7 +169,7 @@ export default function HostDashboard() {
   }
 
   const handleDeleteProperty = async () => {
-    if (!propertyToDelete || !session?.user?.id) return
+    if (!propertyToDelete || !userId) return
 
     setDeleting(true)
     try {
@@ -212,7 +220,7 @@ export default function HostDashboard() {
       const { data, error } = await supabase
         .from("host_kol_bed_preferences")
         .select("*")
-        .eq("host_id", session.user.id)
+        .eq("host_id", userId || "")
         .maybeSingle()
 
       if (error && error.code !== "PGRST116") throw error
@@ -233,7 +241,7 @@ export default function HostDashboard() {
   }
 
   const handleSavePreferences = async () => {
-    if (!session?.user?.id) return
+    if (!userId) return
 
     setSavingPreferences(true)
     try {
@@ -242,7 +250,7 @@ export default function HostDashboard() {
       const { error } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
-          host_id: session.user.id,
+          host_id: userId,
           free_stay_nights: nightsValue ?? 0,
           promotion_types: preferences.promotion_types,
           required_social_platforms: preferences.required_social_platforms,
@@ -296,7 +304,7 @@ export default function HostDashboard() {
       const { data, error } = await supabase
         .from("host_referrals")
         .select("*")
-        .eq("host_id", session.user.id)
+        .eq("host_id", userId || "")
         .order("created_at", { ascending: false })
 
       if (error) throw error

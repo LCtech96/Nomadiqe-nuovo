@@ -636,18 +636,29 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
   useEffect(() => {
     const loadPropertyId = async () => {
-      if (!userId || step !== "kol-bed-program") return
+      // Carica propertyId quando si entra nello step kol-bed-program
+      if (step !== "kol-bed-program") {
+        setPropertyId(null)
+        return
+      }
+      
+      if (!userId) {
+        // Se non c'è userId, aspetta che venga caricato
+        return
+      }
       
       try {
-        const { data: property } = await supabase
+        const { data: property, error } = await supabase
           .from("properties")
           .select("id")
           .eq("owner_id", userId)
           .order("created_at", { ascending: false })
           .limit(1)
-          .single()
+          .maybeSingle()
         
-        if (property) {
+        if (error && error.code !== "PGRST116") {
+          console.error("Error loading property ID:", error)
+        } else if (property) {
           setPropertyId(property.id)
         }
       } catch (error) {
@@ -734,7 +745,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         }
       }
 
-      // Salva preferenze KOL&BED
+      // Salva preferenze KOL&BED - usa upsert con onConflict per evitare errori duplicate key
       const { error: preferencesError } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
@@ -751,6 +762,8 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           required_stories: kolBedData.required_stories ? parseInt(kolBedData.required_stories) : 0,
           kol_bed_months: kolBedData.kol_bed_months.length > 0 ? kolBedData.kol_bed_months : [],
           updated_at: new Date().toISOString(),
+        }, {
+          onConflict: "host_id"
         })
 
       if (preferencesError) {
@@ -791,6 +804,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const isFirst100 = (hostCount || 0) < 100
       const offerPrice = isFirst100 ? 299 : 799
 
+      // Salva la richiesta nel database
       const { error } = await supabase
         .from("website_offer_requests")
         .insert({
@@ -801,6 +815,33 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         })
 
       if (error) throw error
+
+      // Ottieni i dettagli del profilo per l'email
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, full_name")
+        .eq("id", userId)
+        .maybeSingle()
+
+      // Invia notifica email a luca@facevoice.ai
+      try {
+        await fetch("/api/website-offer/notify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            hostId: userId,
+            hostEmail: profile?.email || session?.user?.email || "",
+            hostName: profile?.full_name || session?.user?.name || "",
+            offerPrice,
+            isFirst100,
+          }),
+        })
+      } catch (emailError) {
+        console.error("Error sending notification email:", emailError)
+        // Non bloccare il flusso se l'email non viene inviata
+      }
 
       setWebsiteOfferRequested(true)
       setShowOfferDisclaimer(true)
@@ -915,7 +956,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                     className="flex-1"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Max 10MB, formato JPG/PNG (ritaglio disponibile)</p>
+                <p className="text-xs text-muted-foreground dark:text-gray-400">Max 10MB, formato JPG/PNG (ritaglio disponibile)</p>
               </div>
 
               <div className="space-y-2">
@@ -946,7 +987,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                 {usernameAvailable === true && profileData.username && (
                   <p className="text-xs text-green-600">✓ Username disponibile</p>
                 )}
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   Lo username deve essere univoco. Se lasciato vuoto, verrà generato automaticamente.
                 </p>
               </div>
@@ -960,7 +1001,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   placeholder="Racconta qualcosa di te..."
                   rows={3}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   Una breve descrizione di te e della tua struttura
                 </p>
               </div>
@@ -1271,10 +1312,11 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
             </div>
             <form onSubmit={handleKolBedProgramSubmit} className="space-y-6">
               {/* Calendario per selezionare date disponibili */}
-              {userId && propertyId && (
+              {/* Il calendario viene sempre mostrato se userId esiste, anche se propertyId non è ancora caricato */}
+              {userId && (
                 <KolBedCalendarSelector
                   hostId={userId}
-                  propertyId={propertyId}
+                  propertyId={propertyId || undefined}
                   selectedDates={kolBedData.selectedDates}
                   onDatesChange={(dates) => setKolBedData({ ...kolBedData, selectedDates: dates })}
                 />
@@ -1308,7 +1350,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   onChange={(e) => setKolBedData({ ...kolBedData, preferred_niche: e.target.value })}
                   placeholder="travel, lifestyle, food, adventure..."
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   La nicchia di riferimento per le collaborazioni
                 </p>
               </div>
@@ -1325,7 +1367,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   placeholder="100"
                   required
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground dark:text-gray-400">
                   Il numero minimo di follower che vuoi che l'influencer abbia (minimo 100)
                 </p>
               </div>
