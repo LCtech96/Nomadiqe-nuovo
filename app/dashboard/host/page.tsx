@@ -121,6 +121,7 @@ export default function HostDashboard() {
 
         // Se l'utente non ha il ruolo host, reindirizza
         if (profile?.role !== "host") {
+          setCheckingOnboarding(false)
           router.push("/onboarding")
           return
         }
@@ -128,12 +129,12 @@ export default function HostDashboard() {
         // Se l'utente è host ma non ha completato l'onboarding, reindirizza forzatamente
         if (profile && !profile.onboarding_completed) {
           console.log("Host onboarding not completed - redirecting to onboarding")
+          setCheckingOnboarding(false)
           router.push("/onboarding")
           return
         }
 
         // Onboarding completato, procedi con il caricamento dei dati
-        setCheckingOnboarding(false)
         if (currentUserId) {
           // Aggiorna userId state per le altre funzioni
           setUserId(currentUserId)
@@ -143,6 +144,8 @@ export default function HostDashboard() {
           loadPreferencesWithUserId(currentUserId)
           loadReferralsWithUserId(currentUserId)
         }
+        // Imposta checkingOnboarding a false DOPO aver avviato il caricamento
+        setCheckingOnboarding(false)
       } catch (error) {
         console.error("Error in checkOnboarding:", error)
         setCheckingOnboarding(false)
@@ -353,7 +356,11 @@ export default function HostDashboard() {
   }
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
+        <div>Caricamento...</div>
+      </div>
+    )
   }
 
   return (
