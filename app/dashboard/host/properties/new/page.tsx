@@ -20,7 +20,12 @@ import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import { X, Upload, VideoIcon, Loader2, MapPin } from "lucide-react"
 import ImageCropper from "@/components/image-cropper"
-import LocationPickerMap from "@/components/location-picker-map"
+import dynamic from "next/dynamic"
+
+const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
+  ssr: false,
+  loading: () => <div className="w-full h-[400px] rounded-lg border flex items-center justify-center bg-muted">Caricamento mappa...</div>
+})
 
 export default function NewPropertyPage() {
   const { data: session } = useSession()

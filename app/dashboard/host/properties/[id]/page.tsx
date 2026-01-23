@@ -21,7 +21,12 @@ import { geocodeAddress } from "@/lib/geocoding"
 import Link from "next/link"
 import { X, VideoIcon, Loader2, MapPin } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import LocationPickerMap from "@/components/location-picker-map"
+import dynamic from "next/dynamic"
+
+const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
+  ssr: false,
+  loading: () => <div className="w-full h-[500px] rounded-lg border flex items-center justify-center bg-muted">Caricamento mappa...</div>
+})
 
 export default function EditPropertyPage() {
   const { data: session } = useSession()
