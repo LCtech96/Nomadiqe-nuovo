@@ -137,15 +137,11 @@ export default function HostDashboard() {
         if (currentUserId) {
           // Aggiorna userId state per le altre funzioni
           setUserId(currentUserId)
-          // Le funzioni loadProperties, loadPreferences, loadReferrals
-          // useranno userId state che verrà aggiornato da setUserId
-          // ma dobbiamo aspettare che lo state si aggiorni, quindi
-          // passiamo currentUserId direttamente o usiamo un timeout
-          setTimeout(() => {
-            loadProperties()
-            loadPreferences()
-            loadReferrals()
-          }, 0)
+          // Chiama le funzioni di caricamento passando currentUserId direttamente
+          // per evitare problemi di timing con lo state update
+          loadPropertiesWithUserId(currentUserId)
+          loadPreferencesWithUserId(currentUserId)
+          loadReferralsWithUserId(currentUserId)
         }
       } catch (error) {
         console.error("Error in checkOnboarding:", error)
@@ -158,11 +154,15 @@ export default function HostDashboard() {
 
   const loadProperties = async () => {
     if (!userId) return
+    return loadPropertiesWithUserId(userId)
+  }
+
+  const loadPropertiesWithUserId = async (id: string) => {
     try {
       const { data, error } = await supabase
         .from("properties")
         .select("*")
-        .eq("owner_id", userId)
+        .eq("owner_id", id)
         .order("created_at", { ascending: false })
 
       if (error) throw error
@@ -273,7 +273,7 @@ export default function HostDashboard() {
       const { error } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
-          host_id: userId,
+          host_id: userId || "",
           free_stay_nights: nightsValue ?? 0,
           promotion_types: preferences.promotion_types,
           required_social_platforms: preferences.required_social_platforms,
