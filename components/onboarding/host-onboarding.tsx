@@ -916,7 +916,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   // Show loading while restoring saved state
   if (loadingSavedState) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <div>Caricamento stato onboarding...</div>
       </div>
     )
