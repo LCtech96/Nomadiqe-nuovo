@@ -34,18 +34,12 @@ CREATE POLICY "Users can view own properties" ON public.properties
 -- PASSO 4: Policy per INSERT
 -- Gli utenti possono inserire proprietà solo se owner_id corrisponde al loro ID
 -- IMPORTANTE: WITH CHECK è necessario per INSERT
--- Nota: Verifica anche che l'utente esista nella tabella profiles con ruolo host
 CREATE POLICY "Users can insert own properties" ON public.properties
   FOR INSERT
   WITH CHECK (
     auth.uid() IS NOT NULL 
     AND owner_id IS NOT NULL 
     AND auth.uid() = owner_id
-    AND EXISTS (
-      SELECT 1 FROM public.profiles 
-      WHERE id = auth.uid() 
-      AND (role = 'host' OR role IS NULL)
-    )
   );
 
 -- PASSO 5: Policy per UPDATE

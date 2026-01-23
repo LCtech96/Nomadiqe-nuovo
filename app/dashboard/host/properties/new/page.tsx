@@ -102,15 +102,29 @@ export default function NewPropertyPage() {
       const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser()
       if (authError || !supabaseUser) {
         console.error("Supabase auth error:", authError)
-        // Prova a re-autenticare usando la sessione NextAuth
-        // Il client dovrebbe sincronizzarsi automaticamente, ma se non funziona
-        // potremmo dover usare un approccio diverso
+        toast({
+          title: "Errore di autenticazione",
+          description: "Impossibile verificare l'autenticazione. Riprova dopo aver effettuato il login.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        setUploadingImages(false)
+        return
       }
       
       // Verifica che l'ID dell'utente Supabase corrisponda alla sessione NextAuth
-      if (supabaseUser && supabaseUser.id !== session.user.id) {
+      if (supabaseUser.id !== session.user.id) {
         console.warn("User ID mismatch:", { supabase: supabaseUser.id, nextauth: session.user.id })
+        toast({
+          title: "Errore",
+          description: "ID utente non corrispondente. Riprova dopo aver effettuato il login.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        setUploadingImages(false)
+        return
       }
+      
       // Geocode address (combine address + street number)
       const streetAddress = formData.street_number 
         ? `${formData.address} ${formData.street_number}`.trim()
