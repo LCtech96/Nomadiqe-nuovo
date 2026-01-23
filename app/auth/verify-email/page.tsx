@@ -83,6 +83,7 @@ function VerifyEmailContent() {
         email: userEmail,
         full_name: waitlistData?.full_name || emailParts[0],
         username: emailParts[0],
+        onboarding_completed: false, // IMPORTANTE: Imposta esplicitamente a false
       }
 
       // Se abbiamo dati dalla waitlist, includiamo anche il ruolo
@@ -111,6 +112,8 @@ function VerifyEmailContent() {
       if (waitlistData.role) {
         updateData.role = waitlistData.role
         console.log("Updating profile with role from waitlist:", waitlistData.role)
+        // Se viene assegnato un ruolo, assicurati che onboarding_completed sia false
+        updateData.onboarding_completed = false
       }
 
       if (Object.keys(updateData).length > 0) {
