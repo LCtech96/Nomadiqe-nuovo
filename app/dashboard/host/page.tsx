@@ -156,15 +156,6 @@ export default function HostDashboard() {
     checkOnboarding()
   }, [session, status, router, supabase])
 
-  // Show loading while checking onboarding
-  if (checkingOnboarding || status === "loading") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Caricamento...</div>
-      </div>
-    )
-  }
-
   const loadProperties = async () => {
     if (!userId) return
     try {
