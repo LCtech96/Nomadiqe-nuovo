@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,11 +40,13 @@ interface KOLBedPreferences {
 }
 
 export default function HostDashboard() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const supabase = createSupabaseClient()
   const { toast } = useToast()
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true)
   const [preferences, setPreferences] = useState<KOLBedPreferences>({
     free_stay_nights: 0,
     promotion_types: [],
@@ -60,13 +63,68 @@ export default function HostDashboard() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Show loading while checking onboarding
+  if (checkingOnboarding || status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div>Caricamento...</div>
+      </div>
+    )
+  }
+
+  // Check onboarding status on mount
   useEffect(() => {
-    if (session?.user?.id) {
-      loadProperties()
-      loadPreferences()
-      loadReferrals()
+    const checkOnboarding = async () => {
+      if (status === "unauthenticated") {
+        router.push("/auth/signin")
+        return
+      }
+
+      if (status !== "authenticated" || !session?.user?.id) {
+        return
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role, onboarding_completed")
+          .eq("id", session.user.id)
+          .maybeSingle()
+
+        if (error) {
+          console.error("Error checking profile:", error)
+          setCheckingOnboarding(false)
+          return
+        }
+
+        // Se l'utente non ha il ruolo host, reindirizza
+        if (profile?.role !== "host") {
+          router.push("/onboarding")
+          return
+        }
+
+        // Se l'utente è host ma non ha completato l'onboarding, reindirizza forzatamente
+        if (profile && !profile.onboarding_completed) {
+          console.log("Host onboarding not completed - redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+
+        // Onboarding completato, procedi con il caricamento dei dati
+        setCheckingOnboarding(false)
+        if (session?.user?.id) {
+          loadProperties()
+          loadPreferences()
+          loadReferrals()
+        }
+      } catch (error) {
+        console.error("Error in checkOnboarding:", error)
+        setCheckingOnboarding(false)
+      }
     }
-  }, [session])
+
+    checkOnboarding()
+  }, [session, status, router, supabase])
 
   const loadProperties = async () => {
     try {

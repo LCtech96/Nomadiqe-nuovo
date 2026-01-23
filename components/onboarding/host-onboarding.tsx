@@ -222,6 +222,16 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     e.preventDefault()
     if (!session?.user?.id) return
 
+    // Validazione: Nome è obbligatorio
+    if (!profileData.fullName || profileData.fullName.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "Il nome è obbligatorio. Inserisci il tuo nome completo.",
+        variant: "destructive",
+      })
+      return
+    }
+
     // Check username only if provided
     if (profileData.username && profileData.username.trim().length > 0) {
       if (usernameAvailable === false) {
@@ -397,6 +407,70 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     e.preventDefault()
     if (!session?.user?.id) return
 
+    // Validazione campi obbligatori
+    if (!propertyData.name || propertyData.name.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "Il nome della struttura è obbligatorio.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.description || propertyData.description.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "La descrizione della struttura è obbligatoria.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.address || propertyData.address.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "L'indirizzo è obbligatorio.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.city || propertyData.city.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "La città è obbligatoria.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.country || propertyData.country.trim().length === 0) {
+      toast({
+        title: "Errore",
+        description: "Il paese è obbligatorio.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.price_per_night || parseFloat(propertyData.price_per_night) <= 0) {
+      toast({
+        title: "Errore",
+        description: "Il prezzo per notte è obbligatorio e deve essere maggiore di 0.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!propertyData.max_guests || parseInt(propertyData.max_guests) <= 0) {
+      toast({
+        title: "Errore",
+        description: "Il numero massimo di ospiti è obbligatorio e deve essere maggiore di 0.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
     try {
       // Geocode address
@@ -558,6 +632,28 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
     setLoading(true)
     try {
+      // Verifica che almeno una struttura sia stata creata
+      const { data: properties, error: propertiesCheckError } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("owner_id", session.user.id)
+        .limit(1)
+
+      if (propertiesCheckError) {
+        throw new Error("Errore nel controllo delle strutture")
+      }
+
+      if (!properties || properties.length === 0) {
+        toast({
+          title: "Errore",
+          description: "Devi creare almeno una struttura prima di procedere. Torna allo step precedente.",
+          variant: "destructive",
+        })
+        setLoading(false)
+        setStep("property")
+        return
+      }
+
       // Get the property created in previous step
       const { data: property, error: propertyFetchError } = await supabase
         .from("properties")
@@ -568,7 +664,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         .single()
 
       if (propertyFetchError || !property) {
-        throw new Error("Proprietà non trovata")
+        throw new Error("Proprietà non trovata. Assicurati di aver creato almeno una struttura.")
       }
 
       // Salva date disponibili per KOL&BED
