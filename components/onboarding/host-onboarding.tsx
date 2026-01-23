@@ -636,13 +636,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
   useEffect(() => {
     const loadPropertyId = async () => {
-      if (!session?.user?.id || step !== "kol-bed-program") return
+      if (!userId || step !== "kol-bed-program") return
       
       try {
         const { data: property } = await supabase
           .from("properties")
           .select("id")
-          .eq("owner_id", userId || "")
+          .eq("owner_id", userId)
           .order("created_at", { ascending: false })
           .limit(1)
           .single()
@@ -656,11 +656,19 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     }
     
     loadPropertyId()
-  }, [session?.user?.id, step, supabase])
+  }, [userId, step, supabase])
 
   const handleKolBedProgramSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!session?.user?.id) return
+    if (!userId) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     // Validazione follower minimi
     if (kolBedData.min_followers && parseInt(kolBedData.min_followers) < 100) {
@@ -678,7 +686,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { data: properties, error: propertiesCheckError } = await supabase
         .from("properties")
         .select("id")
-        .eq("owner_id", session.user.id)
+        .eq("owner_id", userId)
         .limit(1)
 
       if (propertiesCheckError) {
@@ -700,7 +708,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { data: property, error: propertyFetchError } = await supabase
         .from("properties")
         .select("id")
-        .eq("owner_id", session.user.id)
+        .eq("owner_id", userId)
         .order("created_at", { ascending: false })
         .limit(1)
         .single()
@@ -768,7 +776,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   }
 
   const handleWebsiteOfferRequest = async () => {
-    if (!session?.user?.id) return
+    if (!userId) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     setLoading(true)
     try {
@@ -805,7 +821,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   }
 
   const handleWebsiteOfferSkip = async () => {
-    if (!session?.user?.id) return
+    if (!userId) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     setLoading(true)
     try {
@@ -815,7 +839,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         .update({
           onboarding_completed: true,
         })
-        .eq("id", userId || "")
+        .eq("id", userId)
 
       if (updateError) {
         console.warn("Could not update onboarding_completed:", updateError)
@@ -1247,9 +1271,9 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
             </div>
             <form onSubmit={handleKolBedProgramSubmit} className="space-y-6">
               {/* Calendario per selezionare date disponibili */}
-              {session?.user?.id && propertyId && (
+              {userId && propertyId && (
                 <KolBedCalendarSelector
-                  hostId={userId || ""}
+                  hostId={userId}
                   propertyId={propertyId}
                   selectedDates={kolBedData.selectedDates}
                   onDatesChange={(dates) => setKolBedData({ ...kolBedData, selectedDates: dates })}
