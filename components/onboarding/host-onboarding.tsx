@@ -158,13 +158,22 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     const checkUsername = async () => {
       setCheckingUsername(true)
       try {
+        // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        const userId = session?.user?.id || supabaseUser?.id
+        
         // Check if username is already taken by another user
-        const { data, error } = await supabase
+        let query = supabase
           .from("profiles")
           .select("username")
           .eq("username", profileData.username.toLowerCase().trim())
-          .neq("id", session?.user?.id || "") // Exclude current user if editing
-          .maybeSingle()
+        
+        // Solo se abbiamo un ID utente valido, escludiamo il profilo corrente
+        if (userId) {
+          query = query.neq("id", userId)
+        }
+        
+        const { data, error } = await query.maybeSingle()
 
         if (error && error.code !== "PGRST116") throw error
 
@@ -1502,7 +1511,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                 Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!
               </DialogDescription>
             </DialogHeader>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setShowOfferDisclaimer(false)
+                }}
+              >
+                Chiudi
+              </Button>
               <Button onClick={() => {
                 setShowOfferDisclaimer(false)
                 handleWebsiteOfferSkip()
