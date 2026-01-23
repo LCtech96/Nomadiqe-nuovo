@@ -95,7 +95,7 @@ export default function HostDashboard() {
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("role, onboarding_completed")
-          .eq("id", userId)
+          .eq("id", userId || "")
           .maybeSingle()
 
         if (error) {
