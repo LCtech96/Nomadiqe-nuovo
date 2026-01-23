@@ -98,6 +98,19 @@ export default function NewPropertyPage() {
     setLoading(true)
     setUploadingImages(true)
     try {
+      // Verifica che il client Supabase abbia il token JWT corretto
+      const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser()
+      if (authError || !supabaseUser) {
+        console.error("Supabase auth error:", authError)
+        // Prova a re-autenticare usando la sessione NextAuth
+        // Il client dovrebbe sincronizzarsi automaticamente, ma se non funziona
+        // potremmo dover usare un approccio diverso
+      }
+      
+      // Verifica che l'ID dell'utente Supabase corrisponda alla sessione NextAuth
+      if (supabaseUser && supabaseUser.id !== session.user.id) {
+        console.warn("User ID mismatch:", { supabase: supabaseUser.id, nextauth: session.user.id })
+      }
       // Geocode address (combine address + street number)
       const streetAddress = formData.street_number 
         ? `${formData.address} ${formData.street_number}`.trim()
