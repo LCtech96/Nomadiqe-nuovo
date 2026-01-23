@@ -56,6 +56,7 @@ function VerifyEmailContent() {
     const normalizedEmail = userEmail.toLowerCase().trim()
     console.log("Looking for waitlist data for email:", normalizedEmail)
     
+    // Prima cerca waitlist approvata
     const { data: waitlistData, error: waitlistError } = await supabase
       .from("waitlist_requests")
       .select("full_name, role, phone_number, status")
@@ -64,9 +65,27 @@ function VerifyEmailContent() {
       .maybeSingle()
     
     if (waitlistError) {
-      console.error("Error fetching waitlist data:", waitlistError)
+      console.error("Error fetching approved waitlist data:", waitlistError)
     } else {
-      console.log("Waitlist data found:", waitlistData)
+      console.log("Approved waitlist data found:", waitlistData)
+    }
+    
+    // Se non c'è waitlist approvata, verifica se esiste una waitlist in attesa
+    if (!waitlistData) {
+      const { data: pendingWaitlist, error: pendingError } = await supabase
+        .from("waitlist_requests")
+        .select("full_name, role, phone_number, status")
+        .eq("email", normalizedEmail)
+        .maybeSingle()
+      
+      if (pendingError) {
+        console.error("Error fetching pending waitlist data:", pendingError)
+      } else if (pendingWaitlist) {
+        console.log("Pending waitlist found (not approved yet):", pendingWaitlist)
+        console.warn("User has waitlist request but it's not approved. Role will not be assigned automatically.")
+      } else {
+        console.log("No waitlist found for this email. User will need to select role manually.")
+      }
     }
 
     // Crea o aggiorna il profilo base

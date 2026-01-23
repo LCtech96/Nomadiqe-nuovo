@@ -96,9 +96,10 @@ export default function OnboardingPage() {
               router.push("/home")
             }
           } else {
-            // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
-            console.log("User has no role - redirecting to home for role selection")
-            router.push("/home")
+            // Se l'utente non ha un ruolo, mostra la selezione del ruolo
+            // Non reindirizzare alla home, ma permettere la selezione qui
+            console.log("User has no role - showing role selection")
+            setStep("role")
           }
         } else {
           // Profile doesn't exist - redirect to home for role selection
