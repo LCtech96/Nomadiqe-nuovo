@@ -98,33 +98,6 @@ export default function NewPropertyPage() {
     setLoading(true)
     setUploadingImages(true)
     try {
-      // Verifica che il client Supabase abbia il token JWT corretto
-      const { data: { user: supabaseUser }, error: authError } = await supabase.auth.getUser()
-      if (authError || !supabaseUser) {
-        console.error("Supabase auth error:", authError)
-        toast({
-          title: "Errore di autenticazione",
-          description: "Impossibile verificare l'autenticazione. Riprova dopo aver effettuato il login.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        setUploadingImages(false)
-        return
-      }
-      
-      // Verifica che l'ID dell'utente Supabase corrisponda alla sessione NextAuth
-      if (supabaseUser.id !== session.user.id) {
-        console.warn("User ID mismatch:", { supabase: supabaseUser.id, nextauth: session.user.id })
-        toast({
-          title: "Errore",
-          description: "ID utente non corrispondente. Riprova dopo aver effettuato il login.",
-          variant: "destructive",
-        })
-        setLoading(false)
-        setUploadingImages(false)
-        return
-      }
-      
       // Geocode address (combine address + street number)
       const streetAddress = formData.street_number 
         ? `${formData.address} ${formData.street_number}`.trim()
@@ -234,25 +207,28 @@ export default function NewPropertyPage() {
 
       setUploadingImages(false)
 
-      const { data, error} = await supabase
-        .from("properties")
-        .insert({
-          owner_id: session.user.id,
-          name: formData.name, // Richiesto dal database (NOT NULL)
-          title: formData.name, // Usato dal frontend
+      // Usa l'API route server-side per creare la proprietà (bypassa problemi di autenticazione Supabase)
+      const response = await fetch("/api/properties/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          title: formData.name,
           description: formData.description,
-          property_type: formData.property_type, // Richiesto dal database (NOT NULL)
+          property_type: formData.property_type,
           address: formData.street_number 
             ? `${formData.address} ${formData.street_number}`.trim()
-            : formData.address, // Richiesto dal database (NOT NULL)
-          city: formData.city, // Richiesto dal database (NOT NULL)
-          country: formData.country, // Richiesto dal database (NOT NULL)
+            : formData.address,
+          city: formData.city,
+          country: formData.country,
           latitude: geocodeResult?.lat || null,
           longitude: geocodeResult?.lon || null,
-          price_per_night: parseFloat(formData.price_per_night), // Richiesto dal database (NOT NULL)
-          max_guests: parseInt(formData.max_guests), // Richiesto dal database (NOT NULL)
-          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-          bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
+          price_per_night: formData.price_per_night,
+          max_guests: formData.max_guests,
+          bedrooms: formData.bedrooms || null,
+          bathrooms: formData.bathrooms || null,
           location_data: {
             property_type: formData.property_type,
             address: formData.address,
@@ -268,12 +244,15 @@ export default function NewPropertyPage() {
           amenities: formData.amenities,
           images: imageUrls,
           video_url: videoUrl || null,
-          // available_for_collab rimosso temporaneamente per cache PostgREST - default è true
-        })
-        .select()
-        .single()
+        }),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Errore nella creazione della proprietà")
+      }
+
+      const { data } = await response.json()
 
       toast({
         title: "Successo",
