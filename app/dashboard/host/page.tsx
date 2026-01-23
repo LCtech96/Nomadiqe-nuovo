@@ -62,6 +62,7 @@ export default function HostDashboard() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
   // Show loading while checking onboarding
   if (checkingOnboarding || status === "loading") {
@@ -136,9 +137,15 @@ export default function HostDashboard() {
         if (currentUserId) {
           // Aggiorna userId state per le altre funzioni
           setUserId(currentUserId)
-          loadProperties()
-          loadPreferences()
-          loadReferrals()
+          // Le funzioni loadProperties, loadPreferences, loadReferrals
+          // useranno userId state che verrà aggiornato da setUserId
+          // ma dobbiamo aspettare che lo state si aggiorni, quindi
+          // passiamo currentUserId direttamente o usiamo un timeout
+          setTimeout(() => {
+            loadProperties()
+            loadPreferences()
+            loadReferrals()
+          }, 0)
         }
       } catch (error) {
         console.error("Error in checkOnboarding:", error)
