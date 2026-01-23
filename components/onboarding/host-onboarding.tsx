@@ -1623,7 +1623,8 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               </Button>
               <Button onClick={() => {
                 setShowOfferDisclaimer(false)
-                handleWebsiteOfferSkip()
+                // Reindirizza alla pagina profile dell'host
+                router.push("/profile")
               }}>
                 Continua
               </Button>
