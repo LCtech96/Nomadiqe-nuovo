@@ -123,44 +123,44 @@ function SignUpContent() {
         return
       }
 
-      // Assicurati che l'email di verifica venga inviata
-      // Se signUp non ha inviato l'email automaticamente, proviamo con resend
+      // Assicurati che l'email di verifica venga inviata immediatamente
+      // Usiamo signInWithOtp come metodo principale perché è più affidabile
       let emailSent = false
       if (!signUpData.session) {
-        // L'utente non è ancora verificato, invia l'email di verifica
-        // Aspetta un attimo per assicurarsi che l'utente sia stato creato
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // L'utente non è ancora verificato, invia l'email di verifica immediatamente
+        // Aspetta un breve momento per assicurarsi che l'utente sia stato creato nel database
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         try {
-          // Usa resend per inviare l'email di verifica
-          const { error: resendError } = await supabase.auth.resend({
-            type: 'signup',
-            email: email,
+          // Metodo principale: usa signInWithOtp (più affidabile)
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
             options: {
+              shouldCreateUser: false, // L'utente esiste già dalla registrazione
               emailRedirectTo: `${window.location.origin}/auth/verify-email`,
             },
           })
 
-          if (!resendError) {
+          if (!otpError) {
             emailSent = true
-            console.log("Email di verifica inviata con resend")
+            console.log("Email di verifica inviata con signInWithOtp")
           } else {
-            console.error("Resend error:", resendError)
+            console.error("signInWithOtp error:", otpError)
             
-            // Fallback: prova con signInWithOtp
-            const { error: otpError } = await supabase.auth.signInWithOtp({
-              email,
+            // Fallback: prova con resend
+            const { error: resendError } = await supabase.auth.resend({
+              type: 'signup',
+              email: email,
               options: {
-                shouldCreateUser: false,
                 emailRedirectTo: `${window.location.origin}/auth/verify-email`,
               },
             })
 
-            if (!otpError) {
+            if (!resendError) {
               emailSent = true
-              console.log("Email di verifica inviata con signInWithOtp")
+              console.log("Email di verifica inviata con resend")
             } else {
-              console.error("signInWithOtp error:", otpError)
+              console.error("Resend error:", resendError)
             }
           }
         } catch (emailError) {
@@ -174,7 +174,7 @@ function SignUpContent() {
       toast({
         title: "Account creato!",
         description: emailSent 
-          ? "Controlla la tua email (anche spam) per il codice di verifica a 6 cifre. Se non arriva entro qualche minuto, usa il pulsante 'Rinvia il codice' nella pagina successiva."
+          ? "Email di verifica inviata! Controlla la tua casella di posta (anche spam) per il codice a 6 cifre."
           : "Account creato! Vai alla pagina di verifica e usa il pulsante 'Rinvia il codice' se non ricevi l'email.",
       })
 
