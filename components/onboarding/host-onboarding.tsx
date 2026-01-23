@@ -926,7 +926,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   if (step === "profile") {
     return (
       <>
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Completa il tuo profilo Host</CardTitle>
@@ -1293,7 +1293,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   // Step 3: KOL&BED Program
   if (step === "kol-bed-program") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
             <CardTitle>Programma KOL&BED</CardTitle>
@@ -1547,7 +1547,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
           <Card className="w-full max-w-2xl">
             <CardHeader>
               <CardTitle>Offerta Speciale Sito Web</CardTitle>
