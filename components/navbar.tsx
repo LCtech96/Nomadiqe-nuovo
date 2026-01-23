@@ -611,6 +611,13 @@ export default function Navbar() {
                     </>
                   )}
                   <DropdownMenuSeparator />
+                  {(profile?.role === "host" || profile?.role === "creator") && (
+                    <DropdownMenuItem onClick={handleInviteUser}>
+                      <Users className="mr-2 h-4 w-4" />
+                      {profile?.role === "host" ? "Invita host" : "Invita creator"}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/profile">Profilo</Link>
                   </DropdownMenuItem>

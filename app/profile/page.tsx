@@ -100,9 +100,6 @@ export default function ProfilePage() {
   const [presentationVideo, setPresentationVideo] = useState<File | null>(null)
   const [presentationVideoPreview, setPresentationVideoPreview] = useState<string | null>(null)
   const [uploadingPresentationVideo, setUploadingPresentationVideo] = useState(false)
-  const [referralCode, setReferralCode] = useState<string | null>(null)
-  const [referralLinkCopied, setReferralLinkCopied] = useState(false)
-  const [referralLink, setReferralLink] = useState<string>("")
   
   // KOL&BED Preferences (per host)
   const [kolBedPreferences, setKolBedPreferences] = useState<any>(null)
@@ -217,46 +214,8 @@ export default function ProfilePage() {
         console.log("No avatar_url in database")
       }
 
-      // Carica referral code se esiste
-      if (profileData.referral_code) {
-        setReferralCode(profileData.referral_code)
-        setReferralLink(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`)
-      } else {
-        // Prova a caricare dalla tabella corretta in base al ruolo
-        // Gestisci silenziosamente se la tabella non esiste (404 o altri errori)
-        try {
-          let refCodeData = null
-          let refCodeError = null
-          
-          // Usa la tabella corretta in base al ruolo
-          if (profileData.role === "host") {
-            const result = await supabase
-              .from("host_referral_codes")
-              .select("referral_code")
-              .eq("host_id", session.user.id)
-              .maybeSingle()
-            refCodeData = result.data
-            refCodeError = result.error
-          } else if (profileData.role === "creator") {
-            const result = await supabase
-              .from("creator_referral_codes")
-              .select("referral_code")
-              .eq("creator_id", session.user.id)
-              .maybeSingle()
-            refCodeData = result.data
-            refCodeError = result.error
-          }
-          
-          // Ignora errori 404 (tabella non trovata) o altri errori di database
-          if (!refCodeError && refCodeData?.referral_code) {
-            setReferralCode(refCodeData.referral_code)
-            setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.referral_code}`)
-          }
-        } catch (error) {
-          // Ignora silenziosamente qualsiasi errore
-          // Non loggare nulla per evitare errori nella console
-        }
-      }
+      // Il referral code viene generato solo quando l'utente clicca su "Invita host/creator" nel menu
+      // Non carichiamo più automaticamente il referral code qui
 
       // Load posts (don't fail if error, just set empty array)
       // Retry logic in case of PostgREST cache issues
@@ -1242,44 +1201,6 @@ export default function ProfilePage() {
                         <Link2 className="w-3 h-3 mr-1" />
                         Condividi profilo
                       </Button>
-                      {referralCode && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            if (referralLink) {
-                              try {
-                                await navigator.clipboard.writeText(referralLink)
-                                setReferralLinkCopied(true)
-                                toast({
-                                  title: "Link referral copiato!",
-                                  description: "Condividi questo link per invitare amici e guadagnare punti!",
-                                })
-                                setTimeout(() => setReferralLinkCopied(false), 2000)
-                              } catch (error) {
-                                toast({
-                                  title: "Errore",
-                                  description: "Impossibile copiare il link",
-                                  variant: "destructive",
-                                })
-                              }
-                            }
-                          }}
-                          className="text-xs bg-primary/10 hover:bg-primary/20"
-                        >
-                          {referralLinkCopied ? (
-                            <>
-                              <Check className="w-3 h-3 mr-1" />
-                              Copiato!
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-3 h-3 mr-1" />
-                              Link Referral
-                            </>
-                          )}
-                        </Button>
-                      )}
                     </div>
                   </>
                 )}
