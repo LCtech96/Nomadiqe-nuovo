@@ -20,8 +20,11 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { geocodeAddress } from "@/lib/geocoding"
 import { put } from "@vercel/blob"
 import ImageCropper from "@/components/image-cropper"
+import KolBedCalendarSelector from "@/components/kol-bed-calendar-selector"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Checkbox } from "@/components/ui/checkbox"
 
-type HostOnboardingStep = "profile" | "property" | "collaborations"
+type HostOnboardingStep = "profile" | "property" | "kol-bed-program" | "website-offer"
 
 interface HostOnboardingProps {
   onComplete: () => void
@@ -41,6 +44,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   const [profileData, setProfileData] = useState({
     fullName: "",
     username: "",
+    bio: "",
     avatarFile: null as File | null,
     avatarPreview: "",
   })
@@ -63,24 +67,26 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   })
   const [currentAmenity, setCurrentAmenity] = useState("")
 
-  // Collaboration settings
-  const [collaborationData, setCollaborationData] = useState({
-    min_followers: "",
-    preferred_niches: [] as string[],
-    offers: [] as Array<{
-      collaboration_type: "free_stay" | "discounted_stay" | "paid_collaboration"
-      discount_percentage?: string
-      payment_amount?: string
-      description: string
-    }>,
-    // Nuovi campi per KOL&BED
+  // KOL&BED Program data
+  const [kolBedData, setKolBedData] = useState({
+    selectedDates: [] as string[],
+    influencer_type: "" as "" | "micro" | "macro" | "mega" | "any",
+    preferred_niche: "",
+    min_followers: "100",
+    preferred_platforms: [] as string[],
+    website_sponsorship: false,
+    website_url: "",
     nights_per_collaboration: "",
     required_videos: "",
     required_posts: "",
     required_stories: "",
     kol_bed_months: [] as number[], // Mesi 1-12
   })
-  const [currentNiche, setCurrentNiche] = useState("")
+
+  // Website offer data
+  const [websiteOfferRequested, setWebsiteOfferRequested] = useState(false)
+  const [showOfferDisclaimer, setShowOfferDisclaimer] = useState(false)
+  const [hostCount, setHostCount] = useState<number | null>(null)
   const [loadingSavedState, setLoadingSavedState] = useState(true)
   
   // Image cropper states
@@ -102,9 +108,17 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         // Load only basic profile data (onboarding_status not in PostgREST cache yet)
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("full_name, username, avatar_url")
+          .select("full_name, username, avatar_url, bio")
           .eq("id", session.user.id)
           .maybeSingle()
+
+        // Load host count for website offer
+        const { count } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("role", "host")
+        
+        setHostCount(count || 0)
 
         if (error) {
           console.error("Error loading profile:", error)
@@ -114,10 +128,11 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
         // Restore profile data if exists
         if (profile) {
-          if (profile.full_name || profile.username || profile.avatar_url) {
+          if (profile.full_name || profile.username || profile.avatar_url || profile.bio) {
             setProfileData({
               fullName: profile.full_name || "",
               username: profile.username || "",
+              bio: profile.bio || "",
               avatarFile: null,
               avatarPreview: profile.avatar_url || "",
             })
@@ -271,6 +286,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           full_name: profileData.fullName,
           username: profileData.username ? profileData.username.toLowerCase().trim() : null,
           avatar_url: avatarUrl || null,
+          bio: profileData.bio.trim() || null,
         })
         .eq("id", session.user.id)
 
@@ -281,6 +297,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         full_name: profileData.fullName,
         username: profileData.username,
         avatar_url: avatarUrl || null,
+        bio: profileData.bio,
       })
 
       setStep("property")
@@ -466,7 +483,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       if (propertyError) throw propertyError
 
       // Save onboarding state after creating property
-      await saveOnboardingState("collaborations", ["role", "profile", "property"], {
+      await saveOnboardingState("kol-bed-program", ["role", "profile", "property"], {
         name: propertyData.name,
         description: propertyData.description,
         property_type: propertyData.property_type,
@@ -486,7 +503,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         description: "Struttura creata con successo!",
       })
 
-      setStep("collaborations")
+      setStep("kol-bed-program")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -498,61 +515,46 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     }
   }
 
-  const addNiche = () => {
-    if (currentNiche.trim() && !collaborationData.preferred_niches.includes(currentNiche.trim().toLowerCase())) {
-      setCollaborationData({
-        ...collaborationData,
-        preferred_niches: [...collaborationData.preferred_niches, currentNiche.trim().toLowerCase()],
-      })
-      setCurrentNiche("")
+  // Get property ID for calendar
+  const [propertyId, setPropertyId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadPropertyId = async () => {
+      if (!session?.user?.id || step !== "kol-bed-program") return
+      
+      try {
+        const { data: property } = await supabase
+          .from("properties")
+          .select("id")
+          .eq("owner_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single()
+        
+        if (property) {
+          setPropertyId(property.id)
+        }
+      } catch (error) {
+        console.error("Error loading property ID:", error)
+      }
     }
-  }
+    
+    loadPropertyId()
+  }, [session?.user?.id, step, supabase])
 
-  const removeNiche = (niche: string) => {
-    setCollaborationData({
-      ...collaborationData,
-      preferred_niches: collaborationData.preferred_niches.filter((n) => n !== niche),
-    })
-  }
+  const handleKolBedProgramSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session?.user?.id) return
 
-  const addOffer = (type: "free_stay" | "discounted_stay" | "paid_collaboration") => {
-    if (collaborationData.offers.some((o) => o.collaboration_type === type)) {
+    // Validazione follower minimi
+    if (kolBedData.min_followers && parseInt(kolBedData.min_followers) < 100) {
       toast({
-        title: "Attenzione",
-        description: "Hai già aggiunto questa offerta",
+        title: "Errore",
+        description: "Il numero minimo di follower deve essere almeno 100",
         variant: "destructive",
       })
       return
     }
-
-    setCollaborationData({
-      ...collaborationData,
-      offers: [
-        ...collaborationData.offers,
-        {
-          collaboration_type: type,
-          description: "",
-        },
-      ],
-    })
-  }
-
-  const removeOffer = (index: number) => {
-    setCollaborationData({
-      ...collaborationData,
-      offers: collaborationData.offers.filter((_, i) => i !== index),
-    })
-  }
-
-  const updateOffer = (index: number, field: string, value: string) => {
-    const newOffers = [...collaborationData.offers]
-    newOffers[index] = { ...newOffers[index], [field]: value }
-    setCollaborationData({ ...collaborationData, offers: newOffers })
-  }
-
-  const handleCollaborationsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!session?.user?.id) return
 
     setLoading(true)
     try {
@@ -569,23 +571,21 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         throw new Error("Proprietà non trovata")
       }
 
-      // Create collaboration offers
-      for (const offer of collaborationData.offers) {
-        const { error: offerError } = await supabase
-          .from("collaboration_offers")
-          .insert({
-            host_id: session.user.id,
-            property_id: property.id,
-            collaboration_type: offer.collaboration_type,
-            min_followers: collaborationData.min_followers ? parseInt(collaborationData.min_followers) : null,
-            discount_percentage: offer.discount_percentage ? parseFloat(offer.discount_percentage) : null,
-            payment_amount: offer.payment_amount ? parseFloat(offer.payment_amount) : null,
-            preferred_niches: collaborationData.preferred_niches.length > 0 ? collaborationData.preferred_niches : null,
-            description: offer.description || null,
-            is_active: true,
-          })
+      // Salva date disponibili per KOL&BED
+      if (kolBedData.selectedDates.length > 0) {
+        const availabilityRecords = kolBedData.selectedDates.map((date) => ({
+          host_id: session.user.id,
+          property_id: property.id,
+          date,
+          available_for_collab: true,
+        }))
 
-        if (offerError) throw offerError
+        // Usa upsert per evitare duplicati
+        for (const record of availabilityRecords) {
+          await supabase
+            .from("host_availability")
+            .upsert(record, { onConflict: "host_id,property_id,date" })
+        }
       }
 
       // Salva preferenze KOL&BED
@@ -593,12 +593,17 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         .from("host_kol_bed_preferences")
         .upsert({
           host_id: session.user.id,
-          free_stay_nights: collaborationData.nights_per_collaboration ? parseInt(collaborationData.nights_per_collaboration) : 0,
-          nights_per_collaboration: collaborationData.nights_per_collaboration ? parseInt(collaborationData.nights_per_collaboration) : 0,
-          required_videos: collaborationData.required_videos ? parseInt(collaborationData.required_videos) : 0,
-          required_posts: collaborationData.required_posts ? parseInt(collaborationData.required_posts) : 0,
-          required_stories: collaborationData.required_stories ? parseInt(collaborationData.required_stories) : 0,
-          kol_bed_months: collaborationData.kol_bed_months.length > 0 ? collaborationData.kol_bed_months : [],
+          influencer_type: kolBedData.influencer_type || null,
+          preferred_niche: kolBedData.preferred_niche || null,
+          min_followers: kolBedData.min_followers ? parseInt(kolBedData.min_followers) : 100,
+          preferred_platforms: kolBedData.preferred_platforms,
+          website_sponsorship: kolBedData.website_sponsorship,
+          website_url: kolBedData.website_sponsorship ? kolBedData.website_url : null,
+          nights_per_collaboration: kolBedData.nights_per_collaboration ? parseInt(kolBedData.nights_per_collaboration) : 0,
+          required_videos: kolBedData.required_videos ? parseInt(kolBedData.required_videos) : 0,
+          required_posts: kolBedData.required_posts ? parseInt(kolBedData.required_posts) : 0,
+          required_stories: kolBedData.required_stories ? parseInt(kolBedData.required_stories) : 0,
+          kol_bed_months: kolBedData.kol_bed_months.length > 0 ? kolBedData.kol_bed_months : [],
           updated_at: new Date().toISOString(),
         })
 
@@ -607,7 +612,66 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         // Non bloccare l'onboarding se questo fallisce
       }
 
-      // Mark onboarding as completed (without onboarding_status for now)
+      toast({
+        title: "Successo",
+        description: "Preferenze KOL&BED salvate!",
+      })
+
+      setStep("website-offer")
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleWebsiteOfferRequest = async () => {
+    if (!session?.user?.id) return
+
+    setLoading(true)
+    try {
+      const isFirst100 = (hostCount || 0) < 100
+      const offerPrice = isFirst100 ? 299 : 799
+
+      const { error } = await supabase
+        .from("website_offer_requests")
+        .insert({
+          host_id: session.user.id,
+          status: "pending",
+          offer_price: offerPrice,
+          is_first_100: isFirst100,
+        })
+
+      if (error) throw error
+
+      setWebsiteOfferRequested(true)
+      setShowOfferDisclaimer(true)
+
+      toast({
+        title: "Richiesta inviata",
+        description: "Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleWebsiteOfferSkip = async () => {
+    if (!session?.user?.id) return
+
+    setLoading(true)
+    try {
+      // Mark onboarding as completed
       const { error: updateError } = await supabase
         .from("profiles")
         .update({
@@ -617,14 +681,11 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
       if (updateError) {
         console.warn("Could not update onboarding_completed:", updateError)
-        // Don't throw - continue anyway
       }
 
-      // Award onboarding points (sign up and regular onboarding should already be awarded)
+      // Award onboarding points
       try {
         const { awardPoints } = await import("@/lib/points")
-        // This is for host-specific onboarding completion
-        // We'll use the onboarding action type
         await awardPoints(session.user.id, "onboarding", "Onboarding Host completato")
       } catch (pointsError) {
         console.warn("Could not award onboarding points:", pointsError)
@@ -664,7 +725,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Completa il tuo profilo Host</CardTitle>
-            <CardDescription>Passo 1 di 3 - Informazioni base</CardDescription>
+            <CardDescription>Passo 1 di 4 - Informazioni base</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProfileSubmit} className="space-y-4">
@@ -726,6 +787,20 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="bio">Bio (opzionale)</Label>
+                <Textarea
+                  id="bio"
+                  value={profileData.bio}
+                  onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                  placeholder="Racconta qualcosa di te..."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Una breve descrizione di te e della tua struttura
+                </p>
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full" 
@@ -758,7 +833,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
             <CardTitle>Crea la tua prima struttura</CardTitle>
-            <CardDescription>Passo 2 di 3 - Informazioni sulla proprietà</CardDescription>
+            <CardDescription>Passo 2 di 4 - Informazioni sulla proprietà</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePropertySubmit} className="space-y-4">
@@ -1010,284 +1085,346 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     )
   }
 
-  // Step 3: Collaborations
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle>Configura le collaborazioni</CardTitle>
-          <CardDescription>Passo 3 di 3 - Imposta le tue offerte per i Creator</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCollaborationsSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="min_followers">Follower minimi richiesti</Label>
-              <Input
-                id="min_followers"
-                type="number"
-                min="0"
-                value={collaborationData.min_followers}
-                onChange={(e) =>
-                  setCollaborationData({ ...collaborationData, min_followers: e.target.value })
-                }
-                placeholder="1000"
-              />
-              <p className="text-xs text-muted-foreground">
-                Lascia vuoto per non impostare un minimo
+  // Step 3: KOL&BED Program
+  if (step === "kol-bed-program") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <CardHeader>
+            <CardTitle>Programma KOL&BED</CardTitle>
+            <CardDescription>Passo 3 di 4 - Configura il programma per guadagnare il 100% dalle prenotazioni</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Come funziona KOL&BED</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Per guadagnare il 100% dalle tue prenotazioni e arrivare a non pagare neppure l'1% di commissione, 
+                puoi aderire al programma KOL&BED. Metti a disposizione la tua struttura ricettiva per un certo numero 
+                di giorni, nei periodi scelti da te, in cambio di visibilità, pubblicità, video e book fotografico da 
+                influencer con già una certa popolarità sui social come Instagram, Facebook, TikTok o altre piattaforme.
               </p>
             </div>
-
-            <div className="space-y-2">
-              <Label>Nicchie preferite</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={currentNiche}
-                  onChange={(e) => setCurrentNiche(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      addNiche()
-                    }
-                  }}
-                  placeholder="travel, lifestyle, food..."
+            <form onSubmit={handleKolBedProgramSubmit} className="space-y-6">
+              {/* Calendario per selezionare date disponibili */}
+              {session?.user?.id && propertyId && (
+                <KolBedCalendarSelector
+                  hostId={session.user.id}
+                  propertyId={propertyId}
+                  selectedDates={kolBedData.selectedDates}
+                  onDatesChange={(dates) => setKolBedData({ ...kolBedData, selectedDates: dates })}
                 />
-                <Button type="button" onClick={addNiche}>
-                  Aggiungi
-                </Button>
+              )}
+
+              {/* Tipo di influencer */}
+              <div className="space-y-2">
+                <Label htmlFor="influencer_type">Tipo di influencer preferito</Label>
+                <Select
+                  value={kolBedData.influencer_type}
+                  onValueChange={(value: any) => setKolBedData({ ...kolBedData, influencer_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona tipo di influencer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="micro">Micro (1K-100K follower)</SelectItem>
+                    <SelectItem value="macro">Macro (100K-1M follower)</SelectItem>
+                    <SelectItem value="mega">Mega (1M+ follower)</SelectItem>
+                    <SelectItem value="any">Qualsiasi</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              {collaborationData.preferred_niches.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {collaborationData.preferred_niches.map((niche, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
-                    >
-                      {niche}
-                      <button
-                        type="button"
-                        onClick={() => removeNiche(niche)}
-                        className="hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </span>
+
+              {/* Nicchia preferita */}
+              <div className="space-y-2">
+                <Label htmlFor="preferred_niche">Nicchia di riferimento</Label>
+                <Input
+                  id="preferred_niche"
+                  value={kolBedData.preferred_niche}
+                  onChange={(e) => setKolBedData({ ...kolBedData, preferred_niche: e.target.value })}
+                  placeholder="travel, lifestyle, food, adventure..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  La nicchia di riferimento per le collaborazioni
+                </p>
+              </div>
+
+              {/* Follower minimi */}
+              <div className="space-y-2">
+                <Label htmlFor="min_followers">Numero minimo di follower (minimo 100) *</Label>
+                <Input
+                  id="min_followers"
+                  type="number"
+                  min="100"
+                  value={kolBedData.min_followers}
+                  onChange={(e) => setKolBedData({ ...kolBedData, min_followers: e.target.value })}
+                  placeholder="100"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Il numero minimo di follower che vuoi che l'influencer abbia (minimo 100)
+                </p>
+              </div>
+
+              {/* Piattaforme preferite */}
+              <div className="space-y-2">
+                <Label>Piattaforme in cui prediligi essere pubblicizzato</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {["instagram", "facebook", "tiktok", "youtube", "linkedin", "twitter"].map((platform) => (
+                    <div key={platform} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`platform-${platform}`}
+                        checked={kolBedData.preferred_platforms.includes(platform)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setKolBedData({
+                              ...kolBedData,
+                              preferred_platforms: [...kolBedData.preferred_platforms, platform],
+                            })
+                          } else {
+                            setKolBedData({
+                              ...kolBedData,
+                              preferred_platforms: kolBedData.preferred_platforms.filter((p) => p !== platform),
+                            })
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`platform-${platform}`} className="font-normal capitalize">
+                        {platform}
+                      </Label>
+                    </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Nuovi campi KOL&BED */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="font-semibold mb-4 text-blue-900 dark:text-blue-100">Impostazioni KOL&BED</h3>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nights_per_collaboration">Notti per collaborazione FREE STAY</Label>
+              {/* Sponsorizzazione sito web */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="website_sponsorship"
+                    checked={kolBedData.website_sponsorship}
+                    onCheckedChange={(checked) =>
+                      setKolBedData({ ...kolBedData, website_sponsorship: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="website_sponsorship">Vuoi avere sponsorizzato un sito web personale o una pagina/profilo?</Label>
+                </div>
+                {kolBedData.website_sponsorship && (
                   <Input
-                    id="nights_per_collaboration"
+                    id="website_url"
+                    value={kolBedData.website_url}
+                    onChange={(e) => setKolBedData({ ...kolBedData, website_url: e.target.value })}
+                    placeholder="https://..."
+                    type="url"
+                  />
+                )}
+              </div>
+
+              {/* Notti per collaborazione */}
+              <div className="space-y-2">
+                <Label htmlFor="nights_per_collaboration">Notti per collaborazione FREE STAY</Label>
+                <Input
+                  id="nights_per_collaboration"
+                  type="number"
+                  min="0"
+                  value={kolBedData.nights_per_collaboration}
+                  onChange={(e) =>
+                    setKolBedData({ ...kolBedData, nights_per_collaboration: e.target.value })
+                  }
+                  placeholder="2"
+                />
+              </div>
+
+              {/* Video/Post/Storie richiesti */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="required_videos">Video richiesti</Label>
+                  <Input
+                    id="required_videos"
                     type="number"
                     min="0"
-                    value={collaborationData.nights_per_collaboration}
+                    value={kolBedData.required_videos}
                     onChange={(e) =>
-                      setCollaborationData({ ...collaborationData, nights_per_collaboration: e.target.value })
+                      setKolBedData({ ...kolBedData, required_videos: e.target.value })
                     }
-                    placeholder="2"
+                    placeholder="0"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Numero di notti che offri per ogni collaborazione FREE STAY
-                  </p>
                 </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="required_videos">Video richiesti</Label>
-                    <Input
-                      id="required_videos"
-                      type="number"
-                      min="0"
-                      value={collaborationData.required_videos}
-                      onChange={(e) =>
-                        setCollaborationData({ ...collaborationData, required_videos: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="required_posts">Post richiesti</Label>
-                    <Input
-                      id="required_posts"
-                      type="number"
-                      min="0"
-                      value={collaborationData.required_posts}
-                      onChange={(e) =>
-                        setCollaborationData({ ...collaborationData, required_posts: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="required_stories">Storie richieste</Label>
-                    <Input
-                      id="required_stories"
-                      type="number"
-                      min="0"
-                      value={collaborationData.required_stories}
-                      onChange={(e) =>
-                        setCollaborationData({ ...collaborationData, required_stories: e.target.value })
-                      }
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2">
-                  <Label>Mesi in cui aderisci al programma KOL&BED</Label>
-                  <div className="grid grid-cols-6 gap-2">
-                    {[
-                      { num: 1, name: "Gen" },
-                      { num: 2, name: "Feb" },
-                      { num: 3, name: "Mar" },
-                      { num: 4, name: "Apr" },
-                      { num: 5, name: "Mag" },
-                      { num: 6, name: "Giu" },
-                      { num: 7, name: "Lug" },
-                      { num: 8, name: "Ago" },
-                      { num: 9, name: "Set" },
-                      { num: 10, name: "Ott" },
-                      { num: 11, name: "Nov" },
-                      { num: 12, name: "Dic" },
-                    ].map((month) => (
-                      <Button
-                        key={month.num}
-                        type="button"
-                        variant={collaborationData.kol_bed_months.includes(month.num) ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          const months = collaborationData.kol_bed_months.includes(month.num)
-                            ? collaborationData.kol_bed_months.filter((m) => m !== month.num)
-                            : [...collaborationData.kol_bed_months, month.num]
-                          setCollaborationData({ ...collaborationData, kol_bed_months: months })
-                        }}
-                      >
-                        {month.name}
-                      </Button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Seleziona i mesi in cui sei disponibile per collaborazioni
-                  </p>
+                  <Label htmlFor="required_posts">Post richiesti</Label>
+                  <Input
+                    id="required_posts"
+                    type="number"
+                    min="0"
+                    value={kolBedData.required_posts}
+                    onChange={(e) =>
+                      setKolBedData({ ...kolBedData, required_posts: e.target.value })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="required_stories">Storie richieste</Label>
+                  <Input
+                    id="required_stories"
+                    type="number"
+                    min="0"
+                    value={kolBedData.required_stories}
+                    onChange={(e) =>
+                      setKolBedData({ ...kolBedData, required_stories: e.target.value })
+                    }
+                    placeholder="0"
+                  />
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-4">
-              <Label>Offerte standard</Label>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addOffer("free_stay")}
-                  disabled={collaborationData.offers.some((o) => o.collaboration_type === "free_stay")}
-                >
-                  + Soggiorno Gratuito
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addOffer("discounted_stay")}
-                  disabled={collaborationData.offers.some((o) => o.collaboration_type === "discounted_stay")}
-                >
-                  + Soggiorno Scontato
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => addOffer("paid_collaboration")}
-                  disabled={collaborationData.offers.some((o) => o.collaboration_type === "paid_collaboration")}
-                >
-                  + Collaborazione Retribuita
-                </Button>
+              {/* Mesi disponibili */}
+              <div className="space-y-2">
+                <Label>Mesi in cui aderisci al programma KOL&BED</Label>
+                <div className="grid grid-cols-6 gap-2">
+                  {[
+                    { num: 1, name: "Gen" },
+                    { num: 2, name: "Feb" },
+                    { num: 3, name: "Mar" },
+                    { num: 4, name: "Apr" },
+                    { num: 5, name: "Mag" },
+                    { num: 6, name: "Giu" },
+                    { num: 7, name: "Lug" },
+                    { num: 8, name: "Ago" },
+                    { num: 9, name: "Set" },
+                    { num: 10, name: "Ott" },
+                    { num: 11, name: "Nov" },
+                    { num: 12, name: "Dic" },
+                  ].map((month) => (
+                    <Button
+                      key={month.num}
+                      type="button"
+                      variant={kolBedData.kol_bed_months.includes(month.num) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const months = kolBedData.kol_bed_months.includes(month.num)
+                          ? kolBedData.kol_bed_months.filter((m) => m !== month.num)
+                          : [...kolBedData.kol_bed_months, month.num]
+                        setKolBedData({ ...kolBedData, kol_bed_months: months })
+                      }}
+                    >
+                      {month.name}
+                    </Button>
+                  ))}
+                </div>
               </div>
 
-              {collaborationData.offers.map((offer, index) => (
-                <Card key={index} className="p-4">
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-semibold">
-                      {offer.collaboration_type === "free_stay" && "Soggiorno Gratuito"}
-                      {offer.collaboration_type === "discounted_stay" && "Soggiorno Scontato"}
-                      {offer.collaboration_type === "paid_collaboration" && "Collaborazione Retribuita"}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeOffer(index)}
-                    >
-                      Rimuovi
-                    </Button>
-                  </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep("property")}
+                  className="flex-1"
+                >
+                  Indietro
+                </Button>
+                <Button type="submit" className="flex-1" disabled={loading}>
+                  {loading ? "Salvataggio..." : "Continua"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
-                  {offer.collaboration_type === "discounted_stay" && (
-                    <div className="space-y-2 mb-4">
-                      <Label htmlFor={`discount-${index}`}>Sconto (%)</Label>
-                      <Input
-                        id={`discount-${index}`}
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={offer.discount_percentage || ""}
-                        onChange={(e) => updateOffer(index, "discount_percentage", e.target.value)}
-                        placeholder="20"
-                      />
-                    </div>
-                  )}
+  // Step 4: Website Offer
+  if (step === "website-offer") {
+    const isFirst100 = (hostCount || 0) < 100
+    const offerPrice = isFirst100 ? 299 : 799
 
-                  {offer.collaboration_type === "paid_collaboration" && (
-                    <div className="space-y-2 mb-4">
-                      <Label htmlFor={`payment-${index}`}>Importo (€)</Label>
-                      <Input
-                        id={`payment-${index}`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={offer.payment_amount || ""}
-                        onChange={(e) => updateOffer(index, "payment_amount", e.target.value)}
-                        placeholder="500.00"
-                      />
-                    </div>
-                  )}
+    return (
+      <>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader>
+              <CardTitle>Offerta Speciale Sito Web</CardTitle>
+              <CardDescription>Passo 4 di 4 - Crea il tuo sito web personalizzato</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Hero centrale */}
+              <div className="text-center space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <h2 className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                  Annulla TOTALMENTE la dipendenza dalle piattaforme OTA
+                </h2>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Per riuscire a non usare più completamente le piattaforme OTA e riuscire a preservare tutte le entrate 
+                  e non pagare quindi commissioni, Nomadiqe ti aiuta offrendo la possibilità di realizzare un sito web 
+                  su misura {isFirst100 ? "ai primi 100 host iscritti" : ""} per soli{" "}
+                  <span className="font-bold text-lg">{offerPrice}€</span> compreso dominio e hosting grazie alla 
+                  collaborazione con Facevoice.ai, grazie alla quale si potrà pian piano riuscire ad annullare TOTALMENTE 
+                  la dipendenza dalle piattaforme OTA e sulla quale canalizzare l'intero traffico.
+                </p>
+                {!isFirst100 && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold">
+                    ⚠️ Dal 101esimo host in poi l'offerta sarà di 799€ + dominio + hosting
+                  </p>
+                )}
+                {isFirst100 && (
+                  <p className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                    ✓ Offerta valida solo per i primi 100 iscritti come host
+                  </p>
+                )}
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`description-${index}`}>Descrizione</Label>
-                    <Textarea
-                      id={`description-${index}`}
-                      value={offer.description}
-                      onChange={(e) => updateOffer(index, "description", e.target.value)}
-                      placeholder="Descrivi i dettagli dell'offerta..."
-                      rows={3}
-                    />
-                  </div>
-                </Card>
-              ))}
-            </div>
+              {/* Pulsanti */}
+              <div className="flex gap-4">
+                <Button
+                  onClick={handleWebsiteOfferRequest}
+                  className="flex-1"
+                  disabled={loading || websiteOfferRequested}
+                  size="lg"
+                >
+                  {websiteOfferRequested ? "Richiesta Inviata" : "Richiedi Offerta"}
+                </Button>
+                <Button
+                  onClick={handleWebsiteOfferSkip}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={loading}
+                  size="lg"
+                >
+                  Richiedimelo successivamente
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setStep("property")}
-                className="flex-1"
-              >
-                Indietro
+        {/* Dialog Disclaimer */}
+        <Dialog open={showOfferDisclaimer} onOpenChange={setShowOfferDisclaimer}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Richiesta Inviata</DialogTitle>
+              <DialogDescription>
+                Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              <Button onClick={() => {
+                setShowOfferDisclaimer(false)
+                handleWebsiteOfferSkip()
+              }}>
+                Continua
               </Button>
-              <Button type="submit" className="flex-1" disabled={loading}>
-                {loading ? "Salvataggio..." : "Completa Onboarding"}
-              </Button>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </DialogContent>
+        </Dialog>
+      </>
+    )
+  }
+
+  // Fallback (should not reach here)
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div>Errore: step non riconosciuto</div>
     </div>
   )
 }
+
 

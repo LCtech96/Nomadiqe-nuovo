@@ -413,7 +413,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     
     // Waitlist
     'waitlist.title': 'Join Nomadiqe Exclusive Waitlist',
-    'waitlist.description': 'Be part of something extraordinary. Join thousands of people already getting early access to our revolutionary platform.',
+    'waitlist.description': 'Be part of something extraordinary. Join hundreds of people already getting early access to our revolutionary platform.',
     'waitlist.email': 'Enter your email',
     'waitlist.phone': 'Phone number',
     'waitlist.role': 'Select your role',

@@ -201,12 +201,12 @@ function HomePageContent() {
                     Cos'è Nomadiqe BETA?
                   </h3>
                   <p className="text-base md:text-lg text-gray-300 mb-4 leading-relaxed text-center">
-                    Nomadiqe BETA BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
+                    Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
                     tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
                     straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
                   </p>
                   <p className="text-base md:text-lg text-gray-300 leading-relaxed text-center">
-                    Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                    Nomadiqe BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
                     o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
                     e connettersi con una community attiva di host e viaggiatori.
                   </p>
@@ -249,22 +249,6 @@ function HomePageContent() {
               </div>
             </div>
 
-            {/* Sezione: Cos'è Nomadiqe - Dettagliata */}
-            <section className="max-w-4xl mx-auto">
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
-                Cos'è Nomadiqe BETA?
-              </h2>
-              <div className="bg-gray-950/50 backdrop-blur-sm rounded-2xl p-6 md:p-10 border border-gray-800 shadow-lg">
-                <p className="text-lg md:text-xl text-gray-300 mb-6 leading-relaxed">
-                  Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
-                  tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
-                  straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
-                </p>
-                <p className="text-lg md:text-xl text-gray-300 mb-6 leading-relaxed">
-                  Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
-                  o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
-                  e connettersi con una community attiva di host e viaggiatori.
-                </p>
                 
                 <div className="grid md:grid-cols-3 gap-6 mt-10">
                   <div className="text-center">
@@ -528,58 +512,6 @@ function HomePageContent() {
           </div>
         </div>
 
-        {/* Sezione: Cos'è Nomadiqe */}
-        <section className="mb-20">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-              Cos'è Nomadiqe BETA?
-            </h2>
-            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-lg">
-              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
-                Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
-                tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
-                straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
-              </p>
-              <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
-                Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
-                o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
-                e connettersi con una community attiva di host e viaggiatori.
-              </p>
-              
-              <div className="grid md:grid-cols-3 gap-6 mt-10">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Zap className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Innovazione Tecnologica</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Piattaforma all'avanguardia con AI integrata per personalizzare ogni esperienza
-                  </p>
-                </div>
-                
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Users className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Community First</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Costruiamo relazioni reali, non solo transazioni. Ogni membro della community ha valore
-                  </p>
-                </div>
-                
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">Trasparenza e Sicurezza</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Commissioni chiare, pagamenti sicuri e sistema di recensioni verificato
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Sezione: Perché Nomadiqe è migliore */}
         <section className="mb-20">
