@@ -944,7 +944,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                       className="w-20 h-20 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full bg-muted dark:bg-gray-900 flex items-center justify-center">
                       <span className="text-2xl">👤</span>
                     </div>
                   )}
@@ -1231,7 +1231,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                   multiple
                   onChange={handleImageChange}
                 />
-                <p className="text-xs text-muted-foreground">Max 10MB per immagine (ritaglio disponibile)</p>
+                <p className="text-xs text-muted-foreground dark:text-gray-400">Max 10MB per immagine (ritaglio disponibile)</p>
                 {propertyData.imagePreviews.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     {propertyData.imagePreviews.map((preview, index) => (
