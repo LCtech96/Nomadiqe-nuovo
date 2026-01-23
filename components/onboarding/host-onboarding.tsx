@@ -39,6 +39,24 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   const [loading, setLoading] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  
+  // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
+  useEffect(() => {
+    const getUserId = async () => {
+      if (session?.user?.id) {
+        if (session?.user?.id) {
+          setUserId(session.user.id)
+        }
+      } else {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        if (supabaseUser?.id) {
+          setUserId(supabaseUser.id)
+        }
+      }
+    }
+    getUserId()
+  }, [session, supabase])
 
   // Profile data
   const [profileData, setProfileData] = useState({
@@ -109,7 +127,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("full_name, username, avatar_url, bio")
-          .eq("id", session.user.id)
+          .eq("id", userId || "")
           .maybeSingle()
 
         // Load host count for website offer
@@ -146,7 +164,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     }
 
     loadSavedState()
-  }, [session?.user?.id, supabase])
+  }, [userId, supabase])
 
   // Check username availability (only if username is provided)
   useEffect(() => {
@@ -230,10 +248,6 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser()
-    const userId = session?.user?.id || supabaseUser?.id
-    
     if (!userId) {
       toast({
         title: "Errore",
@@ -281,7 +295,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       if (profileData.avatarFile) {
         try {
           const fileExtension = profileData.avatarFile.name.split(".").pop()
-          const fileName = `${session.user.id}/avatar.${fileExtension}`
+          const fileName = `${userId}/avatar.${fileExtension || "jpg"}`
           
           // Use token from environment variable (must be NEXT_PUBLIC_* to work in browser)
           const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
@@ -427,7 +441,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
   const handlePropertySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!session?.user?.id) return
+    if (!userId) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     // Validazione campi obbligatori
     if (!propertyData.name || propertyData.name.trim().length === 0) {
@@ -524,7 +546,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       for (const image of propertyData.images) {
         try {
           const fileExtension = image.name.split(".").pop()
-          const fileName = `${session.user.id}/properties/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`
+          const fileName = `${userId}/properties/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension || "jpg"}`
           const blob = await put(fileName, image, {
             access: "public",
             contentType: image.type,
@@ -557,7 +579,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { data: property, error: propertyError } = await supabase
         .from("properties")
         .insert({
-          owner_id: session.user.id,
+          owner_id: userId,
           name: propertyData.name,
           description: propertyData.description,
           property_type: propertyData.property_type,
@@ -622,7 +644,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         const { data: property } = await supabase
           .from("properties")
           .select("id")
-          .eq("owner_id", session.user.id)
+          .eq("owner_id", userId || "")
           .order("created_at", { ascending: false })
           .limit(1)
           .single()
@@ -692,7 +714,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       // Salva date disponibili per KOL&BED
       if (kolBedData.selectedDates.length > 0) {
         const availabilityRecords = kolBedData.selectedDates.map((date) => ({
-          host_id: session.user.id,
+          host_id: userId,
           property_id: property.id,
           date,
           available_for_collab: true,
@@ -710,7 +732,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { error: preferencesError } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
-          host_id: session.user.id,
+          host_id: userId,
           influencer_type: kolBedData.influencer_type || null,
           preferred_niche: kolBedData.preferred_niche || null,
           min_followers: kolBedData.min_followers ? parseInt(kolBedData.min_followers) : 100,
@@ -758,7 +780,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       const { error } = await supabase
         .from("website_offer_requests")
         .insert({
-          host_id: session.user.id,
+          host_id: userId,
           status: "pending",
           offer_price: offerPrice,
           is_first_100: isFirst100,
@@ -804,7 +826,9 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       // Award onboarding points
       try {
         const { awardPoints } = await import("@/lib/points")
-        await awardPoints(session.user.id, "onboarding", "Onboarding Host completato")
+        if (userId) {
+          await awardPoints(userId, "onboarding", "Onboarding Host completato")
+        }
       } catch (pointsError) {
         console.warn("Could not award onboarding points:", pointsError)
       }
@@ -1227,7 +1251,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               {/* Calendario per selezionare date disponibili */}
               {session?.user?.id && propertyId && (
                 <KolBedCalendarSelector
-                  hostId={session.user.id}
+                  hostId={userId || ""}
                   propertyId={propertyId}
                   selectedDates={kolBedData.selectedDates}
                   onDatesChange={(dates) => setKolBedData({ ...kolBedData, selectedDates: dates })}
