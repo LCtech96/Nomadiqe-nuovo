@@ -15,6 +15,8 @@ import SharePostDialog from "@/components/share-post-dialog"
 import EditPostDialog from "@/components/edit-post-dialog"
 import UserSearch from "@/components/user-search"
 import { renderLinkContent } from "@/lib/render-link-content"
+import { TranslatedComment } from "@/components/translated-comment"
+import { useI18n } from "@/lib/i18n/context"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,7 @@ import {
 
 export default function HomePage() {
   const { data: session, status } = useSession()
+  const { t } = useI18n()
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
@@ -637,7 +640,7 @@ export default function HomePage() {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Aggiungi un commento..."
+                          placeholder={t('post.addComment')}
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           onKeyPress={(e) => {
@@ -652,7 +655,7 @@ export default function HomePage() {
                           onClick={() => handleAddComment(post.id)}
                           disabled={!newComment.trim()}
                         >
-                          Invia
+                          {t('post.send')}
                         </Button>
                       </div>
 
@@ -686,7 +689,10 @@ export default function HomePage() {
                                 >
                                   {comment.user?.username || comment.user?.full_name || "Utente"}
                                 </p>
-                                <p className="text-sm text-muted-foreground">{comment.content}</p>
+                                <TranslatedComment 
+                                  content={comment.content} 
+                                  className="text-sm text-muted-foreground"
+                                />
                               </div>
                             </div>
                           ))}

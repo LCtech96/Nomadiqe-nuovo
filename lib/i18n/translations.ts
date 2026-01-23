@@ -218,6 +218,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'post.deleteSuccess': 'Il post è stato eliminato con successo',
     'post.deleteError': 'Errore durante l\'eliminazione del post',
     'post.loading': 'Caricamento...',
+    'post.addComment': 'Aggiungi un commento...',
+    'post.send': 'Invia',
+    'post.translating': 'Traduzione in corso...',
     
     // Services
     'service.newService': 'Nuovo servizio',
@@ -541,6 +544,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'post.deleteSuccess': 'Post has been deleted successfully',
     'post.deleteError': 'Error deleting post',
     'post.loading': 'Loading...',
+    'post.addComment': 'Add a comment...',
+    'post.send': 'Send',
+    'post.translating': 'Translating...',
     
     // Services
     'service.newService': 'New service',
@@ -864,6 +870,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'post.deleteSuccess': 'Пост успешно удален',
     'post.deleteError': 'Ошибка при удалении поста',
     'post.loading': 'Загрузка...',
+    'post.addComment': 'Добавить комментарий...',
+    'post.send': 'Отправить',
+    'post.translating': 'Перевод...',
     
     // Services
     'service.newService': 'Новая услуга',
@@ -1187,6 +1196,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'post.deleteSuccess': 'Le post a été supprimé avec succès',
     'post.deleteError': 'Erreur lors de la suppression du post',
     'post.loading': 'Chargement...',
+    'post.addComment': 'Ajouter un commentaire...',
+    'post.send': 'Envoyer',
+    'post.translating': 'Traduction en cours...',
     
     // Services
     'service.newService': 'Nouveau service',
@@ -1510,6 +1522,9 @@ export const translations: Record<Locale, Record<string, string>> = {
     'post.deleteSuccess': 'Beitrag wurde erfolgreich gelöscht',
     'post.deleteError': 'Fehler beim Löschen des Beitrags',
     'post.loading': 'Laden...',
+    'post.addComment': 'Kommentar hinzufügen...',
+    'post.send': 'Senden',
+    'post.translating': 'Übersetzung läuft...',
     
     // Services
     'service.newService': 'Neue Dienstleistung',

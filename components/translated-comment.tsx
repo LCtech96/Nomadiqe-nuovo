@@ -4,12 +4,12 @@ import React, { useEffect, useState } from "react"
 import { useTranslation } from "@/hooks/use-translation"
 import { useI18n } from "@/lib/i18n/context"
 
-/**
- * Rende il contenuto del post con link cliccabili e traduzione automatica
- * @param content - Il contenuto del post
- * @param isHostPrime - Parametro legacy mantenuto per compatibilità (non più utilizzato)
- */
-export function renderLinkContent(content: string, isHostPrime?: boolean) {
+interface TranslatedCommentProps {
+  content: string
+  className?: string
+}
+
+export function TranslatedComment({ content, className = "" }: TranslatedCommentProps) {
   const { translate } = useTranslation()
   const { t } = useI18n()
   const [translatedContent, setTranslatedContent] = useState<string>(content)
@@ -46,37 +46,12 @@ export function renderLinkContent(content: string, isHostPrime?: boolean) {
     }
   }, [content, translate])
 
-  // Regex per trovare URL (http/https)
-  const urlRegex = /(https?:\/\/[^\s]+)/g
-  const parts = translatedContent.split(urlRegex)
-  
-  // Crea un nuovo regex per testare ogni parte
-  const testUrlRegex = /^https?:\/\/.+$/
-
   return (
-    <p className="text-[15px] leading-relaxed text-foreground whitespace-pre-wrap break-words">
+    <p className={className}>
       {isTranslating && (
         <span className="text-xs text-muted-foreground italic">{t('post.translating')}</span>
       )}
-      {parts.map((part, index) => {
-        if (testUrlRegex.test(part)) {
-          // È un URL, rendilo cliccabile
-          return (
-            <a
-              key={index}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline break-all"
-            >
-              {part}
-            </a>
-          )
-        }
-        // Testo normale
-        return <span key={index}>{part}</span>
-      })}
+      {translatedContent}
     </p>
   )
 }
-

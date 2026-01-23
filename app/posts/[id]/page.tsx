@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import SharePostDialog from "@/components/share-post-dialog"
 import EditPostDialog from "@/components/edit-post-dialog"
 import { renderLinkContent } from "@/lib/render-link-content"
+import { TranslatedComment } from "@/components/translated-comment"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -500,7 +501,10 @@ export default function PostPage() {
                           >
                             {comment.user?.username || comment.user?.full_name || "Utente"}
                           </p>
-                          <p className="text-sm text-muted-foreground">{comment.content}</p>
+                          <TranslatedComment 
+                            content={comment.content} 
+                            className="text-sm text-muted-foreground"
+                          />
                           <p className="text-xs text-muted-foreground mt-1">
                             {new Date(comment.created_at).toLocaleDateString("it-IT", {
                               day: "numeric",

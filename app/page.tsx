@@ -182,17 +182,74 @@ function HomePageContent() {
         <GridBackground />
         <div className="relative z-10 py-12">
           <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 space-y-16">
-            {/* Header */}
-            <div className="space-y-6 text-center">
-              <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
-                {t('waitlist.title')}
-              </h2>
-              <p className="text-xl text-gray-400 max-w-lg mx-auto">
-                {t('waitlist.description')}
-              </p>
+            {/* Hero Section */}
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="space-y-6 text-center">
+                <h2 className="text-4xl sm:text-5xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-br from-gray-200 to-gray-600">
+                  {t('waitlist.title')}
+                </h2>
+                <p className="text-xl text-gray-400 max-w-lg mx-auto">
+                  {t('waitlist.description')}
+                </p>
+              </div>
+
+              {/* Cos'è Nomadiqe - Versione Hero */}
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-gray-950/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-800 shadow-lg">
+                  <h3 className="text-2xl md:text-3xl font-bold text-center mb-4 text-gray-200">
+                    Cos'è Nomadiqe?
+                  </h3>
+                  <p className="text-base md:text-lg text-gray-300 mb-4 leading-relaxed text-center">
+                    Nomadiqe è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
+                    tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
+                    straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
+                  </p>
+                  <p className="text-base md:text-lg text-gray-300 leading-relaxed text-center">
+                    Nomadiqe è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                    o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
+                    e connettersi con una community attiva di host e viaggiatori.
+                  </p>
+                </div>
+              </div>
+
+              {/* CTA Cards: Lavora con noi e Investi - Hero */}
+              <div className="max-w-4xl mx-auto">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card className="bg-gradient-to-br from-blue-600/80 to-indigo-700/80 backdrop-blur-sm text-white border-0 hover:shadow-2xl transition-shadow cursor-pointer">
+                    <Link href="/lavora-con-noi">
+                      <CardContent className="p-6 text-center">
+                        <Briefcase className="w-12 h-12 mx-auto mb-3" />
+                        <h3 className="text-xl font-bold mb-2">Lavora con noi</h3>
+                        <p className="text-blue-100 text-sm mb-4">
+                          Unisciti al team di Nomadiqe e aiuta a costruire il futuro dei viaggi
+                        </p>
+                        <Button variant="secondary" size="sm" className="bg-white text-blue-600 hover:bg-gray-100">
+                          Vedi posizioni
+                        </Button>
+                      </CardContent>
+                    </Link>
+                  </Card>
+
+                  <Card className="bg-gradient-to-br from-purple-600/80 to-pink-700/80 backdrop-blur-sm text-white border-0 hover:shadow-2xl transition-shadow cursor-pointer">
+                    <Link href="/investi">
+                      <CardContent className="p-6 text-center">
+                        <TrendingUp className="w-12 h-12 mx-auto mb-3" />
+                        <h3 className="text-xl font-bold mb-2">Investi e diventa Partner</h3>
+                        <p className="text-purple-100 text-sm mb-4">
+                          Investi in Nomadiqe e diventa parte del nostro futuro
+                        </p>
+                        <Button variant="secondary" size="sm" className="bg-white text-purple-600 hover:bg-gray-100">
+                          Scopri di più
+                        </Button>
+                      </CardContent>
+                    </Link>
+                  </Card>
+                </div>
+              </div>
             </div>
 
-            {/* Sezione: Cos'è Nomadiqe */}
+            {/* Sezione: Cos'è Nomadiqe - Dettagliata */}
             <section className="max-w-4xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
                 Cos'è Nomadiqe?
@@ -312,41 +369,6 @@ function HomePageContent() {
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-              </div>
-            </section>
-
-            {/* Sezioni CTA: Lavora con noi e Investi */}
-            <section className="max-w-4xl mx-auto">
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card className="bg-gradient-to-br from-blue-600/80 to-indigo-700/80 backdrop-blur-sm text-white border-0 hover:shadow-2xl transition-shadow cursor-pointer">
-                  <Link href="/lavora-con-noi">
-                    <CardContent className="p-8 text-center">
-                      <Briefcase className="w-16 h-16 mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold mb-4">Lavora con noi</h3>
-                      <p className="text-blue-100 mb-6">
-                        Unisciti al team di Nomadiqe e aiuta a costruire il futuro dei viaggi
-                      </p>
-                      <Button variant="secondary" size="lg" className="bg-white text-blue-600 hover:bg-gray-100">
-                        Vedi posizioni aperte
-                      </Button>
-                    </CardContent>
-                  </Link>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-600/80 to-pink-700/80 backdrop-blur-sm text-white border-0 hover:shadow-2xl transition-shadow cursor-pointer">
-                  <Link href="/investi">
-                    <CardContent className="p-8 text-center">
-                      <TrendingUp className="w-16 h-16 mx-auto mb-4" />
-                      <h3 className="text-2xl font-bold mb-4">Investi e diventa Partner</h3>
-                      <p className="text-purple-100 mb-6">
-                        Investi in Nomadiqe e diventa parte del nostro futuro
-                      </p>
-                      <Button variant="secondary" size="lg" className="bg-white text-purple-600 hover:bg-gray-100">
-                        Scopri le opportunità
-                      </Button>
-                    </CardContent>
-                  </Link>
                 </Card>
               </div>
             </section>
