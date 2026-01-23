@@ -80,14 +80,24 @@ export default function HostDashboard() {
         return
       }
 
-      // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
-      const { data: { user: supabaseUser } } = await supabase.auth.getUser()
-      const userId = session?.user?.id || supabaseUser?.id
+      if (status === "loading") {
+        return
+      }
+
+      // Ottieni l'ID utente da Next-Auth o Supabase
+      let currentUserId: string | null = null
       
-      if (!userId) {
-        if (status === "unauthenticated") {
-          router.push("/auth/signin")
-        }
+      if (status === "authenticated" && session?.user?.id) {
+        currentUserId = session.user.id
+      } else {
+        // Prova a ottenere l'ID da Supabase se Next-Auth non è disponibile
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        currentUserId = supabaseUser?.id || null
+      }
+      
+      if (!currentUserId) {
+        // Se non c'è userId dopo tutti i tentativi, reindirizza al login
+        router.push("/auth/signin")
         return
       }
 
@@ -95,7 +105,7 @@ export default function HostDashboard() {
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("role, onboarding_completed")
-          .eq("id", userId || "")
+          .eq("id", currentUserId)
           .maybeSingle()
 
         if (error) {
@@ -119,7 +129,9 @@ export default function HostDashboard() {
 
         // Onboarding completato, procedi con il caricamento dei dati
         setCheckingOnboarding(false)
-        if (userId) {
+        if (currentUserId) {
+          // Aggiorna userId state per le altre funzioni
+          setUserId(currentUserId)
           loadProperties()
           loadPreferences()
           loadReferrals()
@@ -131,7 +143,7 @@ export default function HostDashboard() {
     }
 
     checkOnboarding()
-  }, [session, status, router, supabase, userId])
+  }, [session, status, router, supabase])
 
   const loadProperties = async () => {
     if (!userId) return
