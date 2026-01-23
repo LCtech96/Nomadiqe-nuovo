@@ -148,6 +148,14 @@ export default function OnboardingPage() {
           full_name: session.user.name || session.user.email?.split("@")[0] || "",
           username: session.user.email?.split("@")[0] || "",
         }
+        
+        // IMPORTANTE: Per host e jolly, onboarding_completed deve essere FALSE
+        // Per gli altri ruoli, può essere TRUE (onboarding semplice)
+        if (selectedRole === "host" || selectedRole === "jolly") {
+          newProfileData.onboarding_completed = false
+        } else {
+          newProfileData.onboarding_completed = true
+        }
 
         const { error: insertError } = await supabase
           .from("profiles")
@@ -163,9 +171,11 @@ export default function OnboardingPage() {
           role: selectedRole,
         }
         
-        // Per ruoli non-host e non-jolly, segna anche onboarding come completato
-        // Jolly e Host hanno onboarding specifici
-        if (selectedRole !== "host" && selectedRole !== "jolly") {
+        // IMPORTANTE: Per host e jolly, onboarding_completed deve essere FALSE
+        // Per gli altri ruoli, segna onboarding come completato
+        if (selectedRole === "host" || selectedRole === "jolly") {
+          updateData.onboarding_completed = false
+        } else {
           updateData.onboarding_completed = true
         }
         

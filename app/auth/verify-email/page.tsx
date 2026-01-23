@@ -109,6 +109,10 @@ function VerifyEmailContent() {
       if (waitlistData?.role) {
         profileData.role = waitlistData.role
         console.log("Role from waitlist:", waitlistData.role)
+        // Se il ruolo è host o jolly, assicurati che onboarding_completed sia false
+        if (waitlistData.role === "host" || waitlistData.role === "jolly") {
+          profileData.onboarding_completed = false
+        }
       }
 
       const { error: profileError, data: insertedProfile } = await supabase
