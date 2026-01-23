@@ -222,21 +222,40 @@ export default function ProfilePage() {
         setReferralCode(profileData.referral_code)
         setReferralLink(`${window.location.origin}/auth/signup?ref=${profileData.referral_code}`)
       } else {
-        // Prova a caricare dalla tabella referral_codes (se esiste)
+        // Prova a caricare dalla tabella corretta in base al ruolo
         // Gestisci silenziosamente se la tabella non esiste (404 o altri errori)
-        const { data: refCodeData, error: refCodeError } = await supabase
-          .from("referral_codes")
-          .select("code")
-          .eq("user_id", session.user.id)
-          .maybeSingle()
-        
-        // Ignora errori 404 (tabella non trovata) o altri errori di database
-        if (!refCodeError && refCodeData?.code) {
-          setReferralCode(refCodeData.code)
-          setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.code}`)
+        try {
+          let refCodeData = null
+          let refCodeError = null
+          
+          // Usa la tabella corretta in base al ruolo
+          if (profileData.role === "host") {
+            const result = await supabase
+              .from("host_referral_codes")
+              .select("referral_code")
+              .eq("host_id", session.user.id)
+              .maybeSingle()
+            refCodeData = result.data
+            refCodeError = result.error
+          } else if (profileData.role === "creator") {
+            const result = await supabase
+              .from("creator_referral_codes")
+              .select("referral_code")
+              .eq("creator_id", session.user.id)
+              .maybeSingle()
+            refCodeData = result.data
+            refCodeError = result.error
+          }
+          
+          // Ignora errori 404 (tabella non trovata) o altri errori di database
+          if (!refCodeError && refCodeData?.referral_code) {
+            setReferralCode(refCodeData.referral_code)
+            setReferralLink(`${window.location.origin}/auth/signup?ref=${refCodeData.referral_code}`)
+          }
+        } catch (error) {
+          // Ignora silenziosamente qualsiasi errore
+          // Non loggare nulla per evitare errori nella console
         }
-        // Se c'è un errore (tabella non esiste, 404, ecc.), ignora silenziosamente
-        // Non loggare nulla per evitare errori nella console
       }
 
       // Load posts (don't fail if error, just set empty array)
