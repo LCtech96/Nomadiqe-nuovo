@@ -125,13 +125,13 @@ ORDER BY ordinal_position;
 -- Questo aggiorna i profili che hanno una waitlist approvata ma non hanno ancora il ruolo assegnato
 UPDATE public.profiles p
 SET 
-  role = wr.role,
+  role = wr.role::user_role,
   onboarding_completed = FALSE,
   updated_at = NOW()
 FROM public.waitlist_requests wr
 WHERE LOWER(p.email) = LOWER(wr.email)
   AND wr.status = 'approved'
-  AND (p.role IS NULL OR p.role != wr.role)
+  AND (p.role IS NULL OR p.role::text != wr.role)
   AND wr.role IS NOT NULL;
 
 -- Mostra quanti profili sono stati aggiornati
