@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useState, useEffect, Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,7 @@ function HomePageContent() {
   const { toast } = useToast()
   const { t } = useI18n()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const supabase = createSupabaseClient()
@@ -65,7 +66,7 @@ function HomePageContent() {
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("role, full_name, username")
+        .select("role, full_name, username, onboarding_completed")
         .eq("id", session.user.id)
         .maybeSingle()
 
@@ -75,6 +76,26 @@ function HomePageContent() {
 
       if (data) {
         setProfile(data)
+        
+        // CONTROLLO ONBOARDING OBBLIGATORIO PER HOST
+        // Se l'utente è host e non ha completato l'onboarding, reindirizza forzatamente
+        if (data.role === "host" && !data.onboarding_completed) {
+          console.log("Host onboarding not completed - redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+        
+        // Se l'utente non ha un ruolo, reindirizza all'onboarding
+        if (!data.role) {
+          console.log("User has no role - redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+      } else {
+        // Se non c'è un profilo, reindirizza all'onboarding
+        console.log("No profile found - redirecting to onboarding")
+        router.push("/onboarding")
+        return
       }
     } catch (error) {
       console.error("Error loading profile:", error)

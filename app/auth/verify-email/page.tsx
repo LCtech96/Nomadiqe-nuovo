@@ -187,12 +187,12 @@ function VerifyEmailContent() {
     await registerReferralIfExists()
 
     // Aspetta un momento per assicurarsi che il profilo sia stato salvato nel database
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await new Promise(resolve => setTimeout(resolve, 800))
 
     // Ricontrolla il profilo per assicurarsi che il ruolo sia stato salvato
     let retries = 0
     let userProfile = null
-    while (retries < 3) {
+    while (retries < 5) {
       const { data, error } = await supabase
         .from("profiles")
         .select("role, onboarding_completed")
@@ -205,15 +205,21 @@ function VerifyEmailContent() {
       }
       
       userProfile = data
-      if (userProfile) {
-        console.log("Profile found:", { role: userProfile.role, onboarding_completed: userProfile.onboarding_completed })
+      if (userProfile && userProfile.role) {
+        console.log("Profile found with role:", { role: userProfile.role, onboarding_completed: userProfile.onboarding_completed })
         break
       }
       
       retries++
-      if (retries < 3) {
-        await new Promise(resolve => setTimeout(resolve, 300))
+      if (retries < 5) {
+        console.log(`Retry ${retries}/5: Waiting for profile to be saved...`)
+        await new Promise(resolve => setTimeout(resolve, 500))
       }
+    }
+    
+    // Se dopo tutti i tentativi non abbiamo trovato il ruolo, logga un warning
+    if (!userProfile || !userProfile.role) {
+      console.warn("Profile role not found after verification. User will need to select role manually.")
     }
 
     toast({

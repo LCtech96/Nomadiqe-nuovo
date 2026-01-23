@@ -69,11 +69,29 @@ export default function HomePage() {
 
       if (profileData) {
         setProfile(profileData)
+        
+        // CONTROLLO ONBOARDING OBBLIGATORIO PER HOST
+        // Se l'utente è host e non ha completato l'onboarding, reindirizza forzatamente
+        if (profileData.role === "host" && !profileData.onboarding_completed) {
+          console.log("Host onboarding not completed - redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+        
+        // Se l'utente non ha un ruolo, reindirizza all'onboarding
+        if (!profileData.role) {
+          console.log("User has no role - redirecting to onboarding")
+          router.push("/onboarding")
+          return
+        }
+        
         // Carica sempre i post, anche se l'utente non ha un ruolo
         await loadPosts()
       } else {
-        // Carica i post anche se non c'è un profilo
-        await loadPosts()
+        // Se non c'è un profilo, reindirizza all'onboarding
+        console.log("No profile found - redirecting to onboarding")
+        router.push("/onboarding")
+        return
       }
     } catch (error) {
       console.error("Error loading data:", error)
