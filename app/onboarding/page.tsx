@@ -110,8 +110,10 @@ export default function OnboardingPage() {
           }
 
           // Se l'utente ha un ruolo ma non ha completato l'onboarding, procedi con l'onboarding specifico
-          if (data.role) {
-            console.log("User has role:", data.role, "- Starting role-specific onboarding")
+          // MA solo se ha già completato almeno il profilo base (ha full_name)
+          // Altrimenti mostra la selezione del ruolo per permettere di cambiarlo se necessario
+          if (data.role && data.full_name) {
+            console.log("User has role:", data.role, "and profile - Starting role-specific onboarding")
             setSelectedRole(data.role)
             if (data.role === "host") {
               setStep("role-specific")
@@ -121,6 +123,17 @@ export default function OnboardingPage() {
               // Per altri ruoli, per ora reindirizza alla home
               // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
               router.push("/home")
+            }
+          } else if (data.role && !data.full_name) {
+            // Se ha un ruolo ma non ha completato il profilo, mostra la selezione del ruolo
+            // per permettere di cambiarlo se necessario, oppure procedi con l'onboarding
+            console.log("User has role but no profile - showing role selection or proceeding")
+            setSelectedRole(data.role)
+            if (data.role === "host" || data.role === "jolly") {
+              // Procedi direttamente all'onboarding specifico
+              setStep("role-specific")
+            } else {
+              setStep("role")
             }
           } else {
             // Se l'utente non ha un ruolo, mostra la selezione del ruolo

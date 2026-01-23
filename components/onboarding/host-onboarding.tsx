@@ -229,7 +229,20 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!session?.user?.id) return
+    
+    // Ottieni l'ID utente da Supabase se Next-Auth non è disponibile
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+    const userId = session?.user?.id || supabaseUser?.id
+    
+    if (!userId) {
+      toast({
+        title: "Errore",
+        description: "Sessione non valida. Per favore fai login.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     // Validazione: Nome è obbligatorio
     if (!profileData.fullName || profileData.fullName.trim().length === 0) {
@@ -307,7 +320,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           avatar_url: avatarUrl || null,
           bio: profileData.bio.trim() || null,
         })
-        .eq("id", session.user.id)
+        .eq("id", userId)
 
       if (error) throw error
 
