@@ -117,7 +117,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   // Load saved profile data on mount (without onboarding_status for now due to PostgREST cache issue)
   useEffect(() => {
     const loadSavedState = async () => {
-      if (!session?.user?.id) {
+      if (!userId) {
         setLoadingSavedState(false)
         return
       }
@@ -127,7 +127,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         const { data: profile, error } = await supabase
           .from("profiles")
           .select("full_name, username, avatar_url, bio")
-          .eq("id", userId || "")
+          .eq("id", userId)
           .maybeSingle()
 
         // Load host count for website offer
@@ -817,7 +817,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         .update({
           onboarding_completed: true,
         })
-        .eq("id", session.user.id)
+        .eq("id", userId || "")
 
       if (updateError) {
         console.warn("Could not update onboarding_completed:", updateError)
