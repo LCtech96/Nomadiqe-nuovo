@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -94,13 +94,15 @@ interface Analytics {
   showReach: boolean
 }
 
-export default function CreatorSettingsPage() {
+function CreatorSettingsContent() {
   const { data: session } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
 
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<string>("analytics")
   const [saving, setSaving] = useState(false)
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([])
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
@@ -139,6 +141,13 @@ export default function CreatorSettingsPage() {
       loadData()
     }
   }, [session])
+
+  useEffect(() => {
+    const tab = searchParams.get("tab")
+    if (tab && ["analytics", "profile", "social", "content"].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
 
   const loadData = async () => {
     if (!session?.user?.id) return
@@ -372,7 +381,7 @@ export default function CreatorSettingsPage() {
           <p className="text-muted-foreground">Gestisci il tuo profilo, contenuti e analitiche</p>
         </div>
 
-        <Tabs defaultValue="analytics" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="analytics">
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -911,6 +920,14 @@ export default function CreatorSettingsPage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function CreatorSettingsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Caricamento...</div>}>
+      <CreatorSettingsContent />
+    </Suspense>
   )
 }
 

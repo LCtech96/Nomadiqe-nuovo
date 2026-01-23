@@ -39,7 +39,8 @@ import {
   BarChart3,
   Globe,
   Briefcase,
-  Calendar
+  Calendar,
+  Edit
 } from "lucide-react"
 import SendMessageDialog from "@/components/send-message-dialog"
 import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
@@ -452,31 +453,34 @@ export default function PublicProfilePage() {
 
   const loadStats = async (userId: string) => {
     try {
-      // Followers count
+      // Carica statistiche manuali se disponibili (per creator)
+      const { data: manualAnalytics } = await supabase
+        .from("creator_manual_analytics")
+        .select("*")
+        .eq("creator_id", userId)
+        .maybeSingle()
+
+      // Carica statistiche automatiche come fallback
       const { count: followersCount } = await supabase
         .from("follows")
         .select("*", { count: "exact", head: true })
         .eq("following_id", userId)
 
-      // Following count
       const { count: followingCount } = await supabase
         .from("follows")
         .select("*", { count: "exact", head: true })
         .eq("follower_id", userId)
 
-      // Posts count
       const { count: postsCount } = await supabase
         .from("posts")
         .select("*", { count: "exact", head: true })
         .eq("author_id", userId)
 
-      // Profile views
       const { count: viewsCount } = await supabase
         .from("profile_views")
         .select("*", { count: "exact", head: true })
         .eq("profile_id", userId)
 
-      // Total interactions (likes + comments on user's posts)
       const { data: userPosts } = await supabase
         .from("posts")
         .select("id, likes_count, comments_count")
@@ -487,12 +491,24 @@ export default function PublicProfilePage() {
         0
       )
 
+      // Usa statistiche manuali se disponibili e se i flag di visibilità lo permettono
+      // Altrimenti usa le statistiche automatiche
       setStats({
-        followers: followersCount || 0,
-        following: followingCount || 0,
-        postsCount: postsCount || 0,
-        profileViews: viewsCount || 0,
-        totalInteractions: totalInteractions,
+        followers: manualAnalytics?.show_followers && manualAnalytics.total_followers !== null
+          ? manualAnalytics.total_followers
+          : (followersCount || 0),
+        following: manualAnalytics?.show_following && manualAnalytics.total_following !== null
+          ? manualAnalytics.total_following
+          : (followingCount || 0),
+        postsCount: manualAnalytics?.show_posts && manualAnalytics.total_posts !== null
+          ? manualAnalytics.total_posts
+          : (postsCount || 0),
+        profileViews: manualAnalytics?.show_profile_views && manualAnalytics.profile_views !== null
+          ? manualAnalytics.profile_views
+          : (viewsCount || 0),
+        totalInteractions: manualAnalytics?.show_interactions && manualAnalytics.total_interactions !== null
+          ? manualAnalytics.total_interactions
+          : totalInteractions,
       })
     } catch (error) {
       console.error("Error loading stats:", error)
@@ -1118,10 +1134,22 @@ export default function PublicProfilePage() {
               {/* Profile Stats */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Eye className="w-5 h-5" />
-                    Statistiche Profilo
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Eye className="w-5 h-5" />
+                      Statistiche Profilo
+                    </CardTitle>
+                    {session?.user?.id === profile.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push("/dashboard/creator/settings?tab=analytics")}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Modifica
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

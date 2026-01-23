@@ -1,9 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Info, TrendingUp, Gem, Diamond, Sparkles } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Info, TrendingUp, Gem, Diamond, Sparkles, Mail, MessageCircle } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -62,7 +70,7 @@ const hostLevels = [
   {
     level: "Rubino",
     invites: "Oltre 20 utenti invitati",
-    benefits: "Stessi vantaggi dell'Advanced"
+    benefits: "Stessi vantaggi dell'Advanced + fino a 500€*"
   },
   {
     level: "Zaffiro",
@@ -77,6 +85,16 @@ const hostLevels = [
 ]
 
 export default function InvestiPage() {
+  const [showContactDialog, setShowContactDialog] = useState(false)
+
+  const handleEmailContact = () => {
+    window.location.href = "mailto:luca@facevoice.ai?subject=Investimento in Nomadiqe"
+  }
+
+  const handleWhatsAppContact = () => {
+    window.open("https://wa.me/393514206353", "_blank")
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-16">
@@ -184,13 +202,53 @@ export default function InvestiPage() {
                 Contattaci per discutere delle opportunità di investimento e partnership con Nomadiqe.
                 Siamo qui per rispondere a tutte le tue domande.
               </p>
-              <Button size="lg" className="w-full sm:w-auto">
+              <Button 
+                size="lg" 
+                className="w-full sm:w-auto"
+                onClick={() => setShowContactDialog(true)}
+              >
                 Contattaci per investire
               </Button>
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Contact Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Come vuoi contattarci?</DialogTitle>
+            <DialogDescription>
+              Scegli il metodo di contatto preferito per discutere delle opportunità di investimento
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleEmailContact}
+            >
+              <Mail className="w-5 h-5 mr-3" />
+              <div className="text-left">
+                <div className="font-semibold">Invia Email</div>
+                <div className="text-sm text-muted-foreground">luca@facevoice.ai</div>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleWhatsAppContact}
+            >
+              <MessageCircle className="w-5 h-5 mr-3" />
+              <div className="text-left">
+                <div className="font-semibold">Messaggio WhatsApp</div>
+                <div className="text-sm text-muted-foreground">Apri WhatsApp</div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
