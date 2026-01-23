@@ -13,7 +13,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nomadiqe - Soggiorni Più Equi, Connessioni Più Profonde",
+  title: "Nomadiqe BETA - Soggiorni Più Equi, Connessioni Più Profonde",
   description: "Piattaforma di viaggio che connette Traveler, Host, Creator e Jolly",
   icons: {
     icon: [

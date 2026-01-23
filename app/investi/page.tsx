@@ -44,7 +44,7 @@ const investmentLevels = [
     min: 10000,
     max: 50000,
     color: "from-cyan-400 to-blue-600",
-    description: "Per investitori seri che credono nel futuro di Nomadiqe"
+    description: "Per investitori seri che credono nel futuro di Nomadiqe BETA"
   },
   {
     id: "vibranium",
@@ -88,7 +88,7 @@ export default function InvestiPage() {
   const [showContactDialog, setShowContactDialog] = useState(false)
 
   const handleEmailContact = () => {
-    window.location.href = "mailto:luca@facevoice.ai?subject=Investimento in Nomadiqe"
+    window.location.href = "mailto:luca@facevoice.ai?subject=Investimento in Nomadiqe BETA"
   }
 
   const handleWhatsAppContact = () => {
@@ -199,7 +199,7 @@ export default function InvestiPage() {
             <CardContent className="p-8">
               <h2 className="text-2xl font-bold mb-4">Interessato a investire?</h2>
               <p className="text-muted-foreground mb-6">
-                Contattaci per discutere delle opportunità di investimento e partnership con Nomadiqe.
+                Contattaci per discutere delle opportunità di investimento e partnership con Nomadiqe BETA.
                 Siamo qui per rispondere a tutte le tue domande.
               </p>
               <Button 

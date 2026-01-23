@@ -198,15 +198,15 @@ function HomePageContent() {
               <div className="max-w-4xl mx-auto">
                 <div className="bg-gray-950/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-800 shadow-lg">
                   <h3 className="text-2xl md:text-3xl font-bold text-center mb-4 text-gray-200">
-                    Cos'è Nomadiqe?
+                    Cos'è Nomadiqe BETA?
                   </h3>
                   <p className="text-base md:text-lg text-gray-300 mb-4 leading-relaxed text-center">
-                    Nomadiqe è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
+                    Nomadiqe BETA BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
                     tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
                     straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
                   </p>
                   <p className="text-base md:text-lg text-gray-300 leading-relaxed text-center">
-                    Nomadiqe è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                    Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
                     o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
                     e connettersi con una community attiva di host e viaggiatori.
                   </p>
@@ -237,7 +237,7 @@ function HomePageContent() {
                         <TrendingUp className="w-12 h-12 mx-auto mb-3" />
                         <h3 className="text-xl font-bold mb-2">Investi e diventa Partner</h3>
                         <p className="text-purple-100 text-sm mb-4">
-                          Investi in Nomadiqe e diventa parte del nostro futuro
+                          Investi in Nomadiqe BETA e diventa parte del nostro futuro
                         </p>
                         <Button variant="secondary" size="sm" className="bg-white text-purple-600 hover:bg-gray-100">
                           Scopri di più
@@ -252,16 +252,16 @@ function HomePageContent() {
             {/* Sezione: Cos'è Nomadiqe - Dettagliata */}
             <section className="max-w-4xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
-                Cos'è Nomadiqe?
+                Cos'è Nomadiqe BETA?
               </h2>
               <div className="bg-gray-950/50 backdrop-blur-sm rounded-2xl p-6 md:p-10 border border-gray-800 shadow-lg">
                 <p className="text-lg md:text-xl text-gray-300 mb-6 leading-relaxed">
-                  Nomadiqe è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
+                  Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
                   tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
                   straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
                 </p>
                 <p className="text-lg md:text-xl text-gray-300 mb-6 leading-relaxed">
-                  Nomadiqe è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                  Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
                   o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
                   e connettersi con una community attiva di host e viaggiatori.
                 </p>
@@ -303,7 +303,7 @@ function HomePageContent() {
             {/* Sezione: Perché Nomadiqe è migliore */}
             <section className="max-w-4xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
-                Perché Nomadiqe è Diversa
+                Perché Nomadiqe BETA è Diversa
               </h2>
               <div className="space-y-6">
                 <Card className="bg-gray-950/50 backdrop-blur-sm border-gray-800">
@@ -313,7 +313,7 @@ function HomePageContent() {
                       <div>
                         <h3 className="font-semibold text-xl mb-2 text-gray-200">Sistema di Livelli per Host</h3>
                         <p className="text-gray-300">
-                          A differenza dei competitor, Nomadiqe premia gli host più attivi con un sistema di livelli esclusivo. 
+                          A differenza dei competitor, Nomadiqe BETA premia gli host più attivi con un sistema di livelli esclusivo. 
                           Invita altri host e guadagna vantaggi crescenti: da sconti sulle commissioni a periodi di zero commissioni, 
                           fino ad accesso anticipato a funzioni premium. Più contribuisci alla crescita della community, più ottieni in cambio.
                         </p>
@@ -482,7 +482,7 @@ function HomePageContent() {
             ) : (
               <div className="max-w-md mx-auto text-center">
                 <p className="text-lg text-gray-300 mb-4">
-                  Registrazione alla Waitlist completata. Attendi una nostra mail che ti comunicherà se e quando sei stato approvato e ti è stato dato accesso all'ecosistema Nomadiqe
+                  Registrazione alla Waitlist completata. Attendi una nostra mail che ti comunicherà se e quando sei stato approvato e ti è stato dato accesso all'ecosistema Nomadiqe BETA
                 </p>
               </div>
             )}
@@ -516,7 +516,7 @@ function HomePageContent() {
         {/* Header */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Nomadiqe
+            Nomadiqe BETA
           </h1>
           <p className="text-xl md:text-2xl text-muted-foreground mb-8">
             Soggiorni Più Equi, Connessioni Più Profonde
@@ -532,16 +532,16 @@ function HomePageContent() {
         <section className="mb-20">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-              Cos'è Nomadiqe?
+              Cos'è Nomadiqe BETA?
             </h2>
             <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-lg">
               <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
-                Nomadiqe è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
+                Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
                 tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
                 straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
               </p>
               <p className="text-lg md:text-xl text-muted-foreground mb-6 leading-relaxed">
-                Nomadiqe è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
+                Nomadiqe BETA BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
                 o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
                 e connettersi con una community attiva di host e viaggiatori.
               </p>
@@ -595,7 +595,7 @@ function HomePageContent() {
                     <div>
                       <h3 className="font-semibold text-xl mb-2">Sistema di Livelli per Host</h3>
                       <p className="text-muted-foreground">
-                        A differenza dei competitor, Nomadiqe premia gli host più attivi con un sistema di livelli esclusivo. 
+                        A differenza dei competitor, Nomadiqe BETA premia gli host più attivi con un sistema di livelli esclusivo. 
                         Invita altri host e guadagna vantaggi crescenti: da sconti sulle commissioni a periodi di zero commissioni, 
                         fino ad accesso anticipato a funzioni premium. Più contribuisci alla crescita della community, più ottieni in cambio.
                       </p>

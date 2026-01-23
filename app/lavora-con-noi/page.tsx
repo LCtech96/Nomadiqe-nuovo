@@ -16,14 +16,14 @@ const positions = [
   {
     id: "sales",
     title: "Sales",
-    description: "Aiuta a far crescere Nomadiqe acquisendo nuovi host, creator e partner strategici",
+    description: "Aiuta a far crescere Nomadiqe BETA acquisendo nuovi host, creator e partner strategici",
     icon: TrendingUp,
     color: "from-green-500 to-emerald-500"
   },
   {
     id: "marketing",
     title: "Marketing",
-    description: "Crea strategie di marketing innovative per far conoscere Nomadiqe al mondo e costruire una community globale",
+    description: "Crea strategie di marketing innovative per far conoscere Nomadiqe BETA al mondo e costruire una community globale",
     icon: BarChart3,
     color: "from-purple-500 to-pink-500"
   },
@@ -52,7 +52,7 @@ export default function LavoraConNoiPage() {
             Lavora con noi
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Unisciti al team di Nomadiqe e aiuta a costruire il futuro dei viaggi.
+            Unisciti al team di Nomadiqe BETA e aiuta a costruire il futuro dei viaggi.
             Siamo alla ricerca di talenti appassionati che condividano la nostra visione.
           </p>
         </div>

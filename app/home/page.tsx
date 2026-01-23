@@ -355,9 +355,9 @@ export default function HomePage() {
         <div className="container mx-auto p-4 max-w-2xl">
           <Card className="mt-8">
             <CardContent className="p-6">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">Benvenuto su Nomadiqe!</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">Benvenuto su Nomadiqe BETA!</h1>
               <p className="text-muted-foreground mb-6">
-                Scegli come vuoi utilizzare Nomadiqe per iniziare
+                Scegli come vuoi utilizzare Nomadiqe BETA per iniziare
               </p>
               
               <div className="grid md:grid-cols-2 gap-4 mb-6">

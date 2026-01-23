@@ -107,48 +107,15 @@ export default function HostDashboard() {
 
     setDeleting(true)
     try {
-      // Elimina prima tutte le dipendenze (bookings, reviews, etc.)
-      // Le foreign keys con ON DELETE CASCADE dovrebbero gestire questo automaticamente,
-      // ma eliminiamo manualmente per sicurezza
+      // Usa l'API route server-side per eliminare la proprietà (bypassa problemi di autenticazione Supabase)
+      const response = await fetch(`/api/properties/delete?id=${propertyToDelete}`, {
+        method: "DELETE",
+      })
 
-      // Elimina bookings
-      await supabase
-        .from("bookings")
-        .delete()
-        .eq("property_id", propertyToDelete)
-
-      // Elimina reviews
-      await supabase
-        .from("reviews")
-        .delete()
-        .eq("property_id", propertyToDelete)
-
-      // Elimina property availability
-      await supabase
-        .from("property_availability")
-        .delete()
-        .eq("property_id", propertyToDelete)
-
-      // Elimina collaborations
-      await supabase
-        .from("collaborations")
-        .delete()
-        .eq("property_id", propertyToDelete)
-
-      // Elimina saved properties
-      await supabase
-        .from("saved_properties")
-        .delete()
-        .eq("property_id", propertyToDelete)
-
-      // Elimina la proprietà
-      const { error } = await supabase
-        .from("properties")
-        .delete()
-        .eq("id", propertyToDelete)
-        .eq("owner_id", session.user.id)
-
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Errore nell'eliminazione della struttura")
+      }
 
       toast({
         title: "Successo",
@@ -157,6 +124,11 @@ export default function HostDashboard() {
 
       setShowDeleteDialog(false)
       setPropertyToDelete(null)
+      
+      // Rimuovi immediatamente la proprietà dalla lista locale per feedback istantaneo
+      setProperties((prev) => prev.filter((p) => p.id !== propertyToDelete))
+      
+      // Ricarica le proprietà dal server per sincronizzazione
       await loadProperties()
     } catch (error: any) {
       console.error("Error deleting property:", error)

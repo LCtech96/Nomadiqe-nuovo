@@ -86,7 +86,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'notifications.enabling': 'Attivazione in corso...',
     
     // Waitlist
-    'waitlist.title': 'Unisciti alla Waitlist Esclusiva Nomadiqe',
+    'waitlist.title': 'Unisciti alla Waitlist Esclusiva Nomadiqe BETA',
     'waitlist.description': 'Fai parte di qualcosa di straordinario. Unisciti a migliaia di persone che stanno già ottenendo l\'accesso anticipato alla nostra piattaforma rivoluzionaria.',
     'waitlist.email': 'Inserisci la tua email',
     'waitlist.phone': 'Numero di cellulare',
@@ -738,7 +738,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'notifications.enabling': 'Включение...',
     
     // Waitlist
-    'waitlist.title': 'Присоединиться к эксклюзивному списку ожидания Nomadiqe',
+    'waitlist.title': 'Присоединиться к эксклюзивному списку ожидания Nomadiqe BETA',
     'waitlist.description': 'Станьте частью чего-то необыкновенного. Присоединяйтесь к тысячам людей, которые уже получают ранний доступ к нашей революционной платформе.',
     'waitlist.email': 'Введите вашу почту',
     'waitlist.phone': 'Номер телефона',
@@ -1390,7 +1390,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     'notifications.enabling': 'Aktivierung...',
     
     // Waitlist
-    'waitlist.title': 'Treten Sie der exklusiven Nomadiqe-Warteliste bei',
+    'waitlist.title': 'Treten Sie der exklusiven Nomadiqe BETA-Warteliste bei',
     'waitlist.description': 'Seien Sie Teil von etwas Außergewöhnlichem. Schließen Sie sich Tausenden von Menschen an, die bereits frühen Zugang zu unserer revolutionären Plattform erhalten.',
     'waitlist.email': 'Geben Sie Ihre E-Mail ein',
     'waitlist.phone': 'Telefonnummer',

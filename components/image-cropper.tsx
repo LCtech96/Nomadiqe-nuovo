@@ -19,7 +19,7 @@ interface ImageCropperProps {
   onOpenChange: (open: boolean) => void
   imageFile: File | null
   onCropComplete: (croppedFile: File) => void
-  aspectRatio?: number
+  aspectRatio?: number | null // null = ritaglio libero
   maxWidth?: number
   maxHeight?: number
   quality?: number
@@ -30,7 +30,7 @@ export default function ImageCropper({
   onOpenChange,
   imageFile,
   onCropComplete,
-  aspectRatio = 1,
+  aspectRatio = null, // null = ritaglio libero (altezza e larghezza)
   maxWidth = 1200,
   maxHeight = 1200,
   quality = 0.8,
@@ -167,7 +167,9 @@ export default function ImageCropper({
         <DialogHeader>
           <DialogTitle>Ritaglia e ottimizza immagine</DialogTitle>
           <DialogDescription>
-            Regola l'immagine trascinando e usando lo zoom, poi clicca su Salva
+            {aspectRatio === null 
+              ? "Trascina l'immagine per posizionarla e regola lo zoom. Puoi ritagliare liberamente in altezza e larghezza."
+              : "Regola l'immagine trascinando e usando lo zoom, poi clicca su Salva"}
           </DialogDescription>
         </DialogHeader>
         
@@ -177,10 +179,11 @@ export default function ImageCropper({
               image={imageSrc}
               crop={crop}
               zoom={zoom}
-              aspect={aspectRatio}
+              aspect={aspectRatio === null ? undefined : aspectRatio}
               onCropChange={onCropChange}
               onZoomChange={onZoomChange}
               onCropComplete={onCropCompleteCallback}
+              cropShape={aspectRatio === null ? "rect" : "rect"}
             />
           )}
         </div>
@@ -197,6 +200,11 @@ export default function ImageCropper({
               className="w-full"
             />
           </div>
+          {aspectRatio === null && (
+            <div className="text-sm text-muted-foreground">
+              💡 Puoi trascinare l'immagine per posizionarla e ritagliare liberamente in qualsiasi dimensione
+            </div>
+          )}
         </div>
 
         <DialogFooter>
