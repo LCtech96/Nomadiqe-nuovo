@@ -81,11 +81,13 @@ export default function HostDashboard() {
         return
       }
 
-      if (status === "loading") {
+      // Se status è "loading", aspetta - il componente mostrerà "Caricamento..."
+      // Non serve fare return qui perché il check all'inizio del componente gestisce già questo caso
+      if (status !== "authenticated") {
         return
       }
 
-      // A questo punto status può essere solo "authenticated"
+      // A questo punto status è "authenticated"
       // Ottieni l'ID utente da Next-Auth o Supabase
       let currentUserId: string | null = null
       
