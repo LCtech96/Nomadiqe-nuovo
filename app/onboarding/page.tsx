@@ -311,7 +311,7 @@ export default function OnboardingPage() {
   // Mostra la selezione del ruolo quando step === "role"
   if (step === "role") {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-2xl">
           <CardHeader>
             <CardTitle>Scegli il tuo ruolo</CardTitle>
@@ -405,7 +405,7 @@ export default function OnboardingPage() {
   // Role-specific onboarding
   if (step === "role-specific" && selectedRole === "host") {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         {profile?.role === "host" && (
           <div className="container mx-auto p-4 max-w-4xl">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -448,7 +448,7 @@ export default function OnboardingPage() {
 
   // Default fallback (should not reach here in normal flow)
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Caricamento...</CardTitle>
