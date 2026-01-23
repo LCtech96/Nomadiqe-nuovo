@@ -16,8 +16,7 @@ SELECT
   wr.id as waitlist_id,
   wr.role as waitlist_role,
   wr.status as waitlist_status,
-  wr.created_at as waitlist_created_at,
-  wr.updated_at as waitlist_updated_at
+  wr.created_at as waitlist_created_at
 FROM public.profiles p
 LEFT JOIN public.waitlist_requests wr ON LOWER(p.email) = LOWER(wr.email)
 WHERE p.role IS NULL
@@ -35,8 +34,7 @@ SELECT
   wr.id as waitlist_id,
   wr.role as waitlist_role,
   wr.status as waitlist_status,
-  wr.created_at as waitlist_created_at,
-  wr.updated_at as waitlist_updated_at
+  wr.created_at as waitlist_created_at
 FROM public.profiles p
 LEFT JOIN public.waitlist_requests wr ON LOWER(p.email) = LOWER(wr.email)
 WHERE p.email = 'mattiaorlando.pa@gmail.com';
