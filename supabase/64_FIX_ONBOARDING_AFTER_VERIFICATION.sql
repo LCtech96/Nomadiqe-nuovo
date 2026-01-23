@@ -126,12 +126,22 @@ ORDER BY ordinal_position;
 UPDATE public.profiles p
 SET 
   role = wr.role,
-  onboarding_completed = FALSE
+  onboarding_completed = FALSE,
+  updated_at = NOW()
 FROM public.waitlist_requests wr
 WHERE LOWER(p.email) = LOWER(wr.email)
   AND wr.status = 'approved'
-  AND p.role IS NULL
+  AND (p.role IS NULL OR p.role != wr.role)
   AND wr.role IS NOT NULL;
+
+-- Mostra quanti profili sono stati aggiornati
+DO $$
+DECLARE
+  updated_count INTEGER;
+BEGIN
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RAISE NOTICE '✅ Aggiornati % profili con ruolo dalla waitlist', updated_count;
+END $$;
 
 -- 9. VERIFICA FINALE
 -- ============================================

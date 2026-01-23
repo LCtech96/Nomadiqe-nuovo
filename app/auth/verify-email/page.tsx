@@ -114,9 +114,22 @@ function VerifyEmailContent() {
         console.log("Updating profile with role from waitlist:", waitlistData.role)
         // Se viene assegnato un ruolo, assicurati che onboarding_completed sia false
         updateData.onboarding_completed = false
+      } else {
+        // Se non c'è ruolo nella waitlist ma il profilo esiste, verifica se ha un ruolo
+        // Se non ha ruolo, potrebbe essere un problema - logga per debug
+        const { data: currentProfile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", userId)
+          .maybeSingle()
+        
+        if (currentProfile && !currentProfile.role) {
+          console.warn("Profile exists but has no role and no waitlist data found")
+        }
       }
 
       if (Object.keys(updateData).length > 0) {
+        console.log("Updating profile with data:", updateData)
         const { error: updateError } = await supabase
           .from("profiles")
           .update(updateData)
