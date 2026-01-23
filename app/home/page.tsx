@@ -40,8 +40,7 @@ export default function HomePage() {
   const [selectedPost, setSelectedPost] = useState<any>(null)
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [postToEdit, setPostToEdit] = useState<any>(null)
-  const [selectedRole, setSelectedRole] = useState<string | null>(null)
-  const [savingRole, setSavingRole] = useState(false)
+  const [filterRole, setFilterRole] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -70,13 +69,12 @@ export default function HomePage() {
 
       if (profileData) {
         setProfile(profileData)
-        // Se l'utente ha un ruolo, carica i post
-        if (profileData.role) {
-          await loadPosts()
-        }
+        // Carica sempre i post, anche se l'utente non ha un ruolo
+        await loadPosts()
+      } else {
+        // Carica i post anche se non c'è un profilo
+        await loadPosts()
       }
-      // Se l'utente non ha ancora un ruolo, mostriamo la selezione dei ruoli
-      // Non reindirizziamo all'onboarding, restiamo sulla home
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -84,75 +82,6 @@ export default function HomePage() {
     }
   }
 
-  const handleRoleSelect = (role: string) => {
-    setSelectedRole(role)
-  }
-
-  const handleRoleSubmit = async () => {
-    if (!session?.user?.id || !selectedRole) return
-
-    setSavingRole(true)
-    try {
-      // Controlla se il profilo esiste
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", session.user.id)
-        .maybeSingle()
-
-      if (!existingProfile) {
-        // Crea nuovo profilo
-        const newProfileData: any = {
-          id: session.user.id,
-          email: session.user.email || "",
-          role: selectedRole,
-          full_name: session.user.name || session.user.email?.split("@")[0] || "",
-          username: session.user.email?.split("@")[0] || "",
-        }
-
-        const { error: insertError } = await supabase
-          .from("profiles")
-          .insert(newProfileData)
-
-        if (insertError) {
-          console.error("Insert error:", insertError)
-          throw insertError
-        }
-      } else {
-        // Aggiorna profilo esistente
-        const updateData: any = {
-          role: selectedRole,
-        }
-
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update(updateData)
-          .eq("id", session.user.id)
-
-        if (updateError) {
-          console.error("Update error:", updateError)
-          throw updateError
-        }
-      }
-
-      toast({
-        title: "Successo",
-        description: `Ruolo ${selectedRole} selezionato!`,
-      })
-
-      // Reindirizza all'onboarding per completare il profilo
-      router.push("/onboarding")
-    } catch (error: any) {
-      console.error("Error saving role:", error)
-      toast({
-        title: "Errore",
-        description: error.message || "Si è verificato un errore durante il salvataggio. Riprova.",
-        variant: "destructive",
-      })
-    } finally {
-      setSavingRole(false)
-    }
-  }
 
   const handleLike = async (postId: string, isLiked: boolean) => {
     if (!session?.user?.id) return
@@ -169,37 +98,62 @@ export default function HomePage() {
         // Update like count
         await supabase.rpc("decrement_post_likes", { post_id: postId })
       } else {
-        // Like
-        await supabase
+        // Verifica se il like esiste già prima di inserirlo
+        const { data: existingLike } = await supabase
           .from("post_likes")
-          .insert({
-            post_id: postId,
-            user_id: session.user.id,
-          })
+          .select("id")
+          .eq("post_id", postId)
+          .eq("user_id", session.user.id)
+          .maybeSingle()
 
-        // Update like count
-        await supabase.rpc("increment_post_likes", { post_id: postId })
-        
-        // Invia messaggio AI per il like (non bloccare se fallisce)
-        try {
-          const { sendLikeMessage } = await import("@/lib/ai-interactions")
-          const result = await sendLikeMessage(session.user.id)
-          if (result.success && result.showDisclaimer) {
-            toast({
-              title: "💬 Controlla i tuoi messaggi",
-              description: "L'assistente AI ti ha inviato un messaggio! Puoi trovarlo nella sezione Messaggi del tuo profilo, accessibile dalla barra di navigazione in alto.",
-              duration: 6000,
+        // Se il like non esiste, inseriscilo
+        if (!existingLike) {
+          const { error: insertError } = await supabase
+            .from("post_likes")
+            .insert({
+              post_id: postId,
+              user_id: session.user.id,
             })
+
+          // Se c'è un errore 409 (duplicato), ignoralo perché significa che il like esiste già
+          if (insertError && insertError.code !== '23505') {
+            throw insertError
           }
-        } catch (aiError) {
-          console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
+
+          // Update like count solo se l'inserimento è andato a buon fine
+          if (!insertError || insertError.code === '23505') {
+            await supabase.rpc("increment_post_likes", { post_id: postId })
+            
+            // Invia messaggio AI per il like (non bloccare se fallisce)
+            try {
+              const { sendLikeMessage } = await import("@/lib/ai-interactions")
+              const result = await sendLikeMessage(session.user.id)
+              if (result.success && result.showDisclaimer) {
+                toast({
+                  title: "💬 Controlla i tuoi messaggi",
+                  description: "L'assistente AI ti ha inviato un messaggio! Puoi trovarlo nella sezione Messaggi del tuo profilo, accessibile dalla barra di navigazione in alto.",
+                  duration: 6000,
+                })
+              }
+            } catch (aiError) {
+              console.warn("Errore nell'invio del messaggio AI per like (non critico):", aiError)
+            }
+          }
         }
       }
 
       // Reload posts
       await loadPosts()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error liking post:", error)
+      // Non mostrare errore se è un 409 (duplicato) - significa che il like esiste già
+      if (error?.code !== '23505' && error?.status !== 409) {
+        toast({
+          title: "Errore",
+          description: "Impossibile mettere like al post",
+          variant: "destructive",
+        })
+      }
     }
   }
 
@@ -283,11 +237,13 @@ export default function HomePage() {
   const loadPosts = async () => {
     try {
       // Load posts first
-      const { data: postsData, error: postsError } = await supabase
+      let query = supabase
         .from("posts")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(50)
+
+      const { data: postsData, error: postsError } = await query
 
       if (postsError) {
         console.error("Error loading posts:", postsError)
@@ -328,11 +284,16 @@ export default function HomePage() {
       }
 
       // Combine posts with author data and like status
-      const mappedPosts = postsData.map((post: any) => ({
+      let mappedPosts = postsData.map((post: any) => ({
         ...post,
         author: profilesMap.get(post.author_id) || null,
         liked: likedPostIds.has(post.id)
       }))
+
+      // Filtra per ruolo se selezionato
+      if (filterRole) {
+        mappedPosts = mappedPosts.filter((post: any) => post.author?.role === filterRole)
+      }
 
       setPosts(mappedPosts)
     } catch (error) {
@@ -340,101 +301,13 @@ export default function HomePage() {
     }
   }
 
-  if (loading || status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center"><div>Caricamento...</div></div>
-  }
-
-  if (!session) {
-    return null
-  }
-
-  // Se l'utente non ha ancora un ruolo, mostra la selezione dei ruoli
-  if (!profile?.role) {
-    return (
-      <div className="min-h-screen bg-background pb-20 md:pb-32">
-        <div className="container mx-auto p-4 max-w-2xl">
-          <Card className="mt-8">
-            <CardContent className="p-6">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">Benvenuto su Nomadiqe BETA!</h1>
-              <p className="text-muted-foreground mb-6">
-                Scegli come vuoi utilizzare Nomadiqe BETA per iniziare
-              </p>
-              
-              <div className="grid md:grid-cols-2 gap-4 mb-6">
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    selectedRole === "traveler" ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => handleRoleSelect("traveler")}
-                >
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-1">Traveler</h3>
-                    <p className="text-sm text-muted-foreground mb-2">Viaggia e scopri</p>
-                    <p className="text-xs text-muted-foreground">
-                      Cerca e prenota alloggi, connettiti con altri viaggiatori
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    selectedRole === "host" ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => handleRoleSelect("host")}
-                >
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-1">Host</h3>
-                    <p className="text-sm text-muted-foreground mb-2">Pubblica la tua struttura</p>
-                    <p className="text-xs text-muted-foreground">
-                      Pubblica proprietà e collabora con creator
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    selectedRole === "creator" ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => handleRoleSelect("creator")}
-                >
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-1">Creator</h3>
-                    <p className="text-sm text-muted-foreground mb-2">Crea e collabora</p>
-                    <p className="text-xs text-muted-foreground">
-                      Collabora con host per creare contenuti
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card
-                  className={`cursor-pointer transition-all ${
-                    selectedRole === "manager" ? "ring-2 ring-primary" : ""
-                  }`}
-                  onClick={() => handleRoleSelect("manager")}
-                >
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold mb-1">Jolly</h3>
-                    <p className="text-sm text-muted-foreground mb-2">Offri servizi</p>
-                    <p className="text-xs text-muted-foreground">
-                      Offri servizi di gestione, pulizie e altro
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <Button
-                onClick={handleRoleSubmit}
-                className="w-full"
-                disabled={!selectedRole || savingRole}
-              >
-                {savingRole ? "Salvataggio..." : "Continua"}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
+  // Ricarica i post quando cambia il filtro ruolo
+  useEffect(() => {
+    if (session?.user?.id) {
+      loadPosts()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterRole])
 
   const handleEditPost = (post: any) => {
     setPostToEdit(post)
@@ -492,6 +365,14 @@ export default function HomePage() {
     }
   }
 
+  if (loading || status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center"><div>Caricamento...</div></div>
+  }
+
+  if (!session) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-32">
       <div className="px-1 md:px-4">
@@ -500,8 +381,67 @@ export default function HomePage() {
           <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Home</h1>
           
           {/* User Search Bar */}
-          <div className="mb-2 md:mb-6">
+          <div className="mb-2 md:mb-4">
             <UserSearch userRole={profile?.role || null} />
+          </div>
+
+          {/* Role Filter Buttons */}
+          <div className="flex gap-2 mb-4 md:mb-6 flex-wrap">
+            <Button
+              variant={filterRole === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFilterRole(null)
+                loadPosts()
+              }}
+              className="text-xs md:text-sm"
+            >
+              Tutti
+            </Button>
+            <Button
+              variant={filterRole === "host" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFilterRole("host")
+                loadPosts()
+              }}
+              className="text-xs md:text-sm"
+            >
+              Host
+            </Button>
+            <Button
+              variant={filterRole === "creator" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFilterRole("creator")
+                loadPosts()
+              }}
+              className="text-xs md:text-sm"
+            >
+              Creator
+            </Button>
+            <Button
+              variant={filterRole === "traveler" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFilterRole("traveler")
+                loadPosts()
+              }}
+              className="text-xs md:text-sm"
+            >
+              Traveler
+            </Button>
+            <Button
+              variant={filterRole === "jolly" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFilterRole("jolly")
+                loadPosts()
+              }}
+              className="text-xs md:text-sm"
+            >
+              Jolly
+            </Button>
           </div>
         </div>
         {posts.length === 0 ? (
