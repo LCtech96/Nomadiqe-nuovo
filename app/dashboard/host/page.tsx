@@ -75,6 +75,7 @@ export default function HostDashboard() {
   // Check onboarding status on mount
   useEffect(() => {
     const checkOnboarding = async () => {
+      // Gestisci i diversi stati di autenticazione
       if (status === "unauthenticated") {
         router.push("/auth/signin")
         return
@@ -84,10 +85,11 @@ export default function HostDashboard() {
         return
       }
 
+      // A questo punto status può essere solo "authenticated"
       // Ottieni l'ID utente da Next-Auth o Supabase
       let currentUserId: string | null = null
       
-      if (status === "authenticated" && session?.user?.id) {
+      if (session?.user?.id) {
         currentUserId = session.user.id
       } else {
         // Prova a ottenere l'ID da Supabase se Next-Auth non è disponibile
