@@ -11,7 +11,15 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle } from "lucide-react"
+import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface Property {
   id: string
@@ -48,6 +56,9 @@ export default function HostDashboard() {
   const [referrals, setReferrals] = useState<any[]>([])
   const [loadingReferrals, setLoadingReferrals] = useState(false)
   const [activeReferralsCount, setActiveReferralsCount] = useState(0)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -89,6 +100,79 @@ export default function HostDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDeleteProperty = async () => {
+    if (!propertyToDelete || !session?.user?.id) return
+
+    setDeleting(true)
+    try {
+      // Elimina prima tutte le dipendenze (bookings, reviews, etc.)
+      // Le foreign keys con ON DELETE CASCADE dovrebbero gestire questo automaticamente,
+      // ma eliminiamo manualmente per sicurezza
+
+      // Elimina bookings
+      await supabase
+        .from("bookings")
+        .delete()
+        .eq("property_id", propertyToDelete)
+
+      // Elimina reviews
+      await supabase
+        .from("reviews")
+        .delete()
+        .eq("property_id", propertyToDelete)
+
+      // Elimina property availability
+      await supabase
+        .from("property_availability")
+        .delete()
+        .eq("property_id", propertyToDelete)
+
+      // Elimina collaborations
+      await supabase
+        .from("collaborations")
+        .delete()
+        .eq("property_id", propertyToDelete)
+
+      // Elimina saved properties
+      await supabase
+        .from("saved_properties")
+        .delete()
+        .eq("property_id", propertyToDelete)
+
+      // Elimina la proprietà
+      const { error } = await supabase
+        .from("properties")
+        .delete()
+        .eq("id", propertyToDelete)
+        .eq("owner_id", session.user.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Successo",
+        description: "Struttura eliminata definitivamente",
+      })
+
+      setShowDeleteDialog(false)
+      setPropertyToDelete(null)
+      await loadProperties()
+    } catch (error: any) {
+      console.error("Error deleting property:", error)
+      toast({
+        title: "Errore",
+        description: error?.message || "Impossibile eliminare la struttura",
+        variant: "destructive",
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openDeleteDialog = (propertyId: string) => {
+    setPropertyToDelete(propertyId)
+    setShowDeleteDialog(true)
   }
 
   const loadPreferences = async () => {
@@ -633,6 +717,14 @@ export default function HostDashboard() {
                         <Button asChild variant="outline" className="flex-1">
                           <Link href={`/properties/${property.id}`}>Vedi</Link>
                         </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="icon"
+                          onClick={() => openDeleteDialog(property.id)}
+                          className="flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -642,6 +734,39 @@ export default function HostDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Property Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina Struttura</DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare definitivamente questa struttura? 
+              Questa azione non può essere annullata e eliminerà anche tutte le prenotazioni, 
+              recensioni e dati associati.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false)
+                setPropertyToDelete(null)
+              }}
+              disabled={deleting}
+            >
+              Annulla
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProperty}
+              disabled={deleting}
+            >
+              {deleting ? "Eliminazione..." : "Elimina Definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
