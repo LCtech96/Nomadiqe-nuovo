@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -11,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Info, TrendingUp, Gem, Diamond, Sparkles, Mail, MessageCircle } from "lucide-react"
+import { Info, TrendingUp, Gem, Diamond, Sparkles, Mail, MessageCircle, ArrowLeft } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -85,6 +86,7 @@ const hostLevels = [
 ]
 
 export default function InvestiPage() {
+  const router = useRouter()
   const [showContactDialog, setShowContactDialog] = useState(false)
 
   const handleEmailContact = () => {
@@ -98,6 +100,18 @@ export default function InvestiPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-16">
+        {/* Bottone per tornare indietro */}
+        <div className="mb-6">
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Torna indietro
+          </Button>
+        </div>
+        
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Investi e diventa Partner

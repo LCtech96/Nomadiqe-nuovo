@@ -1096,12 +1096,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-6 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Come funziona KOL&BED</h3>
+              <h3 className="font-semibold text-blue-900 dark:text-blue-100">Programma KOL&BED</h3>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                Per guadagnare il 100% dalle tue prenotazioni e arrivare a non pagare neppure l'1% di commissione, 
-                puoi aderire al programma KOL&BED. Metti a disposizione la tua struttura ricettiva per un certo numero 
-                di giorni, nei periodi scelti da te, in cambio di visibilità, pubblicità, video e book fotografico da 
-                influencer con già una certa popolarità sui social come Instagram, Facebook, TikTok o altre piattaforme.
+                Per guadagnare il 100% dalle tue prenotazioni e arrivare a non pagare neppure l'1% di commissione sulle prenotazioni, 
+                devi aderire al programma KOL&BED. Avrai la possibilità di mettere a disposizione per un certo numero 
+                di giorni, nei periodi scelti da te stesso, la tua struttura ricettiva in cambio di visibilità, pubblicità, 
+                video e book fotografico da influencer con già una certa popolarità sui social come Instagram, Facebook, 
+                TikTok o altre piattaforme a scelta.
               </p>
             </div>
             <form onSubmit={handleKolBedProgramSubmit} className="space-y-6">

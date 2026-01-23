@@ -69,27 +69,32 @@ export default function OnboardingPage() {
         if (data) {
           setProfile(data)
           
-          // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
-          if (!data.role) {
-            router.push("/home")
-            return
-          }
-
-          // Se l'utente ha già completato l'onboarding, reindirizza alla home
+          // Se l'utente ha già completato l'onboarding, reindirizza alla dashboard
           if (data.onboarding_completed) {
-            router.push("/home")
+            if (data.role === "host") {
+              router.push("/dashboard/host")
+            } else if (data.role === "jolly") {
+              router.push("/dashboard/jolly")
+            } else {
+              router.push("/home")
+            }
             return
           }
 
           // Se l'utente ha un ruolo ma non ha completato l'onboarding, procedi con l'onboarding specifico
-          setSelectedRole(data.role)
-          if (data.role === "host") {
-            setStep("role-specific")
-          } else if (data.role === "jolly") {
-            setStep("role-specific")
+          if (data.role) {
+            setSelectedRole(data.role)
+            if (data.role === "host") {
+              setStep("role-specific")
+            } else if (data.role === "jolly") {
+              setStep("role-specific")
+            } else {
+              // Per altri ruoli, per ora reindirizza alla home
+              // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
+              router.push("/home")
+            }
           } else {
-            // Per altri ruoli, per ora reindirizza alla home
-            // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
+            // Se l'utente non ha un ruolo, reindirizza alla home per la selezione
             router.push("/home")
           }
         } else {
@@ -346,7 +351,7 @@ export default function OnboardingPage() {
         )}
         <HostOnboarding
           onComplete={() => {
-            router.push("/home")
+            router.push("/dashboard/host")
           }}
         />
       </div>

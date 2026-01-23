@@ -167,9 +167,9 @@ function VerifyEmailContent() {
       description: "Email verificata con successo!",
     })
 
-    // Sempre reindirizza alla home dopo la registrazione
-    // L'utente vedrà la selezione dei ruoli sulla home se non ne ha ancora uno
-    router.push("/home")
+    // Reindirizza all'onboarding per completare il profilo
+    // Se l'utente ha già un ruolo dalla waitlist, andrà direttamente all'onboarding specifico
+    router.push("/onboarding")
   }
 
   const handleVerifyToken = async (token: string) => {
