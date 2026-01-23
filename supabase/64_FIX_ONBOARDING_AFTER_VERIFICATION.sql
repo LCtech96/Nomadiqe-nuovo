@@ -80,6 +80,25 @@ WHERE role = 'host'
 ORDER BY created_at DESC
 LIMIT 10;
 
+-- 5.1 VERIFICA PROFILI SENZA RUOLO MA CON EMAIL NELLA WAITLIST APPROVATA
+-- ============================================
+-- Questo aiuta a identificare profili che dovrebbero avere un ruolo dalla waitlist
+SELECT 
+  p.id,
+  p.email,
+  p.full_name,
+  p.role,
+  p.onboarding_completed,
+  wr.role as waitlist_role,
+  wr.status as waitlist_status,
+  p.created_at
+FROM public.profiles p
+LEFT JOIN public.waitlist_requests wr ON LOWER(p.email) = LOWER(wr.email)
+WHERE p.role IS NULL
+  AND wr.status = 'approved'
+ORDER BY p.created_at DESC
+LIMIT 10;
+
 -- 6. AGGIORNA I PROFILI HOST ESISTENTI (solo se vuoi forzare il re-onboarding)
 -- ============================================
 -- ATTENZIONE: Questo imposterà onboarding_completed = FALSE per TUTTI gli host
@@ -101,16 +120,32 @@ WHERE table_schema = 'public'
   AND column_name IN ('onboarding_completed', 'role', 'email')
 ORDER BY ordinal_position;
 
+-- 8. AGGIORNA PROFILI SENZA RUOLO MA CON WAITLIST APPROVATA
 -- ============================================
--- VERIFICA FINALE
+-- Questo aggiorna i profili che hanno una waitlist approvata ma non hanno ancora il ruolo assegnato
+UPDATE public.profiles p
+SET 
+  role = wr.role,
+  onboarding_completed = FALSE
+FROM public.waitlist_requests wr
+WHERE LOWER(p.email) = LOWER(wr.email)
+  AND wr.status = 'approved'
+  AND p.role IS NULL
+  AND wr.role IS NOT NULL;
+
+-- 9. VERIFICA FINALE
 -- ============================================
 -- Esegui questa query per verificare che tutto sia corretto:
--- SELECT 
---   COUNT(*) as total_profiles,
---   COUNT(CASE WHEN role = 'host' THEN 1 END) as host_count,
---   COUNT(CASE WHEN role = 'host' AND onboarding_completed = FALSE THEN 1 END) as host_not_completed,
---   COUNT(CASE WHEN role = 'host' AND onboarding_completed = TRUE THEN 1 END) as host_completed
--- FROM public.profiles;
+SELECT 
+  COUNT(*) as total_profiles,
+  COUNT(CASE WHEN role = 'host' THEN 1 END) as host_count,
+  COUNT(CASE WHEN role = 'host' AND onboarding_completed = FALSE THEN 1 END) as host_not_completed,
+  COUNT(CASE WHEN role = 'host' AND onboarding_completed = TRUE THEN 1 END) as host_completed,
+  COUNT(CASE WHEN role IS NULL THEN 1 END) as profiles_without_role,
+  COUNT(CASE WHEN role IS NULL AND email IN (
+    SELECT email FROM public.waitlist_requests WHERE status = 'approved'
+  ) THEN 1 END) as profiles_without_role_but_approved_waitlist
+FROM public.profiles;
 
 -- ============================================
 -- FINE
