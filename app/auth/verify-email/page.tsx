@@ -92,14 +92,39 @@ function VerifyEmailContent() {
         console.log("Role from waitlist:", waitlistData.role)
       }
 
-      const { error: profileError } = await supabase
+      const { error: profileError, data: insertedProfile } = await supabase
         .from("profiles")
         .insert(profileData)
+        .select()
+        .single()
 
       if (profileError) {
         console.error("Error creating profile:", profileError)
+        // Se c'è un errore ma il profilo potrebbe essere stato creato, prova a recuperarlo
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("id, role, onboarding_completed")
+          .eq("id", userId)
+          .maybeSingle()
+        
+        if (existingProfile && !existingProfile.role && waitlistData?.role) {
+          // Prova ad aggiornare il ruolo se non è stato assegnato
+          console.log("Attempting to update role after profile creation error")
+          await supabase
+            .from("profiles")
+            .update({ role: waitlistData.role, onboarding_completed: false })
+            .eq("id", userId)
+        }
       } else {
-        console.log("Profile created with role:", profileData.role)
+        console.log("Profile created with role:", profileData.role || "none")
+        // Verifica che il ruolo sia stato salvato correttamente
+        if (insertedProfile && !insertedProfile.role && waitlistData?.role) {
+          console.log("Role not saved, attempting to update...")
+          await supabase
+            .from("profiles")
+            .update({ role: waitlistData.role, onboarding_completed: false })
+            .eq("id", userId)
+        }
       }
     } else if (waitlistData) {
       // Se il profilo esiste già ma abbiamo dati dalla waitlist, aggiorniamolo
