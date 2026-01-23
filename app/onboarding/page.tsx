@@ -38,9 +38,21 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
+  const [hasSession, setHasSession] = useState(false)
   
   // Role selection
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
+  
+  // Verifica sessione all'avvio
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+      if (session?.user?.id || supabaseUser?.id) {
+        setHasSession(true)
+      }
+    }
+    checkSession()
+  }, [session, supabase])
 
   // Check if user has already completed onboarding
   useEffect(() => {
@@ -274,17 +286,16 @@ export default function OnboardingPage() {
     }
   }
 
-  if (!session) {
+  if (checkingOnboarding) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
-  // Non mostriamo più la selezione dei ruoli qui - quella è sulla home
-  // Se l'utente arriva qui senza un ruolo, viene reindirizzato alla home
-  if (!selectedRole) {
+  // Se non c'è sessione, mostra caricamento o reindirizza
+  if (!hasSession && status === "unauthenticated") {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
-  // Questa parte non dovrebbe più essere raggiunta, ma la lasciamo per sicurezza
+  // Mostra la selezione del ruolo quando step === "role"
   if (step === "role") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -376,9 +387,7 @@ export default function OnboardingPage() {
     )
   }
 
-  if (checkingOnboarding || !session) {
-    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
-  }
+  // Non mostrare più questo controllo qui - è già gestito sopra
 
   // Role-specific onboarding
   if (step === "role-specific" && selectedRole === "host") {
