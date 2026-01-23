@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useI18n } from "@/lib/i18n/context"
 
 interface TranslationCache {
@@ -9,6 +9,7 @@ interface TranslationCache {
 
 // Cache locale per le traduzioni (per evitare chiamate API duplicate)
 const translationCache: TranslationCache = {}
+const translatingRef: { [key: string]: boolean } = {}
 
 export function useTranslation() {
   const { locale } = useI18n()
@@ -34,7 +35,7 @@ export function useTranslation() {
       }
 
       // Se è già in traduzione, aspetta
-      if (translating === cacheKey) {
+      if (translatingRef[cacheKey]) {
         // Attendi che la traduzione finisca
         return new Promise((resolve) => {
           const checkCache = setInterval(() => {
@@ -53,6 +54,7 @@ export function useTranslation() {
       }
 
       try {
+        translatingRef[cacheKey] = true
         setTranslating(cacheKey)
         
         const response = await fetch("/api/translate", {
@@ -82,10 +84,11 @@ export function useTranslation() {
         // In caso di errore, ritorna il testo originale
         return text
       } finally {
+        delete translatingRef[cacheKey]
         setTranslating(null)
       }
     },
-    [locale, translating]
+    [locale]
   )
 
   // Funzione per tradurre array di testi (utile per commenti)

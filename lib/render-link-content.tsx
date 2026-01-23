@@ -4,12 +4,17 @@ import React, { useEffect, useState } from "react"
 import { useTranslation } from "@/hooks/use-translation"
 import { useI18n } from "@/lib/i18n/context"
 
+interface RenderLinkContentProps {
+  content: string
+  isHostPrime?: boolean
+}
+
 /**
- * Rende il contenuto del post con link cliccabili e traduzione automatica
+ * Componente React che rende il contenuto del post con link cliccabili e traduzione automatica
  * @param content - Il contenuto del post
  * @param isHostPrime - Parametro legacy mantenuto per compatibilità (non più utilizzato)
  */
-export function renderLinkContent(content: string, isHostPrime?: boolean) {
+export function RenderLinkContent({ content, isHostPrime }: RenderLinkContentProps) {
   const { translate } = useTranslation()
   const { t } = useI18n()
   const [translatedContent, setTranslatedContent] = useState<string>(content)
@@ -19,7 +24,17 @@ export function renderLinkContent(content: string, isHostPrime?: boolean) {
     let isMounted = true
     
     const loadTranslation = async () => {
-      if (!content || !content.trim()) return
+      if (!content || !content.trim()) {
+        if (isMounted) {
+          setTranslatedContent(content)
+        }
+        return
+      }
+      
+      // Se il contenuto è già quello tradotto, non fare nulla
+      if (translatedContent === content && !isTranslating) {
+        return
+      }
       
       setIsTranslating(true)
       try {
@@ -44,7 +59,8 @@ export function renderLinkContent(content: string, isHostPrime?: boolean) {
     return () => {
       isMounted = false
     }
-  }, [content, translate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content])
 
   // Regex per trovare URL (http/https)
   const urlRegex = /(https?:\/\/[^\s]+)/g
@@ -78,5 +94,10 @@ export function renderLinkContent(content: string, isHostPrime?: boolean) {
       })}
     </p>
   )
+}
+
+// Funzione di compatibilità per mantenere l'API esistente
+export function renderLinkContent(content: string, isHostPrime?: boolean) {
+  return <RenderLinkContent content={content} isHostPrime={isHostPrime} />
 }
 
