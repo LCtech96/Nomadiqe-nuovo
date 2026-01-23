@@ -249,41 +249,6 @@ function HomePageContent() {
               </div>
             </div>
 
-                
-                <div className="grid md:grid-cols-3 gap-6 mt-10">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-900/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-700">
-                      <Zap className="w-8 h-8 text-blue-400" />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2 text-gray-200">Innovazione Tecnologica</h3>
-                    <p className="text-sm text-gray-400">
-                      Piattaforma all'avanguardia con AI integrata per personalizzare ogni esperienza
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-indigo-900/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-indigo-700">
-                      <Users className="w-8 h-8 text-indigo-400" />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2 text-gray-200">Community First</h3>
-                    <p className="text-sm text-gray-400">
-                      Costruiamo relazioni reali, non solo transazioni. Ogni membro della community ha valore
-                    </p>
-                  </div>
-                  
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-purple-900/50 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-700">
-                      <Shield className="w-8 h-8 text-purple-400" />
-                    </div>
-                    <h3 className="font-semibold text-lg mb-2 text-gray-200">Trasparenza e Sicurezza</h3>
-                    <p className="text-sm text-gray-400">
-                      Commissioni chiare, pagamenti sicuri e sistema di recensioni verificato
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             {/* Sezione: Perché Nomadiqe è migliore */}
             <section className="max-w-4xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
