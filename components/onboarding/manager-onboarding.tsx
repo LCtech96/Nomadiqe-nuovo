@@ -97,12 +97,13 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
     const checkUsername = async () => {
       setCheckingUsername(true)
       try {
-        const { data, error } = await supabase
+        const uid = session?.user?.id
+        let query = supabase
           .from("profiles")
           .select("username")
           .eq("username", profileData.username.toLowerCase().trim())
-          .neq("id", session?.user?.id || "")
-          .maybeSingle()
+        if (uid) query = query.neq("id", uid)
+        const { data, error } = await query.maybeSingle()
 
         if (error && error.code !== "PGRST116") throw error
 

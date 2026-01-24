@@ -4,7 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { hostId, hostEmail, hostName, offerPrice, isFirst100 } = body
+    const { hostId, hostEmail, hostName, offerPrice, isFirst100, role } = body
+    const roleLabel = role === "jolly" ? "Jolly" : "Host"
 
     if (!hostId || !hostEmail) {
       return NextResponse.json(
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Ottieni i dettagli del profilo host
+    // Ottieni i dettagli del profilo
     const supabase = createSupabaseServerClient()
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -33,11 +34,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepara il contenuto dell'email
-    const emailSubject = `Nuova Richiesta Offerta Sito Web - Host #${hostProfile.id.substring(0, 8)}`
+    const emailSubject = `Nuova Richiesta Offerta Sito Web - ${roleLabel} #${hostProfile.id.substring(0, 8)}`
     const emailBody = `
 Nuova richiesta per l'offerta sito web Facevoice.ai
 
-Dettagli Host:
+Dettagli ${roleLabel}:
 - ID Utente: ${hostProfile.id}
 - Email: ${hostProfile.email}
 - Nome: ${hostProfile.full_name || "N/A"}
@@ -48,8 +49,8 @@ Dettagli Offerta:
 - Primi 100: ${isFirst100 ? "Sì" : "No"}
 - Data richiesta: ${new Date().toLocaleString("it-IT")}
 
-L'host ha completato l'onboarding e ha richiesto l'offerta per il sito web personalizzato.
-Contatta l'host all'indirizzo: ${hostProfile.email}
+Il ${roleLabel.toLowerCase()} ha completato l'onboarding e ha richiesto l'offerta per il sito web personalizzato.
+Contatta all'indirizzo: ${hostProfile.email}
     `.trim()
 
     // Invia email usando Resend (se configurato) o Supabase
@@ -72,8 +73,8 @@ Contatta l'host all'indirizzo: ${hostProfile.email}
             subject: emailSubject,
             html: `
               <h2>Nuova Richiesta Offerta Sito Web</h2>
-              <p>Un nuovo host ha richiesto l'offerta per il sito web personalizzato.</p>
-              <h3>Dettagli Host:</h3>
+              <p>Un nuovo ${roleLabel.toLowerCase()} ha richiesto l'offerta per il sito web personalizzato.</p>
+              <h3>Dettagli ${roleLabel}:</h3>
               <ul>
                 <li><strong>ID Utente:</strong> ${hostProfile.id}</li>
                 <li><strong>Email:</strong> ${hostProfile.email}</li>
@@ -86,7 +87,7 @@ Contatta l'host all'indirizzo: ${hostProfile.email}
                 <li><strong>Primi 100:</strong> ${isFirst100 ? "Sì" : "No"}</li>
                 <li><strong>Data richiesta:</strong> ${new Date().toLocaleString("it-IT")}</li>
               </ul>
-              <p>Contatta l'host all'indirizzo: <a href="mailto:${hostProfile.email}">${hostProfile.email}</a></p>
+              <p>Contatta all'indirizzo: <a href="mailto:${hostProfile.email}">${hostProfile.email}</a></p>
             `,
           }),
         })
