@@ -59,6 +59,8 @@ export default function HostDashboard() {
   const [referrals, setReferrals] = useState<any[]>([])
   const [loadingReferrals, setLoadingReferrals] = useState(false)
   const [activeReferralsCount, setActiveReferralsCount] = useState(0)
+  const [collaborations, setCollaborations] = useState<any[]>([])
+  const [loadingCollaborations, setLoadingCollaborations] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -143,6 +145,7 @@ export default function HostDashboard() {
           loadPropertiesWithUserId(currentUserId)
           loadPreferencesWithUserId(currentUserId)
           loadReferralsWithUserId(currentUserId)
+          loadCollaborationsWithUserId(currentUserId)
         }
         // Imposta checkingOnboarding a false DOPO aver avviato il caricamento
         setCheckingOnboarding(false)
@@ -355,6 +358,62 @@ export default function HostDashboard() {
     }
   }
 
+  const loadCollaborations = async () => {
+    if (!userId) return
+    return loadCollaborationsWithUserId(userId)
+  }
+
+  const loadCollaborationsWithUserId = async (id: string) => {
+    setLoadingCollaborations(true)
+    try {
+      const { data, error } = await supabase
+        .from("collaborations")
+        .select(`
+          id,
+          creator_id,
+          property_id,
+          status,
+          collaboration_type,
+          start_date,
+          end_date,
+          created_at,
+          creator:profiles!collaborations_creator_id_fkey(id, username, full_name, avatar_url),
+          property:properties(id, name, title, images, city, country)
+        `)
+        .eq("host_id", id)
+        .in("status", ["accepted", "completed"])
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      // Mappa le collaborazioni al formato corretto
+      const mappedCollaborations = (data || [])
+        .filter((c: any) => c.property)
+        .map((c: any) => {
+          const property = Array.isArray(c.property) ? c.property[0] : c.property
+          const creator = Array.isArray(c.creator) ? c.creator[0] : c.creator
+          return {
+            id: c.id,
+            creator_id: c.creator_id,
+            property_id: c.property_id,
+            status: c.status,
+            collaboration_type: c.collaboration_type,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            created_at: c.created_at,
+            creator: creator,
+            property: property,
+          }
+        })
+
+      setCollaborations(mappedCollaborations)
+    } catch (error) {
+      console.error("Error loading collaborations:", error)
+    } finally {
+      setLoadingCollaborations(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
@@ -517,6 +576,87 @@ export default function HostDashboard() {
                 Vai alle Community
               </Link>
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Collaborazioni Attive Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Collaborazioni Attive</CardTitle>
+            <CardDescription>
+              Visualizza le collaborazioni KOL&BED attive con i creator
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingCollaborations ? (
+              <div className="text-center py-4">Caricamento...</div>
+            ) : collaborations.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-4">
+                  Nessuna collaborazione attiva al momento
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Le collaborazioni accettate o completate appariranno qui
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {collaborations.map((collab) => (
+                  <div
+                    key={collab.id}
+                    className="p-4 border rounded-lg space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {collab.property?.name || collab.property?.title || "Struttura"}
+                        </p>
+                        {collab.property?.city && collab.property?.country && (
+                          <p className="text-sm text-muted-foreground">
+                            {collab.property.city}, {collab.property.country}
+                          </p>
+                        )}
+                        {collab.creator && (
+                          <p className="text-sm text-muted-foreground">
+                            Creator: {collab.creator.full_name || collab.creator.username || "N/A"}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Tipo: {collab.collaboration_type?.replace("_", " ") || "N/A"}
+                        </p>
+                        {collab.start_date && collab.end_date && (
+                          <p className="text-xs text-muted-foreground">
+                            Periodo: {new Date(collab.start_date).toLocaleDateString("it-IT")} - {new Date(collab.end_date).toLocaleDateString("it-IT")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {collab.status === "accepted" && (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        )}
+                        {collab.status === "completed" && (
+                          <CheckCircle className="w-5 h-5 text-purple-600" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {collab.status === "accepted" && "Accettata"}
+                          {collab.status === "completed" && "Completata"}
+                        </span>
+                      </div>
+                    </div>
+                    {collab.property?.images && collab.property.images.length > 0 && (
+                      <div className="mt-2">
+                        <img
+                          src={collab.property.images[0]}
+                          alt={collab.property.name || collab.property.title}
+                          className="w-full h-32 object-cover rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
