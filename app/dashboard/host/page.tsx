@@ -66,15 +66,6 @@ export default function HostDashboard() {
   const [deleting, setDeleting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
-  // Show loading while checking onboarding
-  if (checkingOnboarding || status === "loading" || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
-        <div>Caricamento...</div>
-      </div>
-    )
-  }
-
   // Check onboarding status on mount
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -161,6 +152,15 @@ export default function HostDashboard() {
 
     checkOnboarding()
   }, [session, status, router, supabase])
+
+  // Show loading while checking onboarding
+  if (checkingOnboarding || status === "loading" || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827]">
+        <div>Caricamento...</div>
+      </div>
+    )
+  }
 
   const loadProperties = async () => {
     if (!userId) return
@@ -426,7 +426,7 @@ export default function HostDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark:bg-gray-900 p-8">
+    <div className="min-h-screen bg-background dark:bg-[#111827] p-8">
       <div className="container mx-auto">
         <div className="mb-8 flex justify-between items-center">
           <div>
