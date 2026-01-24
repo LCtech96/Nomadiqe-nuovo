@@ -83,7 +83,7 @@ export default function UserSearch({ userRole }: UserSearchProps) {
       if (error) throw error
 
       // Ordina i risultati: prima quelli che iniziano con la query, poi quelli che la contengono
-      const sortedResults = (data || []).sort((a, b) => {
+      const sortedResults = uniqueResults.sort((a, b) => {
         const aUsername = (a.username || "").toLowerCase()
         const aFullName = (a.full_name || "").toLowerCase()
         const bUsername = (b.username || "").toLowerCase()
