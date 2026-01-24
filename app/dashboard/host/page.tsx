@@ -67,9 +67,9 @@ export default function HostDashboard() {
   const [userId, setUserId] = useState<string | null>(null)
 
   // Show loading while checking onboarding
-  if (checkingOnboarding || status === "loading") {
+  if (checkingOnboarding || status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <div>Caricamento...</div>
       </div>
     )
@@ -118,6 +118,7 @@ export default function HostDashboard() {
         if (error) {
           console.error("Error checking profile:", error)
           setCheckingOnboarding(false)
+          setLoading(false)
           return
         }
 
@@ -142,13 +143,16 @@ export default function HostDashboard() {
           setUserId(currentUserId)
           // Chiama le funzioni di caricamento passando currentUserId direttamente
           // per evitare problemi di timing con lo state update
-          loadPropertiesWithUserId(currentUserId)
-          loadPreferencesWithUserId(currentUserId)
-          loadReferralsWithUserId(currentUserId)
-          loadCollaborationsWithUserId(currentUserId)
+          await Promise.all([
+            loadPropertiesWithUserId(currentUserId),
+            loadPreferencesWithUserId(currentUserId),
+            loadReferralsWithUserId(currentUserId),
+            loadCollaborationsWithUserId(currentUserId)
+          ])
         }
-        // Imposta checkingOnboarding a false DOPO aver avviato il caricamento
+        // Imposta checkingOnboarding e loading a false DOPO aver completato il caricamento
         setCheckingOnboarding(false)
+        setLoading(false)
       } catch (error) {
         console.error("Error in checkOnboarding:", error)
         setCheckingOnboarding(false)
