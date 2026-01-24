@@ -31,7 +31,7 @@ interface HostOnboardingProps {
 }
 
 export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
@@ -116,11 +116,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     if (!showOfferDisclaimer) return
     const timeout = setTimeout(() => {
       setShowOfferDisclaimer(false)
-      router.push("/home")
+      updateSession?.()
+        .then(() => router.push("/home"))
+        .catch(() => router.push("/home"))
     }, 2000)
 
     return () => clearTimeout(timeout)
-  }, [showOfferDisclaimer, router])
+  }, [showOfferDisclaimer, router, updateSession])
 
   // Load saved profile data on mount (without onboarding_status for now due to PostgREST cache issue)
   useEffect(() => {
@@ -1636,8 +1638,9 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 setShowOfferDisclaimer(false)
+                await updateSession?.()
                 router.push("/home")
               }}>
                 Vai alla Home

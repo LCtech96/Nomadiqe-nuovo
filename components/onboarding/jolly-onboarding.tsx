@@ -50,7 +50,7 @@ interface JollyOnboardingProps {
 }
 
 export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createSupabaseClient()
@@ -93,9 +93,18 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
     translation: "Traduzione",
   }
 
+  const CURRENCIES = [
+    { code: "EUR", symbol: "€", label: "Euro" },
+    { code: "USD", symbol: "$", label: "Dollaro USA" },
+    { code: "GBP", symbol: "£", label: "Sterlina" },
+    { code: "CHF", symbol: "CHF", label: "Franco svizzero" },
+  ] as const
+  const currencyMap = Object.fromEntries(CURRENCIES.map((c) => [c.code, c])) as Record<string, { code: string; symbol: string; label: string }>
+
   // Services step data
   const [servicesData, setServicesData] = useState({
     service_type: "cleaning" as typeof SERVICE_TYPES[number],
+    currency: "EUR" as string,
     price_per_hour: "",
     price_per_service: "",
     location_country: "",
@@ -364,6 +373,7 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
         location_city: servicesData.location_city.trim(),
         skills: [],
         portfolio_images: [],
+        service_metadata: { currency: servicesData.currency },
       })
 
       if (error) throw error
@@ -383,7 +393,15 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
 
   const handleJollyWebsiteOfferRequest = async () => {
     const uid = session?.user?.id ?? userId
-    if (!uid) return
+    if (!uid) {
+      toast({
+        title: "Sessione non valida",
+        description: "Effettua il login e riprova.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     setLoading(true)
     try {
@@ -435,7 +453,15 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
 
   const handleJollyWebsiteOfferSkip = async () => {
     const uid = session?.user?.id ?? userId
-    if (!uid) return
+    if (!uid) {
+      toast({
+        title: "Sessione non valida",
+        description: "Effettua il login e riprova.",
+        variant: "destructive",
+      })
+      router.push("/auth/signin")
+      return
+    }
 
     setLoading(true)
     try {
@@ -445,6 +471,7 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
         .eq("id", uid)
       if (error) console.warn("onboarding_completed update:", error)
 
+      await updateSession?.()
       toast({ title: "Onboarding completato", description: "Redirect alla Home." })
       router.push("/home")
     } catch (err: any) {
@@ -462,10 +489,12 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
     if (!showOfferDisclaimer) return
     const t = setTimeout(() => {
       setShowOfferDisclaimer(false)
-      router.push("/home")
+      updateSession?.()
+        .then(() => router.push("/home"))
+        .catch(() => router.push("/home"))
     }, 2000)
     return () => clearTimeout(t)
-  }, [showOfferDisclaimer, router])
+  }, [showOfferDisclaimer, router, updateSession])
 
   useEffect(() => {
     if (step !== "website-offer") return
@@ -738,9 +767,31 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Valuta</Label>
+                  <Select
+                    value={servicesData.currency}
+                    onValueChange={(v) =>
+                      setServicesData({ ...servicesData, currency: v })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Scegli valuta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.symbol} {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price_h">Prezzo (€/ora)</Label>
+                    <Label htmlFor="price_h">
+                      Prezzo ({currencyMap[servicesData.currency]?.symbol ?? "€"}/ora)
+                    </Label>
                     <Input
                       id="price_h"
                       type="number"
@@ -754,7 +805,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price_s">Prezzo (€/servizio)</Label>
+                    <Label htmlFor="price_s">
+                      Prezzo ({currencyMap[servicesData.currency]?.symbol ?? "€"}/servizio)
+                    </Label>
                     <Input
                       id="price_s"
                       type="number"
@@ -881,8 +934,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
             </DialogHeader>
             <div className="flex justify-end">
               <Button
-                onClick={() => {
+                onClick={async () => {
                   setShowOfferDisclaimer(false)
+                  await updateSession?.()
                   router.push("/home")
                 }}
               >

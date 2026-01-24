@@ -12,7 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react"
+import Image from "next/image"
+import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle, Trash2, MapPin } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -25,11 +26,13 @@ import {
 interface Property {
   id: string
   name: string
+  title?: string
   city: string
   country: string
   price_per_night: number
   is_active: boolean
   booking_count: number
+  images?: string[] | null
 }
 
 interface KOLBedPreferences {
@@ -487,6 +490,84 @@ export default function HostDashboard() {
           </Card>
         </div>
 
+        {/* Le tue strutture - subito dopo le statistiche */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Le tue strutture</CardTitle>
+            <CardDescription>
+              Gestisci le tue proprietà: modificale o eliminale dalla dashboard. Sono visibili anche in Esplora.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {properties.length === 0 ? (
+              <div className="text-center py-8">
+                <Home className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-4">
+                  Non hai ancora pubblicato nessuna struttura
+                </p>
+                <Button asChild>
+                  <Link href="/dashboard/host/properties/new">Crea la prima struttura</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {properties.map((property) => (
+                  <Card key={property.id} className="overflow-hidden">
+                    <div className="relative w-full h-40 overflow-hidden bg-muted">
+                      {property.images && property.images.length > 0 ? (
+                        <Image
+                          src={property.images[0]}
+                          alt={property.name || property.title || "Struttura"}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <MapPin className="w-12 h-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold">
+                        €{property.price_per_night}/notte
+                      </div>
+                    </div>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{property.name || property.title}</CardTitle>
+                      <CardDescription>
+                        {property.city}, {property.country}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                        <Users className="w-4 h-4" />
+                        <span>{property.booking_count} prenotazioni</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" className="flex-1" size="sm">
+                          <Link href={`/dashboard/host/properties/${property.id}`}>
+                            Modifica
+                          </Link>
+                        </Button>
+                        <Button asChild variant="outline" className="flex-1" size="sm">
+                          <Link href={`/properties/${property.id}`}>Vedi</Link>
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="flex-shrink-0"
+                          onClick={() => openDeleteDialog(property.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Referrals Section */}
         <Card className="mb-8">
           <CardHeader>
@@ -892,67 +973,6 @@ export default function HostDashboard() {
               </div>
             </CardContent>
           )}
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Le tue strutture</CardTitle>
-            <CardDescription>Gestisci le tue proprietà</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {properties.length === 0 ? (
-              <div className="text-center py-8">
-                <Home className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4">
-                  Non hai ancora pubblicato nessuna struttura
-                </p>
-                <Button asChild>
-                  <Link href="/dashboard/host/properties/new">Crea la prima struttura</Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {properties.map((property) => (
-                  <Card key={property.id}>
-                    <CardHeader>
-                      <CardTitle className="text-lg">{property.name}</CardTitle>
-                      <CardDescription>
-                        {property.city}, {property.country}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 mb-4">
-                        <p className="text-2xl font-bold">€{property.price_per_night}</p>
-                        <p className="text-sm text-muted-foreground">per notte</p>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Users className="w-4 h-4" />
-                          <span>{property.booking_count} prenotazioni</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link href={`/dashboard/host/properties/${property.id}`}>
-                            Modifica
-                          </Link>
-                        </Button>
-                        <Button asChild variant="outline" className="flex-1">
-                          <Link href={`/properties/${property.id}`}>Vedi</Link>
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="icon"
-                          onClick={() => openDeleteDialog(property.id)}
-                          className="flex-shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
         </Card>
       </div>
 
