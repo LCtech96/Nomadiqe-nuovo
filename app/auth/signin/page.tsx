@@ -16,7 +16,7 @@ import { Eye, EyeOff } from "lucide-react"
 const getDashboardUrl = (role: string | null): string => {
   switch (role) {
     case "host":
-      return "/dashboard/host"
+      return "/dashbord/host"
     case "creator":
       return "/dashboard/creator"
     case "jolly":

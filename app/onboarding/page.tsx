@@ -18,7 +18,7 @@ type OnboardingStep = "role" | "role-specific"
 const getDashboardUrl = (role: UserRole | null): string => {
   switch (role) {
     case "host":
-      return "/dashboard/host"
+      return "/dashbord/host"
     case "creator":
       return "/dashboard/creator"
     case "jolly":
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
           // Se l'utente ha già completato l'onboarding, reindirizza alla dashboard
           if (data.onboarding_completed) {
             if (data.role === "host") {
-              router.push("/dashboard/host")
+              router.push("/dashbord/host")
             } else if (data.role === "jolly") {
               router.push("/dashboard/jolly")
             } else {
@@ -417,7 +417,7 @@ export default function OnboardingPage() {
         )}
         <HostOnboarding
           onComplete={() => {
-            router.push("/dashboard/host")
+            router.push("/dashbord/host")
           }}
         />
       </div>

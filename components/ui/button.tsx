@@ -13,9 +13,9 @@ const buttonVariants = cva(
         destructive:
           "bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/50 hover:brightness-110",
         outline:
-          "border border-gray-200/60 dark:border-gray-800 bg-white/98 dark:bg-gray-900/98 backdrop-blur-sm shadow-sm shadow-gray-200/50 dark:shadow-gray-900/50 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 hover:shadow-md hover:shadow-gray-300/50 dark:hover:shadow-gray-800/50 hover:text-accent-foreground dark:text-gray-200",
+          "border border-gray-200/60 dark:border-[#111827] bg-white/98 dark:bg-[#111827] backdrop-blur-sm shadow-sm shadow-gray-200/50 dark:shadow-black/60 hover:bg-gray-50/50 dark:hover:bg-[#111827] hover:shadow-md hover:shadow-gray-300/50 dark:hover:shadow-black/70 hover:text-accent-foreground dark:text-gray-200",
         secondary:
-          "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 shadow-md shadow-gray-200/50 hover:shadow-lg hover:shadow-gray-300/50 hover:brightness-105",
+          "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 shadow-md shadow-gray-200/50 hover:shadow-lg hover:shadow-gray-300/50 hover:brightness-105 dark:from-[#111827] dark:to-[#111827] dark:text-gray-200 dark:shadow-black/60 dark:hover:shadow-black/70 dark:hover:brightness-110",
         ghost: "text-foreground hover:bg-accent/50 hover:text-accent-foreground transition-opacity hover:opacity-90",
         link: "text-primary underline-offset-4 hover:underline transition-opacity hover:opacity-90",
       },

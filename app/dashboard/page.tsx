@@ -9,7 +9,7 @@ import { Profile } from "@/types/user"
 const getDashboardUrl = (role: string | null): string => {
   switch (role) {
     case "host":
-      return "/dashboard/host"
+      return "/dashbord/host"
     case "creator":
       return "/dashboard/creator"
     case "jolly":
