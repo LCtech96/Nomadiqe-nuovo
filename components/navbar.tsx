@@ -38,6 +38,21 @@ const roleLabels: Record<string, string> = {
   traveler: "Traveler",
 }
 
+const getDashboardUrl = (role: string | null | undefined): string => {
+  switch (role) {
+    case "host":
+      return "/dashboard/host"
+    case "creator":
+      return "/dashboard/creator"
+    case "jolly":
+      return "/dashboard/jolly"
+    case "traveler":
+      return "/dashboard/traveler"
+    default:
+      return "/dashboard"
+  }
+}
+
 export default function Navbar() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
@@ -496,7 +511,10 @@ export default function Navbar() {
                 <Link href="/home" className="text-sm font-medium hover:text-primary">
                   Home
                 </Link>
-                <Link href="/dashboard" className="text-sm font-medium hover:text-primary flex items-center gap-1">
+                <Link
+                  href={getDashboardUrl(profile?.role)}
+                  className="text-sm font-medium hover:text-primary flex items-center gap-1"
+                >
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Link>
@@ -787,7 +805,7 @@ export default function Navbar() {
                 </div>
                 <div className="border-t pt-4 space-y-2">
                   <Link 
-                    href="/dashboard" 
+                    href={getDashboardUrl(profile?.role)} 
                     className="block py-2 text-base flex items-center gap-2"
                     onClick={() => setMobileMenuOpen(false)}
                   >

@@ -136,12 +136,11 @@ CREATE POLICY "Members can view community members"
     -- Il membro stesso può vedere il proprio record
     host_id = auth.uid()
     OR
-    -- Gli altri membri della community possono vedere
+    -- Il creatore della community può vedere i membri
     EXISTS (
-      SELECT 1 FROM public.host_community_members cm
-      WHERE cm.community_id = host_community_members.community_id
-        AND cm.host_id = auth.uid()
-        AND cm.status = 'accepted'
+      SELECT 1 FROM public.host_communities c
+      WHERE c.id = host_community_members.community_id
+        AND c.created_by = auth.uid()
     )
   );
 
@@ -149,12 +148,11 @@ DROP POLICY IF EXISTS "Admins can manage members" ON public.host_community_membe
 CREATE POLICY "Admins can manage members"
   ON public.host_community_members FOR ALL
   USING (
+    -- Il creatore della community può gestire i membri
     EXISTS (
-      SELECT 1 FROM public.host_community_members cm
-      WHERE cm.community_id = host_community_members.community_id
-        AND cm.host_id = auth.uid()
-        AND cm.role = 'admin'
-        AND cm.status = 'accepted'
+      SELECT 1 FROM public.host_communities c
+      WHERE c.id = host_community_members.community_id
+        AND c.created_by = auth.uid()
     )
   );
 
