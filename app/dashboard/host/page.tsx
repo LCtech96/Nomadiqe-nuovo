@@ -96,6 +96,8 @@ export default function HostDashboard() {
       if (!currentUserId) {
         // Se non c'è userId dopo tutti i tentativi, reindirizza al login
         router.push("/auth/signin")
+        setCheckingOnboarding(false)
+        setLoading(false)
         return
       }
 
@@ -116,6 +118,7 @@ export default function HostDashboard() {
         // Se l'utente non ha il ruolo host, reindirizza
         if (profile?.role !== "host") {
           setCheckingOnboarding(false)
+          setLoading(false)
           router.push("/onboarding")
           return
         }
@@ -124,6 +127,7 @@ export default function HostDashboard() {
         if (profile && !profile.onboarding_completed) {
           console.log("Host onboarding not completed - redirecting to onboarding")
           setCheckingOnboarding(false)
+          setLoading(false)
           router.push("/onboarding")
           return
         }
@@ -134,19 +138,19 @@ export default function HostDashboard() {
           setUserId(currentUserId)
           // Chiama le funzioni di caricamento passando currentUserId direttamente
           // per evitare problemi di timing con lo state update
-          await Promise.all([
+          await Promise.allSettled([
             loadPropertiesWithUserId(currentUserId),
             loadPreferencesWithUserId(currentUserId),
             loadReferralsWithUserId(currentUserId),
-            loadCollaborationsWithUserId(currentUserId)
+            loadCollaborationsWithUserId(currentUserId),
           ])
         }
+      } catch (error) {
+        console.error("Error in checkOnboarding:", error)
+      } finally {
         // Imposta checkingOnboarding e loading a false DOPO aver completato il caricamento
         setCheckingOnboarding(false)
         setLoading(false)
-      } catch (error) {
-        console.error("Error in checkOnboarding:", error)
-        setCheckingOnboarding(false)
       }
     }
 
