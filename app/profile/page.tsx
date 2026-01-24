@@ -981,7 +981,7 @@ export default function ProfilePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push("/dashboard/host")}
+                        onClick={() => router.push("/dashbord/host")}
                         className="text-sm"
                         title="Impostazioni"
                       >
@@ -1001,7 +1001,7 @@ export default function ProfilePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push("/dashboard/host")}
+                      onClick={() => router.push("/dashbord/host")}
                       className="text-sm"
                       title="Impostazioni"
                     >
@@ -1504,7 +1504,7 @@ export default function ProfilePage() {
 
                     <Button
                       variant="outline"
-                      onClick={() => router.push("/dashboard/host")}
+                      onClick={() => router.push("/dashbord/host")}
                       className="w-full"
                     >
                       Modifica impostazioni

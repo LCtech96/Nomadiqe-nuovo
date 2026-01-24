@@ -41,7 +41,7 @@ const roleLabels: Record<string, string> = {
 const getDashboardUrl = (role: string | null | undefined): string => {
   switch (role) {
     case "host":
-      return "/dashboard/host"
+      return "/dashbord/host"
     case "creator":
       return "/dashboard/creator"
     case "jolly":
