@@ -196,8 +196,7 @@ export default function HostDashboard() {
       setProperties(propertiesWithBookings)
     } catch (error) {
       console.error("Error loading properties:", error)
-    } finally {
-      setLoading(false)
+      setProperties([])
     }
   }
 
