@@ -112,6 +112,16 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
   const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
   const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
 
+  useEffect(() => {
+    if (!showOfferDisclaimer) return
+    const timeout = setTimeout(() => {
+      setShowOfferDisclaimer(false)
+      router.push("/home")
+    }, 2000)
+
+    return () => clearTimeout(timeout)
+  }, [showOfferDisclaimer, router])
+
   // Load saved profile data on mount (without onboarding_status for now due to PostgREST cache issue)
   useEffect(() => {
     const loadSavedState = async () => {
@@ -856,14 +866,13 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       }
 
       setWebsiteOfferRequested(true)
-      setShowOfferDisclaimer(false)
+      setShowOfferDisclaimer(true)
 
       toast({
         title: "Richiesta inviata",
         description: "Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!",
       })
 
-      router.push("/home")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -1561,7 +1570,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827]">
           <Card className="w-full max-w-2xl">
             <CardHeader>
               <CardTitle>Offerta Speciale Sito Web</CardTitle>
@@ -1594,10 +1603,10 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               </div>
 
               {/* Pulsanti */}
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <Button
                   onClick={handleWebsiteOfferRequest}
-                  className="flex-1"
+                  className="flex-1 whitespace-normal text-center text-sm md:text-base py-3"
                   disabled={loading || websiteOfferRequested}
                   size="lg"
                 >
@@ -1606,7 +1615,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
                 <Button
                   onClick={handleWebsiteOfferSkip}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 whitespace-normal text-center text-sm md:text-base py-3"
                   disabled={loading}
                   size="lg"
                 >
@@ -1623,23 +1632,15 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
             <DialogHeader>
               <DialogTitle>Richiesta Inviata</DialogTitle>
               <DialogDescription>
-                Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!
+                Verrai contattato nei prossimi giorni. Ti reindirizziamo alla Home.
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setShowOfferDisclaimer(false)
-                }}
-              >
-                Chiudi
-              </Button>
               <Button onClick={() => {
                 setShowOfferDisclaimer(false)
                 router.push("/home")
               }}>
-                Continua
+                Vai alla Home
               </Button>
             </div>
           </DialogContent>

@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       amenities,
       images,
       video_url,
+      legal_document_url,
     } = body
 
     // Valida i campi obbligatori
@@ -48,31 +49,46 @@ export async function POST(request: NextRequest) {
     // e che owner_id corrisponde a session.user.id
     const supabase = createSupabaseAdminClient()
 
-    // Inserisci la proprietà
-    const { data, error } = await supabase
+    const basePayload = {
+      owner_id: session.user.id,
+      name,
+      title: title || name,
+      description,
+      property_type,
+      address,
+      city,
+      country,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      price_per_night: parseFloat(price_per_night),
+      max_guests: parseInt(max_guests),
+      bedrooms: bedrooms ? parseInt(bedrooms) : null,
+      bathrooms: bathrooms ? parseInt(bathrooms) : null,
+      location_data: location_data || null,
+      amenities: amenities || [],
+      images: images || [],
+      video_url: video_url || null,
+    }
+
+    const payloadWithLegal = legal_document_url
+      ? { ...basePayload, legal_document_url }
+      : basePayload
+
+    let { data, error } = await supabase
       .from("properties")
-      .insert({
-        owner_id: session.user.id,
-        name,
-        title: title || name,
-        description,
-        property_type,
-        address,
-        city,
-        country,
-        latitude: latitude || null,
-        longitude: longitude || null,
-        price_per_night: parseFloat(price_per_night),
-        max_guests: parseInt(max_guests),
-        bedrooms: bedrooms ? parseInt(bedrooms) : null,
-        bathrooms: bathrooms ? parseInt(bathrooms) : null,
-        location_data: location_data || null,
-        amenities: amenities || [],
-        images: images || [],
-        video_url: video_url || null,
-      })
+      .insert(payloadWithLegal)
       .select()
       .single()
+
+    if (error && legal_document_url && (error.code === "42703" || error.message?.includes("legal_document_url"))) {
+      const retry = await supabase
+        .from("properties")
+        .insert(basePayload)
+        .select()
+        .single()
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) {
       console.error("Error creating property:", error)

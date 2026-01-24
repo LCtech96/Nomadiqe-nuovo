@@ -19,7 +19,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import Link from "next/link"
-import { X, VideoIcon, Loader2, MapPin } from "lucide-react"
+import { X, VideoIcon, Loader2, MapPin, Upload } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import dynamic from "next/dynamic"
 
@@ -41,6 +41,9 @@ export default function EditPropertyPage() {
   const [video, setVideo] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [existingLegalDocumentUrl, setExistingLegalDocumentUrl] = useState<string | null>(null)
+  const [legalDocument, setLegalDocument] = useState<File | null>(null)
+  const [uploadingLegalDocument, setUploadingLegalDocument] = useState(false)
   const [showLocationDialog, setShowLocationDialog] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
@@ -156,7 +159,8 @@ export default function EditPropertyPage() {
       
       // Load existing video URL if present
       if (data.video_url) {
-        setExistingVideoUrl(data.video_url)
+      setExistingVideoUrl(data.video_url)
+      setExistingLegalDocumentUrl((data as any)?.legal_document_url || null)
       }
       
       // Load existing coordinates if present
@@ -194,6 +198,7 @@ export default function EditPropertyPage() {
 
       // Upload video if a new one was selected
       let videoUrl: string | null = existingVideoUrl
+      let legalDocumentUrl: string | null = existingLegalDocumentUrl
       const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
 
       if (video && blobToken) {
@@ -240,6 +245,42 @@ export default function EditPropertyPage() {
         }
       }
 
+      if (legalDocument) {
+        if (!blobToken) {
+          toast({
+            title: "Errore",
+            description: "Token Vercel Blob non configurato. Impossibile caricare il documento.",
+            variant: "destructive",
+          })
+          setSaving(false)
+          return
+        }
+
+        setUploadingLegalDocument(true)
+        try {
+          const { put } = await import("@vercel/blob")
+          const fileName = `${session?.user.id}/properties/documents/${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`
+          const blob = await put(fileName, legalDocument, {
+            access: "public",
+            contentType: "application/pdf",
+            token: blobToken,
+          })
+          legalDocumentUrl = blob.url
+        } catch (uploadError: any) {
+          console.error("Legal document upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: uploadError.message || "Impossibile caricare il documento",
+            variant: "destructive",
+          })
+          setUploadingLegalDocument(false)
+          setSaving(false)
+          return
+        } finally {
+          setUploadingLegalDocument(false)
+        }
+      }
+
       // Usa le coordinate selezionate manualmente se disponibili, altrimenti geocodifica
       let finalLatitude: number | null = null
       let finalLongitude: number | null = null
@@ -258,29 +299,44 @@ export default function EditPropertyPage() {
         finalLongitude = currentLocation.lng
       }
 
-      const { error } = await supabase
+      const updatePayload: Record<string, any> = {
+        name: formData.name,
+        description: formData.description,
+        property_type: formData.property_type,
+        address: formData.street_number 
+          ? `${formData.address} ${formData.street_number}`.trim()
+          : formData.address,
+        city: formData.city,
+        country: formData.country,
+        latitude: finalLatitude,
+        longitude: finalLongitude,
+        price_per_night: parseFloat(formData.price_per_night),
+        max_guests: parseInt(formData.max_guests),
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
+        bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : null,
+        amenities: formData.amenities,
+        is_active: formData.is_active,
+        video_url: videoUrl,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (legalDocumentUrl) {
+        updatePayload.legal_document_url = legalDocumentUrl
+      }
+
+      let { error } = await supabase
         .from("properties")
-        .update({
-          name: formData.name,
-          description: formData.description,
-          property_type: formData.property_type,
-          address: formData.street_number 
-            ? `${formData.address} ${formData.street_number}`.trim()
-            : formData.address,
-          city: formData.city,
-          country: formData.country,
-          latitude: finalLatitude,
-          longitude: finalLongitude,
-          price_per_night: parseFloat(formData.price_per_night),
-          max_guests: parseInt(formData.max_guests),
-          bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
-          bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : null,
-          amenities: formData.amenities,
-          is_active: formData.is_active,
-          video_url: videoUrl,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", params.id)
+
+      if (error && legalDocumentUrl && (error.code === "42703" || error.message?.includes("legal_document_url"))) {
+        delete updatePayload.legal_document_url
+        const retry = await supabase
+          .from("properties")
+          .update(updatePayload)
+          .eq("id", params.id)
+        error = retry.error
+      }
 
       if (error) throw error
 
@@ -393,12 +449,36 @@ export default function EditPropertyPage() {
     setExistingVideoUrl(null)
   }
 
+  const handleLegalDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    if (!isPdf) {
+      toast({
+        title: "Formato non valido",
+        description: "Carica solo documenti in formato PDF.",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    setLegalDocument(file)
+    e.target.value = ""
+  }
+
+  const removeLegalDocument = () => {
+    setLegalDocument(null)
+    setExistingLegalDocumentUrl(null)
+  }
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
   }
 
   return (
-    <div className="min-h-screen p-8 dark:bg-gray-900">
+    <div className="min-h-screen p-8 dark:bg-[#111827]">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8 flex justify-between items-center">
           <div>
@@ -764,6 +844,63 @@ export default function EditPropertyPage() {
                 )}
                 <p className="text-xs text-muted-foreground">
                   Limite: 1 video al giorno. Dimensione massima: 100MB.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="legal-document">Documentazione legale (CIN/CIR) - PDF</Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="legal-document"
+                    className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {existingLegalDocumentUrl ? "Sostituisci PDF" : "Carica PDF"}
+                  </Label>
+                  <Input
+                    id="legal-document"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleLegalDocumentChange}
+                    className="hidden"
+                    disabled={uploadingLegalDocument || saving}
+                  />
+                </div>
+                {uploadingLegalDocument && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Caricamento documento in corso...
+                  </div>
+                )}
+                {(legalDocument || existingLegalDocumentUrl) && (
+                  <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                    <span className="truncate">
+                      {legalDocument?.name || "Documento caricato"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {existingLegalDocumentUrl && !legalDocument && (
+                        <a
+                          href={existingLegalDocumentUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline text-xs"
+                        >
+                          Apri
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={removeLegalDocument}
+                        className="text-destructive hover:text-destructive/80 text-xs"
+                        disabled={saving || uploadingLegalDocument}
+                      >
+                        Rimuovi
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Accettiamo solo file in formato PDF.
                 </p>
               </div>
 

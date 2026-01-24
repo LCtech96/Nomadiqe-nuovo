@@ -97,15 +97,9 @@ export default function OnboardingPage() {
           setProfile(data)
           console.log("Profile data in onboarding:", { role: data.role, onboarding_completed: data.onboarding_completed })
           
-          // Se l'utente ha già completato l'onboarding, reindirizza alla dashboard
+          // Se l'utente ha già completato l'onboarding, reindirizza alla Home
           if (data.onboarding_completed) {
-            if (data.role === "host") {
-              router.push("/dashbord/host")
-            } else if (data.role === "jolly") {
-              router.push("/dashboard/jolly")
-            } else {
-              router.push("/home")
-            }
+            router.push("/home")
             return
           }
 

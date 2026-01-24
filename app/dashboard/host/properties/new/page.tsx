@@ -59,6 +59,8 @@ export default function NewPropertyPage() {
   const [video, setVideo] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [legalDocument, setLegalDocument] = useState<File | null>(null)
+  const [uploadingLegalDocument, setUploadingLegalDocument] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null)
 
@@ -134,8 +136,9 @@ export default function NewPropertyPage() {
         }
       }
 
-      // Upload video or images to Vercel Blob
+      // Upload video, legal documents or images to Vercel Blob
       let videoUrl: string | null = null
+      let legalDocumentUrl: string | null = null
       const imageUrls: string[] = []
       const blobToken = process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN || process.env.NEW_BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
 
@@ -181,6 +184,42 @@ export default function NewPropertyPage() {
           return
         } finally {
           setUploadingVideo(false)
+        }
+      }
+
+      if (legalDocument) {
+        if (!blobToken) {
+          toast({
+            title: "Errore",
+            description: "Token Vercel Blob non configurato. Impossibile caricare il documento.",
+            variant: "destructive",
+          })
+          setLoading(false)
+          return
+        }
+
+        setUploadingLegalDocument(true)
+        try {
+          const { put } = await import("@vercel/blob")
+          const fileName = `${session.user.id}/properties/documents/${Date.now()}-${Math.random().toString(36).substring(7)}.pdf`
+          const blob = await put(fileName, legalDocument, {
+            access: "public",
+            contentType: "application/pdf",
+            token: blobToken,
+          })
+          legalDocumentUrl = blob.url
+        } catch (uploadError: any) {
+          console.error("Legal document upload error:", uploadError)
+          toast({
+            title: "Errore",
+            description: uploadError.message || "Impossibile caricare il documento",
+            variant: "destructive",
+          })
+          setUploadingLegalDocument(false)
+          setLoading(false)
+          return
+        } finally {
+          setUploadingLegalDocument(false)
         }
       }
 
@@ -274,6 +313,7 @@ export default function NewPropertyPage() {
           amenities: formData.amenities,
           images: imageUrls,
           video_url: videoUrl || null,
+          legal_document_url: legalDocumentUrl || null,
         }),
       })
 
@@ -474,9 +514,32 @@ export default function NewPropertyPage() {
     setVideoPreview(null)
   }
 
+  const handleLegalDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    if (!isPdf) {
+      toast({
+        title: "Formato non valido",
+        description: "Carica solo documenti in formato PDF.",
+        variant: "destructive",
+      })
+      e.target.value = ""
+      return
+    }
+
+    setLegalDocument(file)
+    e.target.value = ""
+  }
+
+  const removeLegalDocument = () => {
+    setLegalDocument(null)
+  }
+
   return (
     <>
-    <div className="min-h-screen p-8 dark:bg-gray-900">
+    <div className="min-h-screen p-8 dark:bg-[#111827]">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Nuova struttura</h1>
@@ -819,6 +882,49 @@ export default function NewPropertyPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="legal-document">Documentazione legale (CIN/CIR) - PDF</Label>
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor="legal-document"
+                    className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-dashed rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Carica PDF
+                  </Label>
+                  <Input
+                    id="legal-document"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleLegalDocumentChange}
+                    className="hidden"
+                    disabled={uploadingLegalDocument || loading}
+                  />
+                </div>
+                {uploadingLegalDocument && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Caricamento documento in corso...
+                  </div>
+                )}
+                {legalDocument && (
+                  <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                    <span className="truncate">{legalDocument.name}</span>
+                    <button
+                      type="button"
+                      onClick={removeLegalDocument}
+                      className="ml-3 text-destructive hover:text-destructive/80"
+                      disabled={loading || uploadingLegalDocument}
+                    >
+                      Rimuovi
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Accettiamo solo file in formato PDF.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label>Servizi</Label>
                 <p className="text-sm text-muted-foreground mb-2">
                   Seleziona i servizi disponibili nella tua struttura
@@ -878,11 +984,17 @@ export default function NewPropertyPage() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={loading || uploadingImages} className="flex-1">
-                  {loading || uploadingImages
+                <Button
+                  type="submit"
+                  disabled={loading || uploadingImages || uploadingLegalDocument}
+                  className="flex-1"
+                >
+                  {loading || uploadingImages || uploadingLegalDocument
                     ? uploadingImages
                       ? "Caricamento immagini..."
-                      : "Salvataggio..."
+                      : uploadingLegalDocument
+                        ? "Caricamento documento..."
+                        : "Salvataggio..."
                     : "Crea struttura"}
                 </Button>
                 <Button
