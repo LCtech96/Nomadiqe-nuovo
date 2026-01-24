@@ -93,25 +93,8 @@ export const authOptions: NextAuthOptions = {
             }
           }
 
-          // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), permette il login senza verificare email
-          // La verifica email è richiesta solo durante la registrazione iniziale
-          if (profile?.role || profile?.onboarding_completed) {
-            console.log("User has completed onboarding, allowing login without email verification")
-            // Utente ha completato l'onboarding, procedi con il login
-          } else {
-            // Utente non ha ancora completato l'onboarding, verifica che abbia completato la verifica email
-            const { data: emailVerification } = await supabase
-              .from("email_verifications")
-              .select("first_verification_completed")
-              .eq("user_id", data.user.id)
-              .maybeSingle()
-
-            // Se non esiste il record di verifica, significa che l'utente non ha completato la registrazione
-            if (!emailVerification || !emailVerification.first_verification_completed) {
-              console.error("User has not completed email verification and has no role")
-              return null
-            }
-          }
+          // La verifica email viene gestita direttamente da Supabase Auth.
+          // Se signInWithPassword è andato a buon fine, permettiamo il login.
 
           return {
             id: data.user.id,

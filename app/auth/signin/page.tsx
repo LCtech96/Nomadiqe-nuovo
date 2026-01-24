@@ -67,29 +67,8 @@ export default function SignInPage() {
         return
       }
 
-      // Se l'utente ha già completato l'onboarding (ha un ruolo O onboarding_completed = true), permette il login senza verificare email
-      // La verifica email è richiesta solo durante la registrazione iniziale
-      if (userData.role || userData.onboarding_completed) {
-        // Utente ha completato l'onboarding, procedi direttamente con il login
-        // Non richiedere la verifica email ogni volta
-      } else {
-        // Utente non ha ancora completato l'onboarding, verifica che abbia completato la verifica email
-        const { data: emailVerification } = await supabase
-          .from("email_verifications")
-          .select("first_verification_completed")
-          .eq("user_id", userData.id)
-          .maybeSingle()
-
-        if (!emailVerification || !emailVerification.first_verification_completed) {
-          toast({
-            title: "Registrazione non completata",
-            description: "Devi completare la registrazione verificando la tua email. Controlla la tua casella email per il codice di verifica.",
-            variant: "destructive",
-          })
-          setLoading(false)
-          return
-        }
-      }
+      // La verifica email viene gestita direttamente da Supabase Auth.
+      // Se le credenziali sono corrette, procederemo con il login.
 
       // Ora procedi con il login
       const result = await signIn("credentials", {

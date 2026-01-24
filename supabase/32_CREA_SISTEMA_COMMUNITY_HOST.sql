@@ -3,6 +3,10 @@
 -- ============================================
 -- Permette agli host di creare community locali
 -- per scambiarsi messaggi e conversare tra loro
+--
+-- IMPORTANTE: Esegui TUTTO lo script (tutte le righe).
+-- Non eseguire solo una parte: le funzioni $$ vanno da inizio
+-- a fine blocco; tagliare a metà causa "unterminated dollar-quoted string".
 -- ============================================
 
 -- Tabella communities
@@ -72,6 +76,7 @@ ALTER TABLE public.host_community_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.host_community_invitations ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies per host_communities
+DROP POLICY IF EXISTS "Communities are viewable by members or hosts in the same area" ON public.host_communities;
 CREATE POLICY "Communities are viewable by members or hosts in the same area"
   ON public.host_communities FOR SELECT
   USING (
@@ -98,6 +103,7 @@ CREATE POLICY "Communities are viewable by members or hosts in the same area"
     )
   );
 
+DROP POLICY IF EXISTS "Hosts can create communities" ON public.host_communities;
 CREATE POLICY "Hosts can create communities"
   ON public.host_communities FOR INSERT
   WITH CHECK (
@@ -108,6 +114,7 @@ CREATE POLICY "Hosts can create communities"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can update their communities" ON public.host_communities;
 CREATE POLICY "Admins can update their communities"
   ON public.host_communities FOR UPDATE
   USING (
@@ -122,6 +129,7 @@ CREATE POLICY "Admins can update their communities"
   );
 
 -- RLS Policies per host_community_members
+DROP POLICY IF EXISTS "Members can view community members" ON public.host_community_members;
 CREATE POLICY "Members can view community members"
   ON public.host_community_members FOR SELECT
   USING (
@@ -137,6 +145,7 @@ CREATE POLICY "Members can view community members"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can manage members" ON public.host_community_members;
 CREATE POLICY "Admins can manage members"
   ON public.host_community_members FOR ALL
   USING (
@@ -149,6 +158,7 @@ CREATE POLICY "Admins can manage members"
     )
   );
 
+DROP POLICY IF EXISTS "Users can accept invitations" ON public.host_community_members;
 CREATE POLICY "Users can accept invitations"
   ON public.host_community_members FOR UPDATE
   USING (
@@ -161,6 +171,7 @@ CREATE POLICY "Users can accept invitations"
   );
 
 -- RLS Policies per host_community_messages
+DROP POLICY IF EXISTS "Members can view messages" ON public.host_community_messages;
 CREATE POLICY "Members can view messages"
   ON public.host_community_messages FOR SELECT
   USING (
@@ -172,6 +183,7 @@ CREATE POLICY "Members can view messages"
     )
   );
 
+DROP POLICY IF EXISTS "Active members can send messages" ON public.host_community_messages;
 CREATE POLICY "Active members can send messages"
   ON public.host_community_messages FOR INSERT
   WITH CHECK (
@@ -186,11 +198,13 @@ CREATE POLICY "Active members can send messages"
     )
   );
 
+DROP POLICY IF EXISTS "Users can update their own messages" ON public.host_community_messages;
 CREATE POLICY "Users can update their own messages"
   ON public.host_community_messages FOR UPDATE
   USING (sender_id = auth.uid())
   WITH CHECK (sender_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can delete their own messages" ON public.host_community_messages;
 CREATE POLICY "Users can delete their own messages"
   ON public.host_community_messages FOR DELETE
   USING (
@@ -205,6 +219,7 @@ CREATE POLICY "Users can delete their own messages"
   );
 
 -- RLS Policies per host_community_invitations
+DROP POLICY IF EXISTS "Users can view their invitations" ON public.host_community_invitations;
 CREATE POLICY "Users can view their invitations"
   ON public.host_community_invitations FOR SELECT
   USING (
@@ -218,6 +233,7 @@ CREATE POLICY "Users can view their invitations"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can create invitations" ON public.host_community_invitations;
 CREATE POLICY "Admins can create invitations"
   ON public.host_community_invitations FOR INSERT
   WITH CHECK (
@@ -231,6 +247,7 @@ CREATE POLICY "Admins can create invitations"
     )
   );
 
+DROP POLICY IF EXISTS "Users can update their invitations" ON public.host_community_invitations;
 CREATE POLICY "Users can update their invitations"
   ON public.host_community_invitations FOR UPDATE
   USING (invited_host_id = auth.uid())

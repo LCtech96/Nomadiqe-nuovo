@@ -816,6 +816,18 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
 
       if (error) throw error
 
+      // Mark onboarding as completed
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({
+          onboarding_completed: true,
+        })
+        .eq("id", userId)
+
+      if (updateError) {
+        console.warn("Could not update onboarding_completed:", updateError)
+      }
+
       // Ottieni i dettagli del profilo per l'email
       const { data: profile } = await supabase
         .from("profiles")
@@ -844,12 +856,14 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
       }
 
       setWebsiteOfferRequested(true)
-      setShowOfferDisclaimer(true)
+      setShowOfferDisclaimer(false)
 
       toast({
         title: "Richiesta inviata",
         description: "Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!",
       })
+
+      router.push("/home")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -901,7 +915,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         description: "Onboarding completato!",
       })
 
-      onComplete()
+      router.push("/home")
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -1623,8 +1637,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               </Button>
               <Button onClick={() => {
                 setShowOfferDisclaimer(false)
-                // Reindirizza alla pagina profile dell'host
-                router.push("/profile")
+                router.push("/home")
               }}>
                 Continua
               </Button>
