@@ -53,9 +53,20 @@ export default function CreateCommunityDialog({
   useEffect(() => {
     if (open && session?.user?.id) {
       loadUserLocation()
-      loadHosts()
     }
   }, [open, session])
+
+  useEffect(() => {
+    if (open && session?.user?.id && (userLocation.city || userLocation.country)) {
+      loadHosts()
+    } else if (open && session?.user?.id && !userLocation.city && !userLocation.country) {
+      // Se non abbiamo location, carica comunque tutti gli host dopo un breve delay
+      const timer = setTimeout(() => {
+        loadHosts()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [open, session, userLocation])
 
   const loadUserLocation = async () => {
     try {
@@ -84,17 +95,55 @@ export default function CreateCommunityDialog({
 
     setLoadingHosts(true)
     try {
-      // Chiama la funzione RPC per ottenere host nella stessa area
-      const { data, error } = await supabase.rpc("get_hosts_in_area", {
-        city_param: userLocation.city,
-        country_param: userLocation.country,
-      })
+      // Se abbiamo una location, usa la funzione RPC per ottenere host nella stessa area
+      // Altrimenti carica tutti gli host
+      if (userLocation.country) {
+        const { data, error } = await supabase.rpc("get_hosts_in_area", {
+          city_param: userLocation.city,
+          country_param: userLocation.country,
+        })
 
-      if (error) throw error
+        if (error) throw error
 
-      // Filtra l'utente corrente
-      const filteredHosts = (data || []).filter((h: Host) => h.id !== session.user.id)
-      setHosts(filteredHosts)
+        // Filtra l'utente corrente
+        const filteredHosts = (data || []).filter((h: Host) => h.id !== session.user.id)
+        setHosts(filteredHosts)
+      } else {
+        // Se non abbiamo una location, carica tutti gli host attivi
+        const { data, error } = await supabase
+          .from("profiles")
+          .select(`
+            id,
+            username,
+            full_name,
+            avatar_url,
+            bio,
+            properties:properties!inner(city, country)
+          `)
+          .eq("role", "host")
+          .neq("id", session.user.id)
+          .limit(100)
+
+        if (error) throw error
+
+        // Mappa i risultati per avere la stessa struttura
+        const mappedHosts: Host[] = (data || [])
+          .filter((p: any) => p.properties && p.properties.length > 0)
+          .map((p: any) => {
+            const property = Array.isArray(p.properties) ? p.properties[0] : p.properties
+            return {
+              id: p.id,
+              username: p.username,
+              full_name: p.full_name,
+              avatar_url: p.avatar_url,
+              bio: p.bio,
+              city: property?.city || null,
+              country: property?.country || null,
+            }
+          })
+
+        setHosts(mappedHosts)
+      }
     } catch (error: any) {
       console.error("Error loading hosts:", error)
       toast({

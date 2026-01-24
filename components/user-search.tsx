@@ -68,18 +68,36 @@ export default function UserSearch({ userRole }: UserSearchProps) {
         return
       }
 
-      // Cerca per iniziali dell'username (case-insensitive)
+      // Cerca per username o full_name (case-insensitive)
+      // Usa OR per cercare in entrambi i campi
+      const queryLower = query.toLowerCase()
+      
       const { data, error } = await supabase
         .from("profiles")
         .select("id, username, full_name, avatar_url, role")
         .in("role", allowedRoles)
-        .ilike("username", `${query}%`)
         .neq("id", session?.user?.id || "")
-        .limit(10)
+        .or(`username.ilike.%${queryLower}%,full_name.ilike.%${queryLower}%`)
+        .limit(20)
 
       if (error) throw error
 
-      setResults(data || [])
+      // Ordina i risultati: prima quelli che iniziano con la query, poi quelli che la contengono
+      const sortedResults = (data || []).sort((a, b) => {
+        const aUsername = (a.username || "").toLowerCase()
+        const aFullName = (a.full_name || "").toLowerCase()
+        const bUsername = (b.username || "").toLowerCase()
+        const bFullName = (b.full_name || "").toLowerCase()
+        
+        const aStartsWith = aUsername.startsWith(queryLower) || aFullName.startsWith(queryLower)
+        const bStartsWith = bUsername.startsWith(queryLower) || bFullName.startsWith(queryLower)
+        
+        if (aStartsWith && !bStartsWith) return -1
+        if (!aStartsWith && bStartsWith) return 1
+        return 0
+      })
+
+      setResults(sortedResults)
     } catch (error) {
       console.error("Error searching users:", error)
       setResults([])

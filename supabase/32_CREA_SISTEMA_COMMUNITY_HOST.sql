@@ -394,6 +394,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Funzione helper per ottenere host nella stessa area
+-- Mostra tutti gli host nello stesso paese, con priorità per quelli nella stessa città
 CREATE OR REPLACE FUNCTION public.get_hosts_in_area(city_param TEXT DEFAULT NULL, country_param TEXT DEFAULT NULL)
 RETURNS TABLE (
   id UUID,
@@ -420,12 +421,15 @@ BEGIN
     AND prop.is_active = true
     AND p.id != auth.uid() -- Escludi l'utente corrente
     AND (
-      city_param IS NULL OR prop.city = city_param
-    )
-    AND (
+      -- Se abbiamo un paese, mostra tutti gli host in quel paese
+      -- Se abbiamo anche una città, priorità a quelli nella stessa città
       country_param IS NULL OR prop.country = country_param
     )
-  ORDER BY p.full_name, p.username;
+  ORDER BY 
+    -- Priorità: prima quelli nella stessa città (se specificata), poi gli altri
+    CASE WHEN city_param IS NOT NULL AND prop.city = city_param THEN 0 ELSE 1 END,
+    p.full_name, 
+    p.username;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
