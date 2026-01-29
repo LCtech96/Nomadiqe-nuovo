@@ -24,6 +24,8 @@ import {
   Sparkles,
   ThumbsUp,
   ThumbsDown,
+  Car,
+  Package,
 } from "lucide-react"
 import {
   Select,
@@ -93,9 +95,13 @@ export default function KOLBedPage() {
   const [loadingData, setLoadingData] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [regionFilter, setRegionFilter] = useState<string>("all")
-  const [viewMode, setViewMode] = useState<"creators" | "pulizie">("creators")
+  const [viewMode, setViewMode] = useState<"creators" | "pulizie" | "shuttle" | "forniture">("creators")
   const [jollyCleaning, setJollyCleaning] = useState<JollyCleaningCard[]>([])
   const [loadingJollyCleaning, setLoadingJollyCleaning] = useState(false)
+  const [shuttleServices, setShuttleServices] = useState<any[]>([])
+  const [loadingShuttle, setLoadingShuttle] = useState(false)
+  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false)
 
   const isJollyOrCleaner =
     profile?.role === "jolly" || profile?.role === "cleaner"
@@ -125,8 +131,12 @@ export default function KOLBedPage() {
   useEffect(() => {
     if (viewMode === "pulizie" && !isJollyOrCleaner) {
       loadJollyCleaningFeed()
+    } else if (viewMode === "shuttle" && isHost) {
+      loadShuttleServices()
+    } else if (viewMode === "forniture" && isHost) {
+      loadSuppliers()
     }
-  }, [viewMode, isJollyOrCleaner]) // eslint-disable-line react-hooks/exhaustive-deps -- loadJollyCleaningFeed stable
+  }, [viewMode, isJollyOrCleaner, isHost]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadCleaningRequests = async () => {
     try {
@@ -345,6 +355,97 @@ export default function KOLBedPage() {
       setJollyCleaning([])
     } finally {
       setLoadingJollyCleaning(false)
+    }
+  }
+
+  const loadShuttleServices = async () => {
+    try {
+      setLoadingShuttle(true)
+      const { data: services, error: svcErr } = await supabase
+        .from("manager_services")
+        .select("id, manager_id, title, description, price_per_hour, price_per_service, location_country, location_city, vehicle_type, price_per_route")
+        .eq("service_type", "driver")
+        .eq("is_active", true)
+
+      if (svcErr) throw svcErr
+      if (!services?.length) {
+        setShuttleServices([])
+        return
+      }
+
+      const managerIds = Array.from(new Set(services.map((s) => s.manager_id)))
+      const { data: profilesData, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, avatar_url, full_name, username")
+        .in("id", managerIds)
+
+      if (profErr) throw profErr
+      const profileMap = Object.fromEntries((profilesData || []).map((p) => [p.id, p]))
+
+      const enriched = services.map((s) => ({
+        ...s,
+        manager: profileMap[s.manager_id] || null,
+      }))
+
+      setShuttleServices(enriched)
+    } catch (e) {
+      console.error("Error loading shuttle services:", e)
+      setShuttleServices([])
+    } finally {
+      setLoadingShuttle(false)
+    }
+  }
+
+  const loadSuppliers = async () => {
+    try {
+      setLoadingSuppliers(true)
+      const { data: services, error: svcErr } = await supabase
+        .from("manager_services")
+        .select("id, manager_id, title, description, location_country, location_city")
+        .eq("service_type", "supplier")
+        .eq("is_active", true)
+
+      if (svcErr) throw svcErr
+      if (!services?.length) {
+        setSuppliers([])
+        return
+      }
+
+      const managerIds = Array.from(new Set(services.map((s) => s.manager_id)))
+      const { data: profilesData, error: profErr } = await supabase
+        .from("profiles")
+        .select("id, avatar_url, full_name, username")
+        .in("id", managerIds)
+
+      if (profErr) throw profErr
+      const profileMap = Object.fromEntries((profilesData || []).map((p) => [p.id, p]))
+
+      // Carica i prodotti per ogni fornitore
+      const serviceIds = services.map((s) => s.id)
+      const { data: productsData } = await supabase
+        .from("supplier_products")
+        .select("id, service_id, name, description, image_url, price, quantity, delivery_time_days, minimum_order")
+        .in("service_id", serviceIds)
+        .eq("is_active", true)
+
+      const productsByService = (productsData || []).reduce((acc, product) => {
+        if (!acc[product.service_id]) acc[product.service_id] = []
+        acc[product.service_id].push(product)
+        return acc
+      }, {} as Record<string, any[]>)
+
+      const enriched = services.map((s) => ({
+        ...s,
+        manager: profileMap[s.manager_id] || null,
+        products: productsByService[s.id] || [],
+      }))
+
+      setSuppliers(enriched)
+    } catch (e) {
+      console.error("Error loading suppliers:", e)
+      setSuppliers([])
+    } finally {
+      setLoadingSuppliers(false)
     }
   }
 
@@ -584,6 +685,22 @@ export default function KOLBedPage() {
                 <Sparkles className="w-4 h-4 mr-2" />
                 Richiedi pulizie
               </Button>
+              <Button
+                variant={viewMode === "shuttle" ? "default" : "outline"}
+                onClick={() => setViewMode("shuttle")}
+                className="rounded-2xl"
+              >
+                <Car className="w-4 h-4 mr-2" />
+                Shuttle Service
+              </Button>
+              <Button
+                variant={viewMode === "forniture" ? "default" : "outline"}
+                onClick={() => setViewMode("forniture")}
+                className="rounded-2xl"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Forniture
+              </Button>
             </div>
           )}
         </div>
@@ -596,7 +713,11 @@ export default function KOLBedPage() {
               placeholder={
                 viewMode === "pulizie"
                   ? "Cerca per nome, username o paese..."
-                  : "Cerca creator per nome o username..."
+                  : viewMode === "shuttle"
+                    ? "Cerca autista, servizio o città..."
+                    : viewMode === "forniture"
+                      ? "Cerca fornitore, prodotto o città..."
+                      : "Cerca creator per nome o username..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -605,7 +726,245 @@ export default function KOLBedPage() {
           </div>
         </div>
 
-        {viewMode === "pulizie" ? (
+        {viewMode === "shuttle" ? (
+          loadingShuttle ? (
+            <div className="py-12 text-center text-muted-foreground">
+              Caricamento...
+            </div>
+          ) : shuttleServices.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Car className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground text-lg">
+                Nessun servizio shuttle/taxi disponibile al momento
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                I servizi di trasporto appariranno qui quando disponibili.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-4">
+                {shuttleServices.filter((s) =>
+                  !searchQuery ||
+                  s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.manager?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.manager?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.location_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.location_country?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).length}{" "}
+                servizi trovati
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {shuttleServices
+                  .filter((s) =>
+                    !searchQuery ||
+                    s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.manager?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.manager?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.location_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.location_country?.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((service) => (
+                    <Card
+                      key={service.id}
+                      className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer"
+                      onClick={() => router.push(`/profile/${service.manager_id}?service=${service.id}`)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 ring-2 ring-gray-200/60">
+                            {service.manager?.avatar_url ? (
+                              <Image
+                                src={service.manager.avatar_url}
+                                alt={service.manager.username || service.manager.full_name || "Autista"}
+                                fill
+                                sizes="64px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                <Car className="w-8 h-8 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg truncate text-foreground">
+                              {service.manager?.full_name || service.manager?.username || "Autista"}
+                            </h3>
+                            {service.manager?.username && (
+                              <p className="text-sm text-muted-foreground truncate">
+                                @{service.manager.username}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <p className="font-medium text-foreground">{service.title}</p>
+                          {service.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {service.description}
+                            </p>
+                          )}
+                          {service.vehicle_type && (
+                            <p className="text-sm text-muted-foreground">
+                              Veicolo: {service.vehicle_type}
+                            </p>
+                          )}
+                          {(service.location_city || service.location_country) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-3.5 h-3.5 shrink-0" />
+                              {[service.location_city, service.location_country].filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {service.price_per_hour != null && (
+                              <span className="text-sm font-semibold">
+                                €{service.price_per_hour}/ora
+                              </span>
+                            )}
+                            {service.price_per_service != null && (
+                              <span className="text-sm font-semibold">
+                                €{service.price_per_service}/servizio
+                              </span>
+                            )}
+                            {service.price_per_route && (
+                              <span className="text-sm font-semibold">
+                                Prezzi per tratta disponibili
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button asChild className="w-full rounded-2xl" onClick={(e) => e.stopPropagation()}>
+                          <Link href={`/profile/${service.manager_id}?service=${service.id}`}>
+                            Contatta autista
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            </>
+          )
+        ) : viewMode === "forniture" ? (
+          loadingSuppliers ? (
+            <div className="py-12 text-center text-muted-foreground">
+              Caricamento...
+            </div>
+          ) : suppliers.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Package className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground text-lg">
+                Nessun fornitore disponibile al momento
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                I fornitori di materiali a consumo appariranno qui quando disponibili.
+              </p>
+            </Card>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-4">
+                {suppliers.filter((s) =>
+                  !searchQuery ||
+                  s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.manager?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.manager?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.location_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  s.location_country?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).length}{" "}
+                fornitori trovati
+              </div>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {suppliers
+                  .filter((s) =>
+                    !searchQuery ||
+                    s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.manager?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.manager?.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.location_city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    s.location_country?.toLowerCase().includes(searchQuery.toLowerCase())
+                  )
+                  .map((supplier) => (
+                    <Card
+                      key={supplier.id}
+                      className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1 cursor-pointer"
+                      onClick={() => router.push(`/profile/${supplier.manager_id}?service=${supplier.id}`)}
+                    >
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 ring-2 ring-gray-200/60">
+                            {supplier.manager?.avatar_url ? (
+                              <Image
+                                src={supplier.manager.avatar_url}
+                                alt={supplier.manager.username || supplier.manager.full_name || "Fornitore"}
+                                fill
+                                sizes="64px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                <Package className="w-8 h-8 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-lg truncate text-foreground">
+                              {supplier.manager?.full_name || supplier.manager?.username || "Fornitore"}
+                            </h3>
+                            {supplier.manager?.username && (
+                              <p className="text-sm text-muted-foreground truncate">
+                                @{supplier.manager.username}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-4">
+                          <p className="font-medium text-foreground">{supplier.title}</p>
+                          {supplier.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {supplier.description}
+                            </p>
+                          )}
+                          {(supplier.location_city || supplier.location_country) && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-3.5 h-3.5 shrink-0" />
+                              {[supplier.location_city, supplier.location_country].filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                          {supplier.products && supplier.products.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs text-muted-foreground mb-2">
+                                {supplier.products.length} {supplier.products.length === 1 ? "prodotto" : "prodotti"} disponibili
+                              </p>
+                              <div className="space-y-1">
+                                {supplier.products.slice(0, 3).map((product: any) => (
+                                  <div key={product.id} className="text-xs bg-muted/50 rounded p-2">
+                                    <p className="font-medium truncate">{product.name}</p>
+                                    <p className="text-muted-foreground">€{product.price}</p>
+                                  </div>
+                                ))}
+                                {supplier.products.length > 3 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    +{supplier.products.length - 3} altri prodotti
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <Button asChild className="w-full rounded-2xl" onClick={(e) => e.stopPropagation()}>
+                          <Link href={`/profile/${supplier.manager_id}?service=${supplier.id}`}>
+                            Vedi catalogo
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+              </div>
+            </>
+          )
+        ) : viewMode === "pulizie" ? (
           loadingJollyCleaning ? (
             <div className="py-12 text-center text-muted-foreground">
               Caricamento...
