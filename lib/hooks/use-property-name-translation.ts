@@ -27,7 +27,7 @@ export function usePropertyNameTranslation(propertyId: string | null, originalNa
           .select("name")
           .eq("property_id", propertyId)
           .eq("locale", locale)
-          .single()
+          .maybeSingle()
 
         if (data?.name) {
           setTranslatedName(data.name)

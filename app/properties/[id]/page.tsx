@@ -304,7 +304,9 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                 <CardTitle className="text-foreground">{t('property.description')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-foreground">{property.description}</p>
+                <p className="text-foreground">
+                  {translatedDescription ?? property.description ?? t('property.noDescription')}
+                </p>
               </CardContent>
             </Card>
 

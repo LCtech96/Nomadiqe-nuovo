@@ -46,9 +46,9 @@ export function usePropertyTranslations(property: Property | null) {
           .select("locale, name, description")
           .eq("property_id", property.id)
           .eq("locale", locale)
-          .single()
+          .maybeSingle()
 
-        if (error && error.code !== "PGRST116") {
+        if (error) {
           console.error("Error loading translation:", error)
         }
 
