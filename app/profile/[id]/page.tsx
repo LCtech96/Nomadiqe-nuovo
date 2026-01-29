@@ -106,6 +106,7 @@ interface PublicProfile {
   role: string | null
   host_level?: string | null
   creator_level?: string | null
+  creator_verified_at?: string | null
   social_accounts?: Array<{
     platform: string
     username: string
@@ -828,6 +829,11 @@ export default function PublicProfilePage() {
                     }`}>
                       {profile.creator_level}
                     </span>
+                  )}
+                  {profile.role === "creator" && profile.creator_verified_at && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                      Verificato
+                    </Badge>
                   )}
                 </div>
                 {profile.username && (

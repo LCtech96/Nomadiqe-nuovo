@@ -535,8 +535,8 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
 
   return (
     <div className="min-h-screen p-4 pb-12 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
-      <div className="max-w-2xl mx-auto">
-        <Card>
+      <div className="max-w-2xl mx-auto min-w-0">
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle>Analytics, social e KOL&BED</CardTitle>
             <CardDescription>Passo 2 di 2 — Screenshot analytics, nicchia, strategia, profili social, livello KOL&BED e termini</CardDescription>
@@ -694,14 +694,17 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
               </div>
 
               <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
-                <Label>Regole profilo Nomadiqe</Label>
+                <Label className="flex items-center gap-2">
+                  Regole profilo Nomadiqe
+                  <span className="text-destructive font-semibold">(Obbligatorie)</span>
+                </Label>
                 <div className="flex items-start gap-2">
                   <Checkbox
                     id="photoDiff"
                     checked={socialData.acceptProfilePhotoDifferent}
                     onCheckedChange={(v) => setSocialData({ ...socialData, acceptProfilePhotoDifferent: !!v })}
                   />
-                  <label htmlFor="photoDiff" className="text-sm leading-tight cursor-pointer">
+                  <label htmlFor="photoDiff" className="text-sm leading-tight cursor-pointer break-words min-w-0">
                     La mia foto profilo su Nomadiqe non sarà uguale a quella dei profili social esterni.
                   </label>
                 </div>
@@ -711,29 +714,40 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                     checked={socialData.acceptUsernameDifferent}
                     onCheckedChange={(v) => setSocialData({ ...socialData, acceptUsernameDifferent: !!v })}
                   />
-                  <label htmlFor="userDiff" className="text-sm leading-tight cursor-pointer">
+                  <label htmlFor="userDiff" className="text-sm leading-tight cursor-pointer break-words min-w-0">
                     Nome utente e username Nomadiqe saranno diversi da quelli dei profili social esterni.
                   </label>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label>Livello KOL&BED *</Label>
-                <Select
-                  value={socialData.kolBedLevel}
-                  onValueChange={(v: "base" | "medio" | "lusso") => setSocialData({ ...socialData, kolBedLevel: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona livello" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {KOL_BED_LEVELS.map((k) => (
-                      <SelectItem key={k.value} value={k.value}>
-                        <span className="font-medium">{k.label}</span> — {k.desc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  {KOL_BED_LEVELS.map((k) => (
+                    <div
+                      key={k.value}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSocialData({ ...socialData, kolBedLevel: k.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          setSocialData({ ...socialData, kolBedLevel: k.value })
+                        }
+                      }}
+                      className={`rounded-lg border p-4 text-left transition-colors cursor-pointer hover:bg-muted/50 ${
+                        socialData.kolBedLevel === k.value
+                          ? "border-primary bg-primary/5 ring-2 ring-primary"
+                          : "border-border"
+                      }`}
+                    >
+                      <div className="font-semibold text-foreground">{k.label}</div>
+                      <p className="mt-1 text-sm text-muted-foreground break-words whitespace-normal">
+                        {k.desc}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
@@ -768,7 +782,7 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                     Hanno profili Instagram, TikTok o altri social.
                   </label>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground break-words">
                   Se sì, anche loro devono creare un account Nomadiqe e richiedere la collaborazione insieme all&apos;host, spiegando la situazione e ottenendo l&apos;approvazione dell&apos;host.
                 </p>
               </div>
@@ -779,8 +793,8 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                   checked={socialData.acceptPromoteOnlyNomadiqe}
                   onCheckedChange={(v) => setSocialData({ ...socialData, acceptPromoteOnlyNomadiqe: !!v })}
                 />
-                <label htmlFor="promoNomadiqe" className="text-sm font-medium cursor-pointer">
-                  Accetto di pubblicizzare e promuovere le piattaforme degli host solamente all&apos;interno di Nomadiqe, e non su social, siti web o altre piattaforme esterne.
+                <label htmlFor="promoNomadiqe" className="text-sm font-medium cursor-pointer break-words min-w-0">
+                  Quando pubblico le strutture su Instagram, TikTok o altre piattaforme, accetto di menzionare sempre prima Nomadiqe e poi la struttura dell&apos;host. Se condivido un link, userò il link della struttura su Nomadiqe.
                 </label>
               </div>
 
@@ -788,7 +802,16 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                 <Button type="button" variant="outline" onClick={() => setStep("profile")}>
                   Indietro
                 </Button>
-                <Button type="submit" className="flex-1" disabled={loading || uploadingScreenshots}>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={
+                    loading ||
+                    uploadingScreenshots ||
+                    !socialData.acceptProfilePhotoDifferent ||
+                    !socialData.acceptUsernameDifferent
+                  }
+                >
                   {loading || uploadingScreenshots ? "Salvataggio..." : "Completa onboarding"}
                 </Button>
               </div>
