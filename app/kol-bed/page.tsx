@@ -219,22 +219,28 @@ export default function KOLBedPage() {
     try {
       setLoadingData(true)
 
+      // Se l'utente loggato è un creator, mostra solo gli host
+      // Altrimenti mostra i creator
+      const isViewerCreator = profile?.role === "creator"
+      const roleToLoad = isViewerCreator ? "host" : "creator"
+
       const { data: creatorsData, error: creatorsError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("role", "creator")
+        .eq("role", roleToLoad)
         .order("created_at", { ascending: false })
 
       if (creatorsError) throw creatorsError
 
-      const creatorIds = (creatorsData || []).map((c) => c.id)
+      const profileIds = (creatorsData || []).map((c) => c.id)
       let socialAccountsMap: { [key: string]: any[] } = {}
 
-      if (creatorIds.length > 0) {
+      // Carica social accounts solo se stiamo mostrando creator (non host)
+      if (!isViewerCreator && profileIds.length > 0) {
         const { data: socialData } = await supabase
           .from("social_accounts")
           .select("*")
-          .in("user_id", creatorIds)
+          .in("user_id", profileIds)
 
         socialAccountsMap = (socialData || []).reduce((acc, account) => {
           if (!acc[account.user_id]) acc[account.user_id] = []
@@ -244,17 +250,17 @@ export default function KOLBedPage() {
       }
 
       const viewsMap: { [key: string]: number } = {}
-      if (creatorIds.length > 0) {
+      if (profileIds.length > 0 && !isViewerCreator) {
         const { data: analyticsData } = await supabase
           .from("creator_manual_analytics")
           .select("creator_id, profile_views")
-          .in("creator_id", creatorIds)
+          .in("creator_id", profileIds)
 
         analyticsData?.forEach((a) => {
           if (a.profile_views) viewsMap[a.creator_id] = a.profile_views
         })
 
-        for (const cid of creatorIds) {
+        for (const cid of profileIds) {
           if (viewsMap[cid] != null) continue
           const { count } = await supabase
             .from("profile_views")
@@ -264,17 +270,17 @@ export default function KOLBedPage() {
         }
       }
 
-      const enrichedCreators = (creatorsData || []).map((creator) => {
-        const socialAccounts = socialAccountsMap[creator.id] || []
+      const enrichedCreators = (creatorsData || []).map((profile) => {
+        const socialAccounts = socialAccountsMap[profile.id] || []
         const totalFollowers = socialAccounts.reduce(
           (sum, acc) => sum + (acc.follower_count || 0),
           0
         )
         return {
-          ...creator,
+          ...profile,
           social_accounts: socialAccounts,
           total_followers: totalFollowers,
-          profile_views: viewsMap[creator.id] || 0,
+          profile_views: viewsMap[profile.id] || 0,
         }
       })
 
@@ -717,7 +723,9 @@ export default function KOLBedPage() {
                     ? "Cerca autista, servizio o città..."
                     : viewMode === "forniture"
                       ? "Cerca fornitore, prodotto o città..."
-                      : "Cerca creator per nome o username..."
+                      : isHost
+                        ? "Cerca creator per nome o username..."
+                        : "Cerca host per nome o username..."
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -1077,14 +1085,18 @@ export default function KOLBedPage() {
           <Card className="p-12 text-center">
             <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <p className="text-muted-foreground text-lg">
-              {searchQuery ? "Nessun creator trovato" : "Nessun creator registrato"}
+              {isHost 
+                ? (searchQuery ? "Nessun creator trovato" : "Nessun creator registrato")
+                : (searchQuery ? "Nessun host trovato" : "Nessun host registrato")}
             </p>
           </Card>
         ) : (
           <>
             <div className="text-sm text-muted-foreground mb-4">
               {filteredCreators.length}{" "}
-              {filteredCreators.length === 1 ? "creator trovato" : "creators trovati"}
+              {isHost 
+                ? (filteredCreators.length === 1 ? "creator trovato" : "creators trovati")
+                : (filteredCreators.length === 1 ? "host trovato" : "host trovati")}
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredCreators.map((creator) => (
