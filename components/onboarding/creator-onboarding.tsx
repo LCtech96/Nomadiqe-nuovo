@@ -59,7 +59,7 @@ const PLATFORM_OPTS = [
 ]
 
 export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboardingProps) {
-  const completionUrl = redirectOnComplete ?? "/dashboard/creator"
+  const completionUrl = redirectOnComplete ?? "/profile"
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()

@@ -431,7 +431,7 @@ export default function OnboardingPage() {
             </div>
           </div>
         )}
-        <CreatorOnboarding redirectOnComplete="/dashboard/creator" />
+        <CreatorOnboarding redirectOnComplete="/profile" />
       </div>
     )
   }
