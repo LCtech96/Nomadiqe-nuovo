@@ -7,6 +7,8 @@
 -- bypassa RLS e restituisce le community create dall'utente.
 -- ============================================
 
+DROP FUNCTION IF EXISTS public.get_user_created_communities(UUID);
+
 CREATE OR REPLACE FUNCTION public.get_user_created_communities(user_id_param UUID)
 RETURNS TABLE (
   id UUID,
