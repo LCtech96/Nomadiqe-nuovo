@@ -97,11 +97,21 @@ export default function CommunityDetailPage() {
   const communityId = params.id as string
 
   useEffect(() => {
-    if (session?.user?.id && communityId) {
-      loadCommunity()
+    if (!session?.user?.id || !communityId) return
+
+    let unsub: (() => void) | undefined
+
+    const run = async () => {
+      const comm = await loadCommunity()
+      if (!comm) return
       loadMessages()
-      loadMembers()
-      subscribeToMessages()
+      loadMembers(comm.created_by)
+      unsub = subscribeToMessages()
+    }
+
+    run()
+    return () => {
+      unsub?.()
     }
   }, [session, communityId])
 
@@ -113,16 +123,27 @@ export default function CommunityDetailPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const loadCommunity = async () => {
+  const loadCommunity = async (): Promise<Community | null> => {
+    if (!session?.user?.id) return null
     try {
-      const { data, error } = await supabase
-        .from("host_communities")
-        .select("*")
-        .eq("id", communityId)
-        .single()
+      const { data, error } = await supabase.rpc("get_community_by_id", {
+        community_id_param: communityId,
+        user_id_param: session.user.id,
+      })
 
       if (error) throw error
-      setCommunity(data)
+      const row = Array.isArray(data) && data.length > 0 ? data[0] : data
+      if (!row) {
+        toast({
+          title: "Errore",
+          description: "Community non trovata o accesso non consentito.",
+          variant: "destructive",
+        })
+        router.push("/communities")
+        return null
+      }
+      setCommunity(row)
+      return row as Community
     } catch (error: any) {
       console.error("Error loading community:", error)
       toast({
@@ -131,6 +152,7 @@ export default function CommunityDetailPage() {
         variant: "destructive",
       })
       router.push("/communities")
+      return null
     }
   }
 
@@ -172,7 +194,7 @@ export default function CommunityDetailPage() {
     }
   }
 
-  const loadMembers = async () => {
+  const loadMembers = async (createdBy?: string) => {
     if (!session?.user?.id) return
 
     try {
@@ -211,8 +233,12 @@ export default function CommunityDetailPage() {
       setMembers(membersData)
 
       // Check if current user is admin and can write
+      // Il creatore della community è sempre admin
+      const isCreator = createdBy !== undefined
+        ? createdBy === session.user.id
+        : community?.created_by === session.user.id
       const currentMember = membersData.find((m: Member) => m.host_id === session.user.id)
-      setIsAdmin(currentMember?.role === "admin" || false)
+      setIsAdmin(isCreator || currentMember?.role === "admin" || false)
       setCanWrite(currentMember?.can_write !== false && currentMember?.is_muted !== true)
     } catch (error: any) {
       console.error("Error loading members:", error)
@@ -346,18 +372,19 @@ export default function CommunityDetailPage() {
     }
   }
 
-  const handleRemoveMember = async (memberId: string) => {
+  const handleRemoveMember = async (memberId: string, hostId: string) => {
     try {
-      const { error } = await supabase
-        .from("host_community_members")
-        .delete()
-        .eq("id", memberId)
+      // Usa la funzione RPC per espellere l'utente (controlla i permessi)
+      const { error } = await supabase.rpc("expel_community_member", {
+        community_id_param: communityId,
+        member_host_id_param: hostId,
+      })
 
       if (error) throw error
 
       toast({
         title: "Successo",
-        description: "Utente rimosso dalla community",
+        description: "Utente espulso dalla community",
       })
 
       loadMembers()
@@ -365,7 +392,7 @@ export default function CommunityDetailPage() {
       console.error("Error removing member:", error)
       toast({
         title: "Errore",
-        description: "Impossibile rimuovere l'utente.",
+        description: error.message || "Impossibile espellere l'utente.",
         variant: "destructive",
       })
     }
@@ -653,11 +680,11 @@ export default function CommunityDetailPage() {
                               Blocca utente
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleRemoveMember(member.id)}
+                              onClick={() => handleRemoveMember(member.id, member.host_id)}
                               className="text-destructive"
                             >
                               <UserMinus className="w-4 h-4 mr-2" />
-                              Rimuovi utente
+                              Espelli utente
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

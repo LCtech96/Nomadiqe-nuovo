@@ -11,7 +11,7 @@ interface TranslatedCommentProps {
 
 export function TranslatedComment({ content, className = "" }: TranslatedCommentProps) {
   const { translate } = useTranslation()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [translatedContent, setTranslatedContent] = useState<string>(content)
   const [isTranslating, setIsTranslating] = useState(false)
 
@@ -19,7 +19,12 @@ export function TranslatedComment({ content, className = "" }: TranslatedComment
     let isMounted = true
     
     const loadTranslation = async () => {
-      if (!content || !content.trim()) return
+      if (!content || !content.trim()) {
+        if (isMounted) {
+          setTranslatedContent(content)
+        }
+        return
+      }
       
       setIsTranslating(true)
       try {
@@ -44,7 +49,7 @@ export function TranslatedComment({ content, className = "" }: TranslatedComment
     return () => {
       isMounted = false
     }
-  }, [content, translate])
+  }, [content, locale, translate])
 
   return (
     <p className={className}>

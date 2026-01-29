@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from "@/lib/i18n/context"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { put } from "@vercel/blob"
 import ImageCropper from "@/components/image-cropper"
@@ -46,14 +47,16 @@ import {
 type JollyOnboardingStep = "guide" | "profile" | "services" | "website-offer"
 
 interface JollyOnboardingProps {
-  onComplete: () => void
+  redirectOnComplete?: string
 }
 
-export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
+export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingProps) {
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
+  const completionUrl = redirectOnComplete ?? "/home"
   const [step, setStep] = useState<JollyOnboardingStep>("guide")
   const [loading, setLoading] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
@@ -473,7 +476,7 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
 
       await updateSession?.()
       toast({ title: "Onboarding completato", description: "Redirect alla Home." })
-      router.push("/home")
+      router.push(completionUrl)
     } catch (err: any) {
       toast({
         title: "Errore",
@@ -487,14 +490,14 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
 
   useEffect(() => {
     if (!showOfferDisclaimer) return
-    const t = setTimeout(() => {
+    const timeout = setTimeout(() => {
       setShowOfferDisclaimer(false)
       updateSession?.()
-        .then(() => router.push("/home"))
-        .catch(() => router.push("/home"))
+        .then(() => router.push(completionUrl))
+        .catch(() => router.push(completionUrl))
     }, 2000)
-    return () => clearTimeout(t)
-  }, [showOfferDisclaimer, router, updateSession])
+    return () => clearTimeout(timeout)
+  }, [showOfferDisclaimer, router, updateSession, completionUrl])
 
   useEffect(() => {
     if (step !== "website-offer") return
@@ -518,28 +521,25 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
               <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
                 <Briefcase className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <CardTitle className="text-3xl">Benvenuto Jolly!</CardTitle>
+              <CardTitle className="text-3xl">{t("jolly.welcome")}</CardTitle>
               <CardDescription className="text-lg mt-2">
-                Scopri come funziona la piattaforma per i jolly
+                {t("jolly.guideSubtitle")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Introduzione */}
               <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
                 <h3 className="font-semibold text-lg mb-2 text-blue-900 dark:text-blue-100">
-                  Cosa puoi fare come Jolly?
+                  {t("jolly.whatCanYouDo")}
                 </h3>
                 <p className="text-blue-800 dark:text-blue-200">
-                  Come Jolly puoi offrire una vasta gamma di servizi agli host e ai viaggiatori della piattaforma. 
-                  Crea il tuo profilo professionale e inizia a ricevere richieste!
+                  {t("jolly.whatCanYouDoDesc")}
                 </p>
               </div>
 
-              {/* Tipi di servizi */}
               <div>
                 <h3 className="font-semibold text-xl mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
-                  Tipi di Servizi che Puoi Offrire
+                  {t("jolly.serviceTypesTitle")}
                 </h3>
                 <div className="grid md:grid-cols-2 gap-4">
                   <Card className="border-2">
@@ -549,9 +549,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Building2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Gestione Proprietà</h4>
+                          <h4 className="font-semibold">{t("jolly.servicePropertyManagement")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Gestisci prenotazioni, check-in/out, manutenzione e comunicazione con gli ospiti
+                            {t("jolly.servicePropertyManagementDesc")}
                           </p>
                         </div>
                       </div>
@@ -565,9 +565,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Pulizie</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceCleaning")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Servizi di pulizia professionale per strutture ricettive
+                            {t("jolly.serviceCleaningDesc")}
                           </p>
                         </div>
                       </div>
@@ -581,9 +581,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Camera className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Fotografia & Video</h4>
+                          <h4 className="font-semibold">{t("jolly.servicePhotography")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Servizi fotografici e video per promuovere le proprietà
+                            {t("jolly.servicePhotographyDesc")}
                           </p>
                         </div>
                       </div>
@@ -597,9 +597,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Wrench className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Manutenzione</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceMaintenance")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Riparazioni e manutenzione tecnica delle strutture
+                            {t("jolly.serviceMaintenanceDesc")}
                           </p>
                         </div>
                       </div>
@@ -613,9 +613,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <ChefHat className="w-5 h-5 text-pink-600 dark:text-pink-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Cucina</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceCooking")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Servizi di catering e preparazione pasti
+                            {t("jolly.serviceCookingDesc")}
                           </p>
                         </div>
                       </div>
@@ -629,9 +629,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Car className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Autista</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceDriver")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Servizi di trasporto e accompagnamento
+                            {t("jolly.serviceDriverDesc")}
                           </p>
                         </div>
                       </div>
@@ -645,9 +645,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <Languages className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Traduzione</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceTranslation")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Servizi di traduzione e interpretariato
+                            {t("jolly.serviceTranslationDesc")}
                           </p>
                         </div>
                       </div>
@@ -661,9 +661,9 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                           <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                          <h4 className="font-semibold">Fornitore</h4>
+                          <h4 className="font-semibold">{t("jolly.serviceSupplier")}</h4>
                           <p className="text-sm text-muted-foreground">
-                            Catalogo prodotti e forniture per strutture
+                            {t("jolly.serviceSupplierDesc")}
                           </p>
                         </div>
                       </div>
@@ -672,44 +672,41 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                 </div>
               </div>
 
-              {/* Come funziona */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
                 <h3 className="font-semibold text-xl mb-4 flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Come Funziona
+                  {t("jolly.howItWorks")}
                 </h3>
                 <ol className="space-y-3 list-decimal list-inside">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span><strong>Completa il tuo profilo:</strong> Aggiungi foto, nome e username per rendere il tuo profilo professionale</span>
+                    <span>{t("jolly.step1Profile")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span><strong>Crea i tuoi servizi:</strong> Definisci i servizi che vuoi offrire, i prezzi e le zone di operatività</span>
+                    <span>{t("jolly.step2Services")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span><strong>Ricevi richieste:</strong> Gli host e i viaggiatori possono richiedere i tuoi servizi</span>
+                    <span>{t("jolly.step3Requests")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span><strong>Gestisci le richieste:</strong> Accetta o rifiuta le richieste e completa i servizi</span>
+                    <span>{t("jolly.step4Manage")}</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span><strong>Guadagna e cresci:</strong> Ricevi pagamenti e costruisci la tua reputazione sulla piattaforma</span>
+                    <span>{t("jolly.step5Earn")}</span>
                   </li>
                 </ol>
               </div>
 
-              {/* Prossimi passi */}
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <h3 className="font-semibold text-lg mb-2 text-yellow-900 dark:text-yellow-100">
-                  Prossimi Passi
+                  {t("jolly.nextSteps")}
                 </h3>
                 <p className="text-yellow-800 dark:text-yellow-200 mb-4">
-                  Dopo aver completato il tuo profilo personale, potrai creare i servizi che vuoi offrire. 
-                  Ogni servizio può essere personalizzato con prezzi, descrizioni e zone di operatività.
+                  {t("jolly.nextStepsDesc")}
                 </p>
               </div>
 
@@ -718,7 +715,7 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                 className="w-full"
                 size="lg"
               >
-                Continua con il Profilo
+                {t("jolly.continueWithProfile")}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </CardContent>
@@ -737,12 +734,12 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
             <CardHeader>
               <div className="flex items-center gap-2 mb-2">
                 <Button variant="ghost" size="sm" onClick={() => setStep("profile")}>
-                  ← Indietro
+                  ← {t("jolly.back")}
                 </Button>
               </div>
-              <CardTitle className="text-2xl">Servizi che offri</CardTitle>
+              <CardTitle className="text-2xl">{t("jolly.servicesYouOffer")}</CardTitle>
               <CardDescription>
-                Tipo di servizio, prezzo, regione, città e orari
+                {t("jolly.servicesYouOfferDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -937,7 +934,7 @@ export default function JollyOnboarding({ onComplete }: JollyOnboardingProps) {
                 onClick={async () => {
                   setShowOfferDisclaimer(false)
                   await updateSession?.()
-                  router.push("/home")
+                  router.push(completionUrl)
                 }}
               >
                 Vai alla Home

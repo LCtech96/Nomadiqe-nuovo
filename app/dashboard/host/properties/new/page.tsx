@@ -19,7 +19,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { geocodeAddress } from "@/lib/geocoding"
 import { X, Upload, VideoIcon, Loader2, MapPin } from "lucide-react"
-import ImageCropper from "@/components/image-cropper"
+import imageCompression from "browser-image-compression"
 import dynamic from "next/dynamic"
 
 const LocationPickerMap = dynamic(() => import("@/components/location-picker-map"), {
@@ -53,9 +53,7 @@ export default function NewPropertyPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [mainImageIndex, setMainImageIndex] = useState<number | null>(null)
   const [uploadingImages, setUploadingImages] = useState(false)
-  const [showImageCropper, setShowImageCropper] = useState(false)
-  const [imageFileToCrop, setImageFileToCrop] = useState<File | null>(null)
-  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([])
+  const [addingImages, setAddingImages] = useState(false)
   const [video, setVideo] = useState<File | null>(null)
   const [videoPreview, setVideoPreview] = useState<string | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
@@ -358,63 +356,68 @@ export default function NewPropertyPage() {
     }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
+    if (files.length === 0) {
+      e.target.value = ""
+      return
+    }
     if (files.length + images.length > 30) {
       toast({
         title: "Errore",
         description: "Puoi caricare massimo 30 immagini",
         variant: "destructive",
       })
+      e.target.value = ""
       return
     }
 
-    // Filter by size (allow up to 10MB before cropping)
     const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024)
-    
     if (validFiles.length === 0) {
       toast({
         title: "Errore",
         description: "Le immagini devono essere inferiori a 10MB",
         variant: "destructive",
       })
+      e.target.value = ""
       return
     }
 
-    // Se ci sono più file, aggiungili tutti alla coda
-    // Processa tutte le immagini in sequenza
-    if (validFiles.length > 0) {
-      setPendingImageFiles(validFiles)
-      setImageFileToCrop(validFiles[0])
-      setShowImageCropper(true)
-    }
-    
-    // Reset input
-    e.target.value = ""
-  }
-
-  const handleImageCropComplete = (croppedFile: File) => {
-    const newPreview = URL.createObjectURL(croppedFile)
-    const newIndex = images.length
-    
-    setImages([...images, croppedFile])
-    setImagePreviews([...imagePreviews, newPreview])
-    
-    // Se è la prima immagine, impostala come principale
-    if (newIndex === 0 && mainImageIndex === null) {
-      setMainImageIndex(0)
-    }
-
-    // Process next file if available
-    if (pendingImageFiles.length > 1) {
-      const remainingFiles = pendingImageFiles.slice(1)
-      setPendingImageFiles(remainingFiles)
-      setImageFileToCrop(remainingFiles[0])
-      // Keep cropper open for next image
-    } else {
-      setShowImageCropper(false)
-      setImageFileToCrop(null)
-      setPendingImageFiles([])
+    setAddingImages(true)
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+        fileType: "image/jpeg" as const,
+      }
+      const compressedFiles = await Promise.all(
+        validFiles.map((file) =>
+          imageCompression(file, options).then((f) => new File([f], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }))
+        )
+      )
+      const newPreviews = compressedFiles.map((f) => URL.createObjectURL(f))
+      setImages((prev) => [...prev, ...compressedFiles])
+      setImagePreviews((prev) => [...prev, ...newPreviews])
+      if (mainImageIndex === null && compressedFiles.length > 0) {
+        setMainImageIndex(0)
+      }
+      if (compressedFiles.length > 1) {
+        toast({
+          title: "Immagini aggiunte",
+          description: `${compressedFiles.length} immagini caricate. Clicca su un'immagine per impostarla come copertina.`,
+        })
+      }
+    } catch (err: any) {
+      console.error("Image compression error:", err)
+      toast({
+        title: "Errore",
+        description: err?.message || "Impossibile processare le immagini",
+        variant: "destructive",
+      })
+    } finally {
+      setAddingImages(false)
+      e.target.value = ""
     }
   }
 
@@ -770,17 +773,20 @@ export default function NewPropertyPage() {
                       multiple
                       onChange={handleImageChange}
                       className="hidden"
-                      disabled={loading || uploadingImages}
+                      disabled={loading || uploadingImages || addingImages}
                     />
                     <span className="text-sm text-muted-foreground">
                       {images.length}/30 immagini
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Puoi selezionare più immagini insieme; dopo il caricamento clicca su un'immagine per impostarla come copertina.
+                  </p>
                   
                   {imagePreviews.length > 0 && (
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
-                        Clicca su un'immagine per impostarla come principale
+                        Clicca su un'immagine per impostarla come copertina
                       </p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {imagePreviews.map((preview, index) => (
@@ -800,7 +806,7 @@ export default function NewPropertyPage() {
                             />
                             {mainImageIndex === index && (
                               <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs font-medium">
-                                Principale
+                                Copertina
                               </div>
                             )}
                             <button
@@ -810,7 +816,7 @@ export default function NewPropertyPage() {
                                 removeImage(index)
                               }}
                               className="absolute top-2 right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              disabled={loading || uploadingImages}
+                              disabled={loading || uploadingImages || addingImages}
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -1011,21 +1017,6 @@ export default function NewPropertyPage() {
         </Card>
       </div>
     </div>
-        <ImageCropper
-          open={showImageCropper}
-          onOpenChange={(open) => {
-            setShowImageCropper(open)
-            if (!open) {
-              setImageFileToCrop(null)
-              setPendingImageFiles([])
-            }
-          }}
-          imageFile={imageFileToCrop}
-          onCropComplete={handleImageCropComplete}
-          aspectRatio={4 / 3}
-          maxWidth={1200}
-          maxHeight={900}
-        />
       </>
   )
 }

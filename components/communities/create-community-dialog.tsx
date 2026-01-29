@@ -180,7 +180,7 @@ export default function CreateCommunityDialog({
 
     setLoading(true)
     try {
-      // Usa direttamente l'API route server-side per creare la community
+      // Usa direttamente l'API route server-side per creare la community e gli inviti
       // L'API route gestisce l'autenticazione con NextAuth e bypassa i problemi RLS
       const response = await fetch("/api/communities/create", {
         method: "POST",
@@ -192,6 +192,7 @@ export default function CreateCommunityDialog({
           description: description.trim() || null,
           city: userLocation.city,
           country: userLocation.country,
+          invited_host_ids: selectedHosts.length > 0 ? selectedHosts : undefined,
         }),
       })
 
@@ -202,39 +203,36 @@ export default function CreateCommunityDialog({
 
       const { community } = await response.json()
 
-      // Invia gli inviti agli host selezionati
-      if (selectedHosts.length > 0) {
-        const invitations = selectedHosts.map((hostId) => ({
-          community_id: community.id,
-          invited_host_id: hostId,
-          invited_by: session.user.id,
-          status: "pending",
-        }))
-
-        const { error: inviteError } = await supabase
-          .from("host_community_invitations")
-          .insert(invitations)
-
-        if (inviteError) {
-          console.error("Error creating invitations:", inviteError)
-          // Non bloccare la creazione se gli inviti falliscono
-        }
-      }
+      console.log("✅ Community creata:", community)
 
       toast({
         title: "Successo",
         description: "Community creata con successo!",
       })
 
-      // Reset form
-      setName("")
-      setDescription("")
-      setSelectedHosts([])
-      onOpenChange(false)
-      
+      // Ricarica i dati PRIMA di chiudere il dialog
       if (onSuccess) {
-        onSuccess()
+        // Primo tentativo immediato
+        await onSuccess()
+        
+        // Retry dopo 500ms
+        setTimeout(async () => {
+          await onSuccess()
+        }, 500)
+        
+        // Retry dopo 1.5 secondi per assicurarsi che il trigger abbia completato
+        setTimeout(async () => {
+          await onSuccess()
+        }, 1500)
       }
+
+      // Reset form e chiudi dialog solo dopo aver ricaricato i dati
+      setTimeout(() => {
+        setName("")
+        setDescription("")
+        setSelectedHosts([])
+        onOpenChange(false)
+      }, 500)
     } catch (error: any) {
       console.error("Error creating community:", error)
       toast({

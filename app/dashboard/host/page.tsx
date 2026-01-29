@@ -69,111 +69,6 @@ export default function HostDashboard() {
   const [deleting, setDeleting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
-  // Check onboarding status on mount
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      // Gestisci i diversi stati di autenticazione
-      if (status === "unauthenticated") {
-        router.push("/auth/signin")
-        return
-      }
-
-      // Se status è "loading", aspetta - il componente mostrerà "Caricamento..."
-      // Non serve fare return qui perché il check all'inizio del componente gestisce già questo caso
-      if (status !== "authenticated") {
-        return
-      }
-
-      // A questo punto status è "authenticated"
-      // Ottieni l'ID utente da Next-Auth o Supabase
-      let currentUserId: string | null = null
-      
-      if (session?.user?.id) {
-        currentUserId = session.user.id
-      } else {
-        // Prova a ottenere l'ID da Supabase se Next-Auth non è disponibile
-        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
-        currentUserId = supabaseUser?.id || null
-      }
-      
-      if (!currentUserId) {
-        // Se non c'è userId dopo tutti i tentativi, reindirizza al login
-        router.push("/auth/signin")
-        setCheckingOnboarding(false)
-        setLoading(false)
-        return
-      }
-
-      try {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("role, onboarding_completed")
-          .eq("id", currentUserId)
-          .maybeSingle()
-
-        if (error) {
-          console.error("Error checking profile:", error)
-          setCheckingOnboarding(false)
-          setLoading(false)
-          return
-        }
-
-        // Se l'utente non ha il ruolo host, reindirizza
-        if (profile?.role !== "host") {
-          setCheckingOnboarding(false)
-          setLoading(false)
-          router.push("/onboarding")
-          return
-        }
-
-        // Se l'utente è host ma non ha completato l'onboarding, reindirizza forzatamente
-        if (profile && !profile.onboarding_completed) {
-          console.log("Host onboarding not completed - redirecting to onboarding")
-          setCheckingOnboarding(false)
-          setLoading(false)
-          router.push("/onboarding")
-          return
-        }
-
-        // Onboarding completato, procedi con il caricamento dei dati
-        if (currentUserId) {
-          // Aggiorna userId state per le altre funzioni
-          setUserId(currentUserId)
-          // Chiama le funzioni di caricamento passando currentUserId direttamente
-          // per evitare problemi di timing con lo state update
-          await Promise.allSettled([
-            loadPropertiesWithUserId(currentUserId),
-            loadPreferencesWithUserId(currentUserId),
-            loadReferralsWithUserId(currentUserId),
-            loadCollaborationsWithUserId(currentUserId),
-          ])
-        }
-      } catch (error) {
-        console.error("Error in checkOnboarding:", error)
-      } finally {
-        // Imposta checkingOnboarding e loading a false DOPO aver completato il caricamento
-        setCheckingOnboarding(false)
-        setLoading(false)
-      }
-    }
-
-    checkOnboarding()
-  }, [session, status, router, supabase])
-
-  // Show loading while checking onboarding
-  if (checkingOnboarding || status === "loading" || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827]">
-        <div>Caricamento...</div>
-      </div>
-    )
-  }
-
-  const loadProperties = async () => {
-    if (!userId) return
-    return loadPropertiesWithUserId(userId)
-  }
-
   const loadPropertiesWithUserId = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -184,7 +79,6 @@ export default function HostDashboard() {
 
       if (error) throw error
 
-      // Get booking counts
       const propertiesWithBookings = await Promise.all(
         (data || []).map(async (property) => {
           const { count } = await supabase
@@ -205,6 +99,184 @@ export default function HostDashboard() {
       console.error("Error loading properties:", error)
       setProperties([])
     }
+  }
+
+  const loadPreferencesWithUserId = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("host_kol_bed_preferences")
+        .select("*")
+        .eq("host_id", id)
+        .maybeSingle()
+
+      if (error && error.code !== "PGRST116") throw error
+
+      if (data) {
+        const nights = data.free_stay_nights ?? null
+        setPreferences({
+          free_stay_nights: nights ?? 0,
+          promotion_types: data.promotion_types || [],
+          required_social_platforms: data.required_social_platforms || [],
+          additional_requirements: data.additional_requirements || null,
+        })
+        setFreeStayNightsInput(nights !== null && nights !== undefined ? nights.toString() : "")
+      }
+    } catch (error) {
+      console.error("Error loading preferences:", error)
+    }
+  }
+
+  const loadReferralsWithUserId = async (id: string) => {
+    setLoadingReferrals(true)
+    try {
+      const { data, error } = await supabase
+        .from("host_referrals")
+        .select("*")
+        .eq("host_id", id)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      setReferrals(data || [])
+      const activeCount = (data || []).filter(
+        (r) => r.status === "profile_created" || r.status === "first_booking_received"
+      ).length
+      setActiveReferralsCount(activeCount)
+    } catch (error) {
+      console.error("Error loading referrals:", error)
+    } finally {
+      setLoadingReferrals(false)
+    }
+  }
+
+  const loadCollaborationsWithUserId = async (id: string) => {
+    setLoadingCollaborations(true)
+    try {
+      const { data, error } = await supabase
+        .from("collaborations")
+        .select(`
+          id,
+          creator_id,
+          property_id,
+          status,
+          collaboration_type,
+          start_date,
+          end_date,
+          created_at,
+          creator:profiles!collaborations_creator_id_fkey(id, username, full_name, avatar_url),
+          property:properties(id, name, title, images, city, country)
+        `)
+        .eq("host_id", id)
+        .in("status", ["accepted", "completed"])
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      const mappedCollaborations = (data || [])
+        .filter((c: any) => c.property)
+        .map((c: any) => {
+          const property = Array.isArray(c.property) ? c.property[0] : c.property
+          const creator = Array.isArray(c.creator) ? c.creator[0] : c.creator
+          return {
+            id: c.id,
+            creator_id: c.creator_id,
+            property_id: c.property_id,
+            status: c.status,
+            collaboration_type: c.collaboration_type,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            created_at: c.created_at,
+            creator,
+            property,
+          }
+        })
+
+      setCollaborations(mappedCollaborations)
+    } catch (error) {
+      console.error("Error loading collaborations:", error)
+    } finally {
+      setLoadingCollaborations(false)
+    }
+  }
+
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (status === "unauthenticated") {
+        router.push("/auth/signin")
+        return
+      }
+      if (status !== "authenticated") return
+
+      let currentUserId: string | null = session?.user?.id ?? null
+      if (!currentUserId) {
+        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        currentUserId = supabaseUser?.id || null
+      }
+
+      if (!currentUserId) {
+        router.push("/auth/signin")
+        setCheckingOnboarding(false)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role, onboarding_completed")
+          .eq("id", currentUserId)
+          .maybeSingle()
+
+        if (error) {
+          console.error("Error checking profile:", error)
+          setCheckingOnboarding(false)
+          setLoading(false)
+          return
+        }
+
+        if (profile?.role !== "host") {
+          setCheckingOnboarding(false)
+          setLoading(false)
+          router.push("/onboarding")
+          return
+        }
+
+        if (profile && !profile.onboarding_completed) {
+          setCheckingOnboarding(false)
+          setLoading(false)
+          router.push("/onboarding")
+          return
+        }
+
+        setUserId(currentUserId)
+        await Promise.allSettled([
+          loadPropertiesWithUserId(currentUserId),
+          loadPreferencesWithUserId(currentUserId),
+          loadReferralsWithUserId(currentUserId),
+          loadCollaborationsWithUserId(currentUserId),
+        ])
+      } catch (error) {
+        console.error("Error in checkOnboarding:", error)
+      } finally {
+        setCheckingOnboarding(false)
+        setLoading(false)
+      }
+    }
+
+    checkOnboarding()
+  }, [session, status, router, supabase])
+
+  if (checkingOnboarding || status === "loading" || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827]">
+        <div>Caricamento...</div>
+      </div>
+    )
+  }
+
+  const loadProperties = async () => {
+    if (!userId) return
+    return loadPropertiesWithUserId(userId)
   }
 
   const handleDeleteProperty = async () => {
@@ -257,31 +329,6 @@ export default function HostDashboard() {
     return loadPreferencesWithUserId(userId)
   }
 
-  const loadPreferencesWithUserId = async (id: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("host_kol_bed_preferences")
-        .select("*")
-        .eq("host_id", id)
-        .maybeSingle()
-
-      if (error && error.code !== "PGRST116") throw error
-
-      if (data) {
-        const nights = data.free_stay_nights ?? null
-        setPreferences({
-          free_stay_nights: nights ?? 0,
-          promotion_types: data.promotion_types || [],
-          required_social_platforms: data.required_social_platforms || [],
-          additional_requirements: data.additional_requirements || null,
-        })
-        setFreeStayNightsInput(nights !== null && nights !== undefined ? nights.toString() : "")
-      }
-    } catch (error) {
-      console.error("Error loading preferences:", error)
-    }
-  }
-
   const handleSavePreferences = async () => {
     if (!userId) return
 
@@ -291,14 +338,17 @@ export default function HostDashboard() {
       
       const { error } = await supabase
         .from("host_kol_bed_preferences")
-        .upsert({
-          host_id: userId || "",
-          free_stay_nights: nightsValue ?? 0,
-          promotion_types: preferences.promotion_types,
-          required_social_platforms: preferences.required_social_platforms,
-          additional_requirements: preferences.additional_requirements || null,
-          updated_at: new Date().toISOString(),
-        })
+        .upsert(
+          {
+            host_id: userId || "",
+            free_stay_nights: nightsValue ?? 0,
+            promotion_types: preferences.promotion_types,
+            required_social_platforms: preferences.required_social_platforms,
+            additional_requirements: preferences.additional_requirements || null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "host_id" }
+        )
 
       if (error) throw error
 
@@ -343,85 +393,9 @@ export default function HostDashboard() {
     return loadReferralsWithUserId(userId)
   }
 
-  const loadReferralsWithUserId = async (id: string) => {
-    setLoadingReferrals(true)
-    try {
-      const { data, error } = await supabase
-        .from("host_referrals")
-        .select("*")
-        .eq("host_id", id)
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      setReferrals(data || [])
-      
-      // Conta referral attivi (con profilo creato)
-      const activeCount = (data || []).filter(
-        (r) => r.status === "profile_created" || r.status === "first_booking_received"
-      ).length
-      setActiveReferralsCount(activeCount)
-    } catch (error) {
-      console.error("Error loading referrals:", error)
-    } finally {
-      setLoadingReferrals(false)
-    }
-  }
-
   const loadCollaborations = async () => {
     if (!userId) return
     return loadCollaborationsWithUserId(userId)
-  }
-
-  const loadCollaborationsWithUserId = async (id: string) => {
-    setLoadingCollaborations(true)
-    try {
-      const { data, error } = await supabase
-        .from("collaborations")
-        .select(`
-          id,
-          creator_id,
-          property_id,
-          status,
-          collaboration_type,
-          start_date,
-          end_date,
-          created_at,
-          creator:profiles!collaborations_creator_id_fkey(id, username, full_name, avatar_url),
-          property:properties(id, name, title, images, city, country)
-        `)
-        .eq("host_id", id)
-        .in("status", ["accepted", "completed"])
-        .order("created_at", { ascending: false })
-
-      if (error) throw error
-
-      // Mappa le collaborazioni al formato corretto
-      const mappedCollaborations = (data || [])
-        .filter((c: any) => c.property)
-        .map((c: any) => {
-          const property = Array.isArray(c.property) ? c.property[0] : c.property
-          const creator = Array.isArray(c.creator) ? c.creator[0] : c.creator
-          return {
-            id: c.id,
-            creator_id: c.creator_id,
-            property_id: c.property_id,
-            status: c.status,
-            collaboration_type: c.collaboration_type,
-            start_date: c.start_date,
-            end_date: c.end_date,
-            created_at: c.created_at,
-            creator: creator,
-            property: property,
-          }
-        })
-
-      setCollaborations(mappedCollaborations)
-    } catch (error) {
-      console.error("Error loading collaborations:", error)
-    } finally {
-      setLoadingCollaborations(false)
-    }
   }
 
   if (loading) {

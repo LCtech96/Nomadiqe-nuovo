@@ -123,8 +123,15 @@ export default function MessagesPage() {
             }
 
             // Se abbiamo la conversazione AI aperta, aggiungi il messaggio
+            // Controlla se il messaggio esiste già per evitare duplicati
             if (selectedConversation === "ai-assistant") {
-              setMessages((prev) => [...prev, aiMessage])
+              setMessages((prev) => {
+                // Evita duplicati controllando se l'ID esiste già
+                if (prev.some((msg) => msg.id === aiMessage.id)) {
+                  return prev
+                }
+                return [...prev, aiMessage]
+              })
               
               setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -285,8 +292,15 @@ export default function MessagesPage() {
           }
 
           // Se abbiamo una conversazione aperta, aggiungi il messaggio alla lista
+          // Controlla se il messaggio esiste già per evitare duplicati
           if (selectedConversation === payload.new.receiver_id) {
-            setMessages((prev) => [...prev, newMessage])
+            setMessages((prev) => {
+              // Evita duplicati controllando se l'ID esiste già
+              if (prev.some((msg) => msg.id === newMessage.id)) {
+                return prev
+              }
+              return [...prev, newMessage]
+            })
             
             // Scroll to bottom
             setTimeout(() => {
@@ -579,10 +593,7 @@ export default function MessagesPage() {
       console.log("✅ Messaggio inviato con successo:", data)
 
       // Il messaggio verrà aggiunto automaticamente dal listener Realtime
-      // Ma ricarichiamo comunque per sicurezza
-      if (data) {
-        setMessages((prev) => [...prev, data as Message])
-      }
+      // Non aggiungiamo manualmente per evitare duplicati
 
       // Invia notifica push immediatamente (non aspettare il cron job)
       // Fallback silenzioso: se fallisce, il cron job lo gestirà
@@ -782,7 +793,66 @@ export default function MessagesPage() {
                                 <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">🤖 Nomadiqe Assistant</span>
                               </div>
                             )}
-                            <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            <div className="text-sm whitespace-pre-wrap break-words">
+                              {msg.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
+                                if (part.match(/^https?:\/\//)) {
+                                  // È un link, rendilo copiabile
+                                  return (
+                                    <div key={index} className="my-2">
+                                      <div className="flex items-center gap-2 p-2 bg-muted rounded-lg border">
+                                        <span className="flex-1 text-xs break-all font-mono">{part}</span>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="shrink-0 h-8 px-3 text-xs"
+                                          onClick={async () => {
+                                            try {
+                                              if (navigator.clipboard && navigator.clipboard.writeText) {
+                                                await navigator.clipboard.writeText(part)
+                                                toast({
+                                                  title: "✅ Link copiato!",
+                                                  description: "Il link è stato copiato negli appunti. Puoi incollarlo su WhatsApp o altre piattaforme.",
+                                                  duration: 3000,
+                                                })
+                                              } else {
+                                                // Fallback per browser più vecchi
+                                                const textArea = document.createElement("textarea")
+                                                textArea.value = part
+                                                textArea.style.position = "fixed"
+                                                textArea.style.top = "0"
+                                                textArea.style.left = "0"
+                                                textArea.style.opacity = "0"
+                                                document.body.appendChild(textArea)
+                                                textArea.focus()
+                                                textArea.select()
+                                                document.execCommand("copy")
+                                                document.body.removeChild(textArea)
+                                                toast({
+                                                  title: "✅ Link copiato!",
+                                                  description: "Il link è stato copiato negli appunti.",
+                                                  duration: 3000,
+                                                })
+                                              }
+                                            } catch (err) {
+                                              console.error("Error copying link:", err)
+                                              toast({
+                                                title: "Errore",
+                                                description: "Impossibile copiare il link",
+                                                variant: "destructive",
+                                              })
+                                            }
+                                          }}
+                                        >
+                                          📋 Copia
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+                                // Testo normale
+                                return <span key={index}>{part}</span>
+                              })}
+                            </div>
                             {/* Mostra bottoni accetta/rifiuta per richieste di prenotazione in attesa ricevute dall'host */}
                             {!isOwn && msg.booking_request_data && msg.booking_request_status === "pending" && (
                               <BookingRequestActions

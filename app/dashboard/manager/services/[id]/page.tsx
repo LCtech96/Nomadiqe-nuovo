@@ -45,6 +45,10 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   translation: "Traduzione",
 }
 
+const CLEANING_PLATFORM_MIN_EUR = 35
+const CLEANING_PLATFORM_MIN_HOURS = 2
+const CLEANING_PRICE_PER_HOUR = CLEANING_PLATFORM_MIN_EUR / CLEANING_PLATFORM_MIN_HOURS
+
 export default function EditServicePage() {
   const { data: session } = useSession()
   const params = useParams()
@@ -65,6 +69,7 @@ export default function EditServicePage() {
     operating_countries: [] as string[],
     skills: [] as string[],
     is_active: true,
+    experience_years: "",
   })
 
   const [currentCity, setCurrentCity] = useState("")
@@ -99,6 +104,7 @@ export default function EditServicePage() {
         operating_countries: data.operating_countries || [],
         skills: data.skills || [],
         is_active: data.is_active ?? true,
+        experience_years: data.experience_years != null ? String(data.experience_years) : "",
       })
     } catch (error: any) {
       toast({
@@ -116,23 +122,34 @@ export default function EditServicePage() {
     e.preventDefault()
     setSaving(true)
     try {
+      const isCleaning = formData.service_type === "cleaning"
+      const pricePerHour = isCleaning
+        ? CLEANING_PRICE_PER_HOUR
+        : formData.price_per_hour ? parseFloat(formData.price_per_hour) : null
+      const pricePerService = isCleaning
+        ? CLEANING_PLATFORM_MIN_EUR
+        : formData.price_per_service ? parseFloat(formData.price_per_service) : null
+
+      const updatePayload: Record<string, unknown> = {
+        service_type: formData.service_type,
+        title: formData.title,
+        description: formData.description,
+        price_per_hour: pricePerHour,
+        price_per_service: pricePerService,
+        availability_type: formData.availability_type,
+        operating_cities: formData.operating_cities,
+        operating_countries: formData.operating_countries,
+        skills: formData.skills,
+        is_active: formData.is_active,
+        updated_at: new Date().toISOString(),
+      }
+      if (formData.service_type === "cleaning" && formData.experience_years) {
+        const exp = parseInt(formData.experience_years, 10)
+        if (!isNaN(exp) && exp >= 0) updatePayload.experience_years = exp
+      }
       const { error } = await supabase
         .from("manager_services")
-        .update({
-          service_type: formData.service_type,
-          title: formData.title,
-          description: formData.description,
-          price_per_hour: formData.price_per_hour ? parseFloat(formData.price_per_hour) : null,
-          price_per_service: formData.price_per_service
-            ? parseFloat(formData.price_per_service)
-            : null,
-          availability_type: formData.availability_type,
-          operating_cities: formData.operating_cities,
-          operating_countries: formData.operating_countries,
-          skills: formData.skills,
-          is_active: formData.is_active,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", params.id)
 
       if (error) throw error
@@ -291,33 +308,57 @@ export default function EditServicePage() {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_hour">Prezzo per ora (€)</Label>
-                  <Input
-                    id="price_per_hour"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price_per_hour}
-                    onChange={(e) => setFormData({ ...formData, price_per_hour: e.target.value })}
-                  />
+              {formData.service_type === "cleaning" ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg border border-border">
+                    <p className="text-sm font-medium">Prezzo piattaforma per le pulizie</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Minimo €{CLEANING_PLATFORM_MIN_EUR} per {CLEANING_PLATFORM_MIN_HOURS} ore di prenotazione.
+                      Il prezzo non è modificabile.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="experience_years">Anni di esperienza (opzionale)</Label>
+                    <Input
+                      id="experience_years"
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={formData.experience_years}
+                      onChange={(e) => setFormData({ ...formData, experience_years: e.target.value })}
+                      placeholder="Es. 5"
+                    />
+                  </div>
                 </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_hour">Prezzo per ora (€)</Label>
+                    <Input
+                      id="price_per_hour"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_per_hour}
+                      onChange={(e) => setFormData({ ...formData, price_per_hour: e.target.value })}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_service">Prezzo per servizio (€)</Label>
-                  <Input
-                    id="price_per_service"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.price_per_service}
-                    onChange={(e) =>
-                      setFormData({ ...formData, price_per_service: e.target.value })
-                    }
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="price_per_service">Prezzo per servizio (€)</Label>
+                    <Input
+                      id="price_per_service"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price_per_service}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price_per_service: e.target.value })
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="cities">Città di operazione</Label>

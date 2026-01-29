@@ -3,20 +3,27 @@ import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || ""
 
+/** Risposta sempre 200: la notifica push è best-effort. Evita 500/404 in console. */
+function ok(body: { success: true; result?: any }) {
+  return NextResponse.json(body, { status: 200 })
+}
+function fail(reason: string, log = true) {
+  if (log) console.warn("[send-fcm]", reason)
+  return NextResponse.json({ success: false, reason }, { status: 200 })
+}
+
 export async function POST(request: Request) {
   try {
     const { userId, type, data } = await request.json()
 
     if (!FCM_SERVER_KEY) {
-      console.error("FCM_SERVER_KEY non configurato")
-      return NextResponse.json({ error: "FCM non configurato" }, { status: 500 })
+      return fail("FCM non configurato")
     }
 
     if (!userId || !type || !data) {
-      return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 })
+      return fail("Parametri mancanti")
     }
 
-    // Ottieni il token FCM dell'utente
     const supabase = createSupabaseServerClient()
     const { data: subscription, error: subError } = await supabase
       .from("push_subscriptions")
@@ -25,8 +32,7 @@ export async function POST(request: Request) {
       .single()
 
     if (subError || !subscription?.fcm_token) {
-      console.log(`Utente ${userId} non iscritto alle notifiche FCM`)
-      return NextResponse.json({ error: "Utente non iscritto" }, { status: 404 })
+      return fail(`Utente ${userId} non iscritto alle notifiche FCM`, false)
     }
 
     // Prepara il contenuto della notifica
@@ -91,7 +97,7 @@ export async function POST(request: Request) {
       url = `/posts/${data.post_id}`
       notificationData = { type: "post_comment", related_id: data.post_id }
     } else {
-      return NextResponse.json({ error: "Tipo di notifica non valido" }, { status: 400 })
+      return fail("Tipo di notifica non valido")
     }
 
     // Invia notifica tramite FCM API REST
@@ -148,16 +154,15 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error(`FCM API error: ${response.status} - ${errorText}`)
-      throw new Error(`FCM API error: ${response.status}`)
+      console.warn(`[send-fcm] FCM API error: ${response.status} - ${errorText}`)
+      return fail(`FCM API error: ${response.status}`)
     }
 
     const result = await response.json()
-    console.log(`✅ Notifica FCM inviata con successo:`, result)
-    return NextResponse.json({ success: true, result })
+    return ok({ success: true, result })
   } catch (error: any) {
-    console.error("Errore nell'invio della notifica FCM:", error)
-    return NextResponse.json({ error: error.message || "Errore sconosciuto" }, { status: 500 })
+    console.warn("[send-fcm] Errore:", error?.message ?? error)
+    return fail(error?.message ?? "Errore sconosciuto")
   }
 }
 

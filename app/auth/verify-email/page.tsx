@@ -29,22 +29,60 @@ function VerifyEmailContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user?.id) return
 
-      // Chiama la funzione SQL per registrare il referral
-      const { data, error } = await supabase.rpc('register_referral', {
-        referred_user_id: user.id,
-        code_used: pendingCode.trim().toUpperCase()
-      })
+      // Verifica il ruolo dell'utente
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single()
 
-      if (error) {
-        console.error("Error registering referral:", error)
-        // Non mostrare errore all'utente, il codice potrebbe essere invalido
-      } else if (data) {
-        // Rimuovi il codice da localStorage
-        localStorage.removeItem('pending_referral_code')
-        toast({
-          title: "Bonus referral!",
-          description: "Hai utilizzato un codice referral. Il referrer riceverà i punti bonus!",
+      // Se è un host, usa la funzione specifica per host referral
+      if (profile?.role === "host") {
+        const { data, error } = await supabase.rpc('register_host_referral_with_points', {
+          referral_code_param: pendingCode.trim().toUpperCase(),
+          referred_host_id_param: user.id
         })
+
+        if (error) {
+          console.error("Error registering host referral:", error)
+          // Prova anche con la funzione generica come fallback
+          const { data: fallbackData, error: fallbackError } = await supabase.rpc('register_referral', {
+            referred_user_id: user.id,
+            code_used: pendingCode.trim().toUpperCase()
+          })
+          if (!fallbackError && fallbackData) {
+            localStorage.removeItem('pending_referral_code')
+            toast({
+              title: "Bonus referral!",
+              description: "Hai utilizzato un codice referral. Il referrer riceverà i punti bonus!",
+            })
+          }
+        } else if (data) {
+          // Rimuovi il codice da localStorage
+          localStorage.removeItem('pending_referral_code')
+          toast({
+            title: "🎉 Bonus referral host!",
+            description: "Hai utilizzato un codice referral host. Il referrer riceverà 1000 XP e salirà di livello!",
+          })
+        }
+      } else {
+        // Per altri ruoli, usa la funzione generica
+        const { data, error } = await supabase.rpc('register_referral', {
+          referred_user_id: user.id,
+          code_used: pendingCode.trim().toUpperCase()
+        })
+
+        if (error) {
+          console.error("Error registering referral:", error)
+          // Non mostrare errore all'utente, il codice potrebbe essere invalido
+        } else if (data) {
+          // Rimuovi il codice da localStorage
+          localStorage.removeItem('pending_referral_code')
+          toast({
+            title: "Bonus referral!",
+            description: "Hai utilizzato un codice referral. Il referrer riceverà i punti bonus!",
+          })
+        }
       }
     } catch (error) {
       console.error("Error in registerReferralIfExists:", error)

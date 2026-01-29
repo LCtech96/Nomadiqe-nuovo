@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole, Profile } from "@/types/user"
+import { useI18n } from "@/lib/i18n/context"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
 import JollyOnboarding from "@/components/onboarding/jolly-onboarding"
 
@@ -33,6 +34,7 @@ export default function OnboardingPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [step, setStep] = useState<OnboardingStep>("role")
   const [loading, setLoading] = useState(false)
@@ -163,8 +165,8 @@ export default function OnboardingPage() {
     
     if (!userId || !selectedRole) {
       toast({
-        title: "Errore",
-        description: "Sessione non valida. Per favore fai login.",
+        title: t("common.error"),
+        description: t("onboarding.invalidSession"),
         variant: "destructive",
       })
       router.push("/auth/signin")
@@ -284,8 +286,8 @@ export default function OnboardingPage() {
     } catch (error: any) {
       console.error("Error in handleRoleSubmit:", error)
       toast({
-        title: "Errore",
-        description: error.message || "Si è verificato un errore durante il salvataggio. Riprova.",
+        title: t("common.error"),
+        description: error.message || t("onboarding.saveError"),
         variant: "destructive",
       })
     } finally {
@@ -294,22 +296,20 @@ export default function OnboardingPage() {
   }
 
   if (checkingOnboarding) {
-    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+    return <div className="min-h-screen flex items-center justify-center">{t("onboarding.loading")}</div>
   }
 
-  // Se non c'è sessione, mostra caricamento o reindirizza
   if (!hasSession && status === "unauthenticated") {
-    return <div className="min-h-screen flex items-center justify-center">Caricamento...</div>
+    return <div className="min-h-screen flex items-center justify-center">{t("onboarding.loading")}</div>
   }
 
-  // Mostra la selezione del ruolo quando step === "role"
   if (step === "role") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle>Scegli il tuo ruolo</CardTitle>
-            <CardDescription>Passo 1 - Seleziona come vuoi utilizzare Nomadiqe</CardDescription>
+            <CardTitle>{t("onboarding.chooseRole")}</CardTitle>
+            <CardDescription>{t("onboarding.step1Select")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -320,12 +320,12 @@ export default function OnboardingPage() {
                 onClick={() => handleRoleSelect("traveler")}
               >
                 <CardHeader>
-                  <CardTitle>Traveler</CardTitle>
-                  <CardDescription>Viaggia e scopri</CardDescription>
+                  <CardTitle>{t("role.traveler")}</CardTitle>
+                  <CardDescription>{t("onboarding.travelerDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Cerca e prenota alloggi, connettiti con altri viaggiatori
+                    {t("onboarding.searchAndBook")}
                   </p>
                 </CardContent>
               </Card>
@@ -337,12 +337,12 @@ export default function OnboardingPage() {
                 onClick={() => handleRoleSelect("host")}
               >
                 <CardHeader>
-                  <CardTitle>Host</CardTitle>
-                  <CardDescription>Pubblica la tua struttura</CardDescription>
+                  <CardTitle>{t("role.host")}</CardTitle>
+                  <CardDescription>{t("onboarding.hostDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Pubblica proprietà e collabora con creator
+                    {t("onboarding.hostDescLong")}
                   </p>
                 </CardContent>
               </Card>
@@ -354,12 +354,12 @@ export default function OnboardingPage() {
                 onClick={() => handleRoleSelect("creator")}
               >
                 <CardHeader>
-                  <CardTitle>Creator</CardTitle>
-                  <CardDescription>Crea e collabora</CardDescription>
+                  <CardTitle>{t("role.creator")}</CardTitle>
+                  <CardDescription>{t("onboarding.creatorDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Collabora con host per creare contenuti
+                    {t("onboarding.creatorDescLong")}
                   </p>
                 </CardContent>
               </Card>
@@ -371,12 +371,12 @@ export default function OnboardingPage() {
                 onClick={() => handleRoleSelect("jolly")}
               >
                 <CardHeader>
-                  <CardTitle>Jolly</CardTitle>
-                  <CardDescription>Offri servizi</CardDescription>
+                  <CardTitle>{t("role.jolly")}</CardTitle>
+                  <CardDescription>{t("onboarding.jollyDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Offri servizi di gestione, pulizie e altro
+                    {t("onboarding.offerServicesDesc")}
                   </p>
                 </CardContent>
               </Card>
@@ -386,7 +386,7 @@ export default function OnboardingPage() {
               className="w-full"
               disabled={!selectedRole || loading}
             >
-              {loading ? "Salvataggio..." : "Continua"}
+              {loading ? t("onboarding.saving") : t("general.continue")}
             </Button>
           </CardContent>
         </Card>
@@ -396,7 +396,6 @@ export default function OnboardingPage() {
 
   // Non mostrare più questo controllo qui - è già gestito sopra
 
-  // Role-specific onboarding
   if (step === "role-specific" && selectedRole === "host") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
@@ -404,21 +403,16 @@ export default function OnboardingPage() {
           <div className="container mx-auto p-4 max-w-4xl">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                ✓ Sei già registrato come <strong>Host</strong>. Completa l'onboarding per pubblicare la tua prima struttura.
+                ✓ {t("onboarding.alreadyRegistered")} <strong>{t("role.host")}</strong>. {t("onboarding.completeHost")}
               </p>
             </div>
           </div>
         )}
-        <HostOnboarding
-          onComplete={() => {
-            router.push("/dashbord/host")
-          }}
-        />
+        <HostOnboarding redirectOnComplete="/dashbord/host" />
       </div>
     )
   }
 
-  // Jolly-specific onboarding
   if (step === "role-specific" && selectedRole === "jolly") {
     return (
       <div className="min-h-screen">
@@ -426,29 +420,24 @@ export default function OnboardingPage() {
           <div className="container mx-auto p-4 max-w-4xl">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                ✓ Sei già registrato come <strong>Jolly</strong>. Completa l'onboarding per iniziare a offrire i tuoi servizi.
+                ✓ {t("onboarding.alreadyRegistered")} <strong>{t("role.jolly")}</strong>. {t("onboarding.completeJolly")}
               </p>
             </div>
           </div>
         )}
-        <JollyOnboarding
-          onComplete={() => {
-            router.push("/dashboard/jolly")
-          }}
-        />
+        <JollyOnboarding redirectOnComplete="/dashboard/jolly" />
       </div>
     )
   }
 
-  // Default fallback (should not reach here in normal flow)
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Caricamento...</CardTitle>
+          <CardTitle>{t("onboarding.loading")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Stiamo preparando la tua dashboard...</p>
+          <p>{t("onboarding.preparingDashboard")}</p>
         </CardContent>
       </Card>
     </div>

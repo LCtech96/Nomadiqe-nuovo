@@ -281,22 +281,22 @@ export default function EditPropertyPage() {
         }
       }
 
-      // Usa le coordinate selezionate manualmente se disponibili, altrimenti geocodifica
+      // Coordinate: priorità a posizione manuale (mappa), mai sovrascrivere con il geocoding
       let finalLatitude: number | null = null
       let finalLongitude: number | null = null
 
       if (selectedLocation) {
-        // Priorità alle coordinate selezionate manualmente
+        // Posizione selezionata nella mappa (dialog "Riposiziona")
         finalLatitude = selectedLocation.lat
         finalLongitude = selectedLocation.lng
-      } else if (geocodeResult) {
-        // Fallback alla geocodifica
-        finalLatitude = geocodeResult.lat
-        finalLongitude = geocodeResult.lon
       } else if (currentLocation) {
-        // Mantieni le coordinate esistenti se non c'è né selezione manuale né geocodifica
+        // Posizione già salvata dalla mappa: mantienila, non usare il geocoding
         finalLatitude = currentLocation.lat
         finalLongitude = currentLocation.lng
+      } else if (geocodeResult) {
+        // Solo se non c'è mai stata una posizione manuale: usa il geocoding
+        finalLatitude = geocodeResult.lat
+        finalLongitude = geocodeResult.lon
       }
 
       const updatePayload: Record<string, any> = {
@@ -705,19 +705,32 @@ export default function EditPropertyPage() {
                                 })
                                 return
                               }
+                              if (!session?.user?.id) {
+                                toast({
+                                  title: "Errore",
+                                  description: "Sessione non valida. Effettua di nuovo l'accesso.",
+                                  variant: "destructive",
+                                })
+                                return
+                              }
 
                               setSavingLocation(true)
                               try {
-                                const { error } = await supabase
-                                  .from("properties")
-                                  .update({
+                                const res = await fetch("/api/properties/update-location", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  credentials: "include",
+                                  body: JSON.stringify({
+                                    propertyId: params.id,
                                     latitude: selectedLocation.lat,
                                     longitude: selectedLocation.lng,
-                                    updated_at: new Date().toISOString(),
-                                  })
-                                  .eq("id", params.id)
-
-                                if (error) throw error
+                                  }),
+                                })
+                                const data = await res.json().catch(() => ({}))
+                                if (!res.ok) {
+                                  const msg = data?.error || `Errore ${res.status}: impossibile aggiornare la posizione`
+                                  throw new Error(msg)
+                                }
 
                                 setCurrentLocation(selectedLocation)
                                 setShowLocationDialog(false)

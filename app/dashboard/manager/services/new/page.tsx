@@ -80,6 +80,11 @@ const DISTANCE_OPTIONS = [
   "> 200 km",
 ] as const
 
+// Prezzo piattaforma per pulizie (non modificabile dal Jolly)
+const CLEANING_PLATFORM_MIN_EUR = 35
+const CLEANING_PLATFORM_MIN_HOURS = 2
+const CLEANING_PRICE_PER_HOUR = CLEANING_PLATFORM_MIN_EUR / CLEANING_PLATFORM_MIN_HOURS
+
 export default function NewServicePage() {
   const { data: session } = useSession()
   const router = useRouter()
@@ -107,6 +112,7 @@ export default function NewServicePage() {
     location_latitude: "",
     location_longitude: "",
     operating_hours: {} as Record<string, { open: string; close: string; closed: boolean }>,
+    experience_years: "",
   })
 
   const [currentCity, setCurrentCity] = useState("")
@@ -167,6 +173,12 @@ export default function NewServicePage() {
         // Farmacista: non usa prezzi standard, usa catalogo prodotti
         insertData.price_per_hour = null
         insertData.price_per_service = null
+      } else if (formData.service_type === "cleaning") {
+        // Pulizie: prezzo fisso piattaforma (€35 min / 2h), non modificabile dal Jolly
+        insertData.price_per_hour = CLEANING_PRICE_PER_HOUR
+        insertData.price_per_service = CLEANING_PLATFORM_MIN_EUR
+        const exp = formData.experience_years ? parseInt(formData.experience_years, 10) : null
+        if (exp != null && !isNaN(exp) && exp >= 0) insertData.experience_years = exp
       } else {
         // Altri servizi: usa i campi standard
         insertData.price_per_hour = formData.price_per_hour ? parseFloat(formData.price_per_hour) : null
@@ -383,7 +395,29 @@ export default function NewServicePage() {
               </div>
 
               {/* Campi prezzo condizionali in base al tipo di servizio */}
-              {formData.service_type === "property_management" ? (
+              {formData.service_type === "cleaning" ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg border border-border">
+                    <p className="text-sm font-medium">Prezzo piattaforma per le pulizie</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Minimo €{CLEANING_PLATFORM_MIN_EUR} per {CLEANING_PLATFORM_MIN_HOURS} ore di prenotazione.
+                      Il prezzo non è modificabile.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="experience_years">Anni di esperienza (opzionale)</Label>
+                    <Input
+                      id="experience_years"
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={formData.experience_years}
+                      onChange={(e) => setFormData({ ...formData, experience_years: e.target.value })}
+                      placeholder="Es. 5"
+                    />
+                  </div>
+                </div>
+              ) : formData.service_type === "property_management" ? (
                 <div className="space-y-2">
                   <Label htmlFor="percentage_commission">Percentuale commissione richiesta idealmente (%)</Label>
                   <Input

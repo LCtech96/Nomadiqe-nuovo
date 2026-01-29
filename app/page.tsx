@@ -17,14 +17,22 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createSupabaseClient } from "@/lib/supabase/client"
-import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-react"
+import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles, Languages } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function HomePageContent() {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const { t } = useI18n()
+  const { t, locale, setLocale, localeNames, availableLocales } = useI18n()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
@@ -192,7 +200,7 @@ function HomePageContent() {
   if (loadingProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div>Caricamento...</div>
+        <div>{t('common.loading')}</div>
       </div>
     )
   }
@@ -201,6 +209,30 @@ function HomePageContent() {
     return (
       <div className="relative min-h-screen">
         <GridBackground />
+        {/* Language Selector - Fixed top right */}
+        <div className="fixed top-4 right-4 z-50">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="bg-gray-950/50 backdrop-blur-sm border-gray-800 text-white hover:bg-gray-900">
+                <Languages className="h-5 w-5" />
+                <span className="sr-only">{t('language.select')}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-gray-950 border-gray-800">
+              <DropdownMenuLabel className="text-white">{t('language.title')}</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-gray-800" />
+              {availableLocales.map((loc) => (
+                <DropdownMenuItem
+                  key={loc}
+                  onClick={() => setLocale(loc)}
+                  className={locale === loc ? "bg-gray-800 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"}
+                >
+                  {localeNames[loc]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="relative z-10 py-12">
           <div className="w-full max-w-6xl mx-auto px-4 sm:px-8 space-y-16">
             {/* Hero Section */}
@@ -219,17 +251,13 @@ function HomePageContent() {
               <div className="max-w-4xl mx-auto">
                 <div className="bg-gray-950/50 backdrop-blur-sm rounded-2xl p-6 md:p-8 border border-gray-800 shadow-lg">
                   <h3 className="text-2xl md:text-3xl font-bold text-center mb-4 text-gray-200">
-                    Cos'è Nomadiqe BETA?
+                    {t('homepage.whatIsNomadiqe')}
                   </h3>
                   <p className="text-base md:text-lg text-gray-300 mb-4 leading-relaxed text-center">
-                    Nomadiqe BETA è la piattaforma che rivoluziona il modo di viaggiare e ospitare, creando connessioni autentiche 
-                    tra viaggiatori, host e creator. La nostra missione è democratizzare l'accesso a esperienze di viaggio 
-                    straordinarie, rendendo ogni soggiorno un'opportunità di crescita e scoperta.
+                    {t('homepage.whatIsNomadiqeDesc1')}
                   </p>
                   <p className="text-base md:text-lg text-gray-300 leading-relaxed text-center">
-                    Nomadiqe BETA è anche un luogo dove attività commerciali locali, dai ristoranti ai lidi marittimi alle farmacie, 
-                    o persone che si occupano di pulizie domestiche, hanno la possibilità di trovare opportunità di lavoro 
-                    e connettersi con una community attiva di host e viaggiatori.
+                    {t('homepage.whatIsNomadiqeDesc2')}
                   </p>
                 </div>
               </div>
@@ -241,12 +269,12 @@ function HomePageContent() {
                     <Link href="/lavora-con-noi">
                       <CardContent className="p-6 text-center">
                         <Briefcase className="w-12 h-12 mx-auto mb-3" />
-                        <h3 className="text-xl font-bold mb-2">Lavora con noi</h3>
+                        <h3 className="text-xl font-bold mb-2">{t('homepage.workWithUs')}</h3>
                         <p className="text-blue-100 text-sm mb-4">
-                          Unisciti al team di Nomadiqe e aiuta a costruire il futuro dei viaggi
+                          {t('homepage.workWithUsDesc')}
                         </p>
                         <Button variant="secondary" size="sm" className="bg-white text-blue-600 hover:bg-gray-100">
-                          Vedi posizioni
+                          {t('homepage.seePositions')}
                         </Button>
                       </CardContent>
                     </Link>
@@ -256,12 +284,12 @@ function HomePageContent() {
                     <Link href="/investi">
                       <CardContent className="p-6 text-center">
                         <TrendingUp className="w-12 h-12 mx-auto mb-3" />
-                        <h3 className="text-xl font-bold mb-2">Investi e diventa Partner</h3>
+                        <h3 className="text-xl font-bold mb-2">{t('homepage.invest')}</h3>
                         <p className="text-purple-100 text-sm mb-4">
-                          Investi in Nomadiqe BETA e diventa parte del nostro futuro
+                          {t('homepage.investDesc')}
                         </p>
                         <Button variant="secondary" size="sm" className="bg-white text-purple-600 hover:bg-gray-100">
-                          Scopri di più
+                          {t('homepage.discoverMore')}
                         </Button>
                       </CardContent>
                     </Link>
@@ -273,7 +301,7 @@ function HomePageContent() {
             {/* Sezione: Perché Nomadiqe è migliore */}
             <section className="max-w-4xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-center mb-8 text-gray-200">
-                Perché Nomadiqe BETA è Diversa
+                {t('homepage.whyDifferent')}
               </h2>
               <div className="space-y-6">
                 <Card className="bg-gray-950/50 backdrop-blur-sm border-gray-800">
@@ -281,11 +309,9 @@ function HomePageContent() {
                     <div className="flex items-start gap-4">
                       <Sparkles className="w-8 h-8 text-yellow-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-xl mb-2 text-gray-200">Sistema di Livelli per Host</h3>
+                        <h3 className="font-semibold text-xl mb-2 text-gray-200">{t('homepage.levelSystem')}</h3>
                         <p className="text-gray-300">
-                          A differenza dei competitor, Nomadiqe BETA premia gli host più attivi con un sistema di livelli esclusivo. 
-                          Invita altri host e guadagna vantaggi crescenti: da sconti sulle commissioni a periodi di zero commissioni, 
-                          fino ad accesso anticipato a funzioni premium. Più contribuisci alla crescita della community, più ottieni in cambio.
+                          {t('homepage.levelSystemDesc')}
                         </p>
                       </div>
                     </div>
@@ -297,12 +323,9 @@ function HomePageContent() {
                     <div className="flex items-start gap-4">
                       <TrendingUp className="w-8 h-8 text-green-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-xl mb-2 text-gray-200">KOL&BED - Collaborazioni Autentiche</h3>
+                        <h3 className="font-semibold text-xl mb-2 text-gray-200">{t('homepage.kolBed')}</h3>
                         <p className="text-gray-300">
-                          Il nostro programma unico che connette creator con host per creare contenuti autentici. 
-                          Gli host ricevono visibilità organica attraverso creator verificati, mentre i creator 
-                          ottengono accesso a strutture esclusive per le loro creazioni. Un ecosistema win-win 
-                          che genera valore per tutti.
+                          {t('homepage.kolBedDesc')}
                         </p>
                       </div>
                     </div>
@@ -314,11 +337,9 @@ function HomePageContent() {
                     <div className="flex items-start gap-4">
                       <Briefcase className="w-8 h-8 text-blue-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-xl mb-2 text-gray-200">Marketplace Integrato per Servizi</h3>
+                        <h3 className="font-semibold text-xl mb-2 text-gray-200">{t('homepage.marketplace')}</h3>
                         <p className="text-gray-300">
-                          Gli host possono accedere direttamente a un marketplace di servizi professionali: 
-                          gestione proprietà, pulizie, fotografia, manutenzione e molto altro. Tutto integrato 
-                          in un'unica piattaforma, semplificando la gestione della tua struttura.
+                          {t('homepage.marketplaceDesc')}
                         </p>
                       </div>
                     </div>
@@ -330,11 +351,9 @@ function HomePageContent() {
                     <div className="flex items-start gap-4">
                       <Users className="w-8 h-8 text-purple-400 flex-shrink-0 mt-1" />
                       <div>
-                        <h3 className="font-semibold text-xl mb-2 text-gray-200">Community di Host</h3>
+                        <h3 className="font-semibold text-xl mb-2 text-gray-200">{t('homepage.community')}</h3>
                         <p className="text-gray-300">
-                          Gli host possono creare e partecipare a community geografiche, condividere best practices, 
-                          collaborare e crescere insieme. Non sei solo: fai parte di una rete di professionisti che 
-                          si supportano a vicenda.
+                          {t('homepage.communityDesc')}
                         </p>
                       </div>
                     </div>
@@ -347,10 +366,10 @@ function HomePageContent() {
             <div className="max-w-xl mx-auto space-y-6">
               <div className="text-center">
                 <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-200">
-                  Unisciti alla Waitlist
+                  {t('homepage.joinWaitlist')}
                 </h2>
                 <p className="text-lg text-gray-400">
-                  Compila il form qui sotto per richiedere l'accesso anticipato
+                  {t('homepage.joinWaitlistDesc')}
                 </p>
               </div>
 
@@ -503,7 +522,7 @@ function HomePageContent() {
         <section className="mb-20">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-8">
-              Perché Nomadiqe è Diversa
+              {t('homepage.whyDifferent')}
             </h2>
             <div className="space-y-6">
               <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
@@ -511,11 +530,9 @@ function HomePageContent() {
                   <div className="flex items-start gap-4">
                     <Sparkles className="w-8 h-8 text-yellow-500 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-xl mb-2">Sistema di Livelli per Host</h3>
+                      <h3 className="font-semibold text-xl mb-2">{t('homepage.levelSystem')}</h3>
                       <p className="text-muted-foreground">
-                        A differenza dei competitor, Nomadiqe BETA premia gli host più attivi con un sistema di livelli esclusivo. 
-                        Invita altri host e guadagna vantaggi crescenti: da sconti sulle commissioni a periodi di zero commissioni, 
-                        fino ad accesso anticipato a funzioni premium. Più contribuisci alla crescita della community, più ottieni in cambio.
+                        {t('homepage.levelSystemDesc')}
                       </p>
                     </div>
                   </div>
@@ -527,12 +544,9 @@ function HomePageContent() {
                   <div className="flex items-start gap-4">
                     <TrendingUp className="w-8 h-8 text-green-500 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-xl mb-2">KOL&BED - Collaborazioni Autentiche</h3>
+                      <h3 className="font-semibold text-xl mb-2">{t('homepage.kolBed')}</h3>
                       <p className="text-muted-foreground">
-                        Il nostro programma unico che connette creator con host per creare contenuti autentici. 
-                        Gli host ricevono visibilità organica attraverso creator verificati, mentre i creator 
-                        ottengono accesso a strutture esclusive per le loro creazioni. Un ecosistema win-win 
-                        che genera valore per tutti.
+                        {t('homepage.kolBedDesc')}
                       </p>
                     </div>
                   </div>
@@ -544,11 +558,9 @@ function HomePageContent() {
                   <div className="flex items-start gap-4">
                     <Briefcase className="w-8 h-8 text-blue-500 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-xl mb-2">Marketplace Integrato per Servizi</h3>
+                      <h3 className="font-semibold text-xl mb-2">{t('homepage.marketplace')}</h3>
                       <p className="text-muted-foreground">
-                        Gli host possono accedere direttamente a un marketplace di servizi professionali: 
-                        gestione proprietà, pulizie, fotografia, manutenzione e molto altro. Tutto integrato 
-                        in un'unica piattaforma, semplificando la gestione della tua struttura.
+                        {t('homepage.marketplaceDesc')}
                       </p>
                     </div>
                   </div>
@@ -560,11 +572,9 @@ function HomePageContent() {
                   <div className="flex items-start gap-4">
                     <Users className="w-8 h-8 text-purple-500 flex-shrink-0 mt-1" />
                     <div>
-                      <h3 className="font-semibold text-xl mb-2">Community di Host</h3>
+                      <h3 className="font-semibold text-xl mb-2">{t('homepage.community')}</h3>
                       <p className="text-muted-foreground">
-                        Gli host possono creare e partecipare a community geografiche, condividere best practices, 
-                        collaborare e crescere insieme. Non sei solo: fai parte di una rete di professionisti che 
-                        si supportano a vicenda.
+                        {t('homepage.communityDesc')}
                       </p>
                     </div>
                   </div>
@@ -597,12 +607,12 @@ function HomePageContent() {
                 <Link href="/investi">
                   <CardContent className="p-8 text-center">
                     <TrendingUp className="w-16 h-16 mx-auto mb-4" />
-                    <h3 className="text-2xl font-bold mb-4">Investi e diventa Partner</h3>
+                    <h3 className="text-2xl font-bold mb-4">{t('homepage.invest')}</h3>
                     <p className="text-purple-100 mb-6">
-                      Investi in Nomadiqe e diventa parte del nostro futuro
+                      {t('homepage.investDesc')}
                     </p>
                     <Button variant="secondary" size="lg">
-                      Scopri le opportunità
+                      {t('homepage.discoverMore')}
                     </Button>
                   </CardContent>
                 </Link>

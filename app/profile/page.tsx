@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast"
 import { isAdminEmail } from "@/lib/admin"
 import Image from "next/image"
 import { 
-  Settings, 
+  LayoutDashboard,
   Grid3x3, 
   Square, 
   Users, 
@@ -57,6 +57,23 @@ interface Collaboration {
 }
 
 type TabType = "posts" | "vetrina" | "collab"
+
+const getDashboardUrl = (role: string | null | undefined): string => {
+  switch (role) {
+    case "host":
+      return "/dashbord/host"
+    case "creator":
+      return "/dashboard/creator"
+    case "jolly":
+      return "/dashboard/jolly"
+    case "traveler":
+      return "/dashboard/traveler"
+    case "cleaner":
+      return "/dashboard/jolly"
+    default:
+      return "/dashboard"
+  }
+}
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
@@ -649,53 +666,14 @@ export default function ProfilePage() {
       console.log("Updating profile with data:", updateData)
       console.log("User ID:", session.user.id)
 
-      // Use RPC function as primary method (more reliable with RLS)
-      // Prepare RPC parameters - only include fields that are being updated
-      const rpcParams: any = {
-        p_user_id: session.user.id,
-      }
-      
-      // Only include fields that are in updateData (not undefined)
-      if (updateData.full_name !== undefined) {
-        rpcParams.p_full_name = updateData.full_name
-      }
-      if (updateData.username !== undefined) {
-        rpcParams.p_username = updateData.username
-      }
-      if (updateData.bio !== undefined) {
-        rpcParams.p_bio = updateData.bio
-      }
-      if (updateData.avatar_url !== undefined) {
-        rpcParams.p_avatar_url = updateData.avatar_url
-      }
-      if (updateData.presentation_video_url !== undefined) {
-        rpcParams.p_presentation_video_url = updateData.presentation_video_url
-      }
-      
-      console.log("Calling RPC function with params:", rpcParams)
-      
-      // Use RPC function as primary method (bypasses RLS issues)
-      const { data: rpcData, error: rpcError } = await supabase.rpc('update_user_profile', rpcParams)
-      
-      if (rpcError) {
-        console.error("❌ RPC function error:", rpcError)
-        console.error("Error details:", JSON.stringify(rpcError, null, 2))
-        
-        // Fallback: try direct update if RPC fails
-        console.warn("⚠️ RPC failed, trying direct update as fallback...")
-        const { error: updateError, count } = await supabase
-          .from("profiles")
-          .update(updateData)
-          .eq("id", session.user.id)
-        
-        if (updateError) {
-          console.error("Direct update also failed:", updateError)
-          throw new Error(`Update failed: ${rpcError.message}`)
-        }
-        
-        console.log("✅ Direct update succeeded as fallback, rows affected:", count)
-      } else {
-        console.log("✅ RPC function executed successfully:", rpcData)
+      const res = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error || "Aggiornamento profilo fallito")
       }
 
       // Wait a moment for database to sync
@@ -958,7 +936,7 @@ export default function ProfilePage() {
                     </p>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -967,46 +945,27 @@ export default function ProfilePage() {
                   >
                     {isEditing ? "Annulla" : "Modifica profilo"}
                   </Button>
-                  {profile?.role === "creator" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="text-sm"
+                    title="Dashboard"
+                  >
+                    <Link href={getDashboardUrl(profile?.role)}>
+                      <LayoutDashboard className="w-4 h-4 mr-1" />
+                      Dashboard
+                    </Link>
+                  </Button>
+                  {profile?.role === "host" && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => router.push("/dashboard/creator/settings")}
+                      onClick={() => router.push("/communities")}
                       className="text-sm"
-                      title="Impostazioni"
+                      title="Community"
                     >
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  ) : profile?.role === "host" ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push("/dashbord/host")}
-                        className="text-sm"
-                        title="Impostazioni"
-                      >
-                        <Settings className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push("/communities")}
-                        className="text-sm"
-                        title="Community"
-                      >
-                        <Users className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push("/dashbord/host")}
-                      className="text-sm"
-                      title="Impostazioni"
-                    >
-                      <Settings className="w-4 h-4" />
+                      <Users className="w-4 h-4" />
                     </Button>
                   )}
                   {session?.user?.email && isAdminEmail(session.user.email) && (

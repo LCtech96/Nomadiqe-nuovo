@@ -252,78 +252,38 @@ export default function Navbar() {
     }
 
     try {
-      // Genera o recupera codice referral
-      const response = await fetch("/api/referral/generate", {
+      // Invia il messaggio AI con il link di invito
+      const response = await fetch("/api/referral/send-invite-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       })
 
       if (!response.ok) {
-        throw new Error("Errore nella generazione del codice")
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Errore nell'invio del messaggio")
       }
 
-      const { referralCode } = await response.json()
+      const { success, inviteLink } = await response.json()
 
-      // Crea il link di invito
-      const inviteLink = `${window.location.origin}/?ref=${referralCode}`
-
-      // Funzione di fallback per iOS
-      const fallbackCopyTextToClipboard = (text: string) => {
-        const textArea = document.createElement("textarea")
-        textArea.value = text
-        textArea.style.position = "fixed"
-        textArea.style.top = "0"
-        textArea.style.left = "0"
-        textArea.style.opacity = "0"
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-
-        try {
-          const successful = document.execCommand("copy")
-          document.body.removeChild(textArea)
-          return successful
-        } catch (err) {
-          document.body.removeChild(textArea)
-          return false
-        }
-      }
-
-      // Prova prima con l'API moderna, poi fallback per iOS
-      let copied = false
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(inviteLink)
-          copied = true
-        }
-      } catch (err) {
-        // Se fallisce (tipico su iOS), usa il fallback
-        copied = fallbackCopyTextToClipboard(inviteLink)
-      }
-
-      if (copied) {
+      if (success) {
         const roleLabel = profile?.role === "host" ? "host" : "creator"
         toast({
-          title: "Link di invito copiato!",
-          description: `Il link è stato copiato negli appunti. Invia questo link tramite la chat AI per invitare altri ${roleLabel}.`,
+          title: "✅ Link di invito inviato!",
+          description: `Il link è stato inviato nella chat con l'assistente Nomadiqe. Apri i messaggi per copiarlo e condividerlo!`,
+          duration: 5000,
         })
-      } else {
-        // Se anche il fallback fallisce, mostra il link
-        const roleLabel = profile?.role === "host" ? "host" : "creator"
-        toast({
-          title: "Codice referral generato!",
-          description: `Link: ${inviteLink}`,
-          duration: 10000,
-        })
+
+        // Opzionale: reindirizza ai messaggi
+        // router.push("/messages")
       }
 
       // Chiudi il menu mobile
       setMobileMenuOpen(false)
     } catch (error: any) {
-      console.error("Error generating referral code:", error)
+      console.error("Error sending invite message:", error)
       toast({
         title: "Errore",
-        description: error.message || "Impossibile generare il codice di invito",
+        description: error.message || "Impossibile inviare il link di invito",
         variant: "destructive",
       })
     }
@@ -541,7 +501,7 @@ export default function Navbar() {
                 {availableLocales.map((loc) => (
                   <DropdownMenuItem
                     key={loc}
-                    onClick={() => setLocale(loc)}
+                    onSelect={() => setLocale(loc)}
                     className={locale === loc ? "bg-accent" : ""}
                   >
                     {localeNames[loc]}
@@ -724,7 +684,7 @@ export default function Navbar() {
                   {availableLocales.map((loc) => (
                     <DropdownMenuItem
                       key={loc}
-                      onClick={() => setLocale(loc)}
+                      onSelect={() => setLocale(loc)}
                       className={locale === loc ? "bg-accent" : ""}
                     >
                       {localeNames[loc]}
@@ -804,14 +764,6 @@ export default function Navbar() {
                   )}
                 </div>
                 <div className="border-t pt-4 space-y-2">
-                  <Link 
-                    href={getDashboardUrl(profile?.role)} 
-                    className="block py-2 text-base flex items-center gap-2"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Link>
                   <div className="space-y-1">
                     <button
                       onClick={() => setSettingsOpen(!settingsOpen)}

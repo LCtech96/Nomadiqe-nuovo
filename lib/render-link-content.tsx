@@ -16,7 +16,7 @@ interface RenderLinkContentProps {
  */
 export function RenderLinkContent({ content, isHostPrime }: RenderLinkContentProps) {
   const { translate } = useTranslation()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [translatedContent, setTranslatedContent] = useState<string>(content)
   const [isTranslating, setIsTranslating] = useState(false)
 
@@ -28,11 +28,6 @@ export function RenderLinkContent({ content, isHostPrime }: RenderLinkContentPro
         if (isMounted) {
           setTranslatedContent(content)
         }
-        return
-      }
-      
-      // Se il contenuto è già quello tradotto, non fare nulla
-      if (translatedContent === content && !isTranslating) {
         return
       }
       
@@ -59,8 +54,7 @@ export function RenderLinkContent({ content, isHostPrime }: RenderLinkContentPro
     return () => {
       isMounted = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content])
+  }, [content, locale, translate])
 
   // Regex per trovare URL (http/https)
   const urlRegex = /(https?:\/\/[^\s]+)/g

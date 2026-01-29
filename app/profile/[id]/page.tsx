@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -45,6 +45,7 @@ import {
 import SendMessageDialog from "@/components/send-message-dialog"
 import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
 import HostAvailabilityCalendar from "@/components/host-availability-calendar"
+import RequestServiceDialog from "@/components/request-service-dialog"
 import { useToast } from "@/hooks/use-toast"
 
 interface Post {
@@ -120,6 +121,7 @@ interface PublicProfile {
 export default function PublicProfilePage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const supabase = createSupabaseClient()
   const [profile, setProfile] = useState<PublicProfile | null>(null)
@@ -135,6 +137,8 @@ export default function PublicProfilePage() {
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [interactionBlocked, setInteractionBlocked] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
+  const [showRequestDialog, setShowRequestDialog] = useState(false)
+  const [selectedServiceForRequest, setSelectedServiceForRequest] = useState<{ id: string; title: string } | null>(null)
   const [stats, setStats] = useState<Stats>({
     followers: 0,
     following: 0,
@@ -142,6 +146,7 @@ export default function PublicProfilePage() {
     profileViews: 0,
     totalInteractions: 0
   })
+  const [viewerRole, setViewerRole] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -149,6 +154,34 @@ export default function PublicProfilePage() {
       loadProfile(params.id as string)
     }
   }, [params.id])
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setViewerRole(null)
+      return
+    }
+    const load = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user!.id)
+        .single()
+      setViewerRole(data?.role ?? null)
+    }
+    load()
+  }, [session?.user?.id])
+
+  useEffect(() => {
+    const req = searchParams.get("request")
+    const svc = searchParams.get("service")
+    if (req === "cleaning" && svc && profile?.role === "jolly" && profile?.services?.length) {
+      const s = profile.services.find((x) => x.id === svc)
+      if (s) {
+        setSelectedServiceForRequest({ id: s.id, title: s.title })
+        setShowRequestDialog(true)
+      }
+    }
+  }, [searchParams, profile?.id, profile?.role, profile?.services])
 
   // Gestisci interazioni per utenti non autenticati
   useEffect(() => {
@@ -1440,6 +1473,23 @@ export default function PublicProfilePage() {
                             </p>
                           )}
                         </div>
+                        {viewerRole === "host" &&
+                          session?.user?.id &&
+                          session.user.id !== profile.id &&
+                          service.service_type !== "supplier" && (
+                            <Button
+                              className="mt-3 w-full"
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedServiceForRequest({ id: service.id, title: service.title })
+                                setShowRequestDialog(true)
+                              }}
+                            >
+                              Richiedi servizio
+                            </Button>
+                          )}
                       </CardContent>
                     </Card>
                   ))}
@@ -1566,6 +1616,21 @@ export default function PublicProfilePage() {
           open={showCatalogDialog}
           onOpenChange={setShowCatalogDialog}
           serviceId={selectedSupplierService}
+        />
+      )}
+
+      {/* Request Service Dialog (Host -> Jolly) */}
+      {profile?.role === "jolly" && profile?.id && selectedServiceForRequest && (
+        <RequestServiceDialog
+          open={showRequestDialog}
+          onOpenChange={(open) => {
+            setShowRequestDialog(open)
+            if (!open) setSelectedServiceForRequest(null)
+          }}
+          jollyId={profile.id}
+          serviceId={selectedServiceForRequest.id}
+          serviceTitle={selectedServiceForRequest.title}
+          onSuccess={() => setSelectedServiceForRequest(null)}
         />
       )}
     </div>

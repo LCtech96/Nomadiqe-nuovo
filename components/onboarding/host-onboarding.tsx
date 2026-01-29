@@ -27,10 +27,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 type HostOnboardingStep = "profile" | "property" | "kol-bed-program" | "website-offer"
 
 interface HostOnboardingProps {
-  onComplete: () => void
+  /** Optional URL to redirect to on completion. Must be serializable (no functions). */
+  redirectOnComplete?: string
 }
 
-export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
+export default function HostOnboarding({ redirectOnComplete }: HostOnboardingProps) {
+  const completionUrl = redirectOnComplete ?? "/home"
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -117,12 +119,12 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
     const timeout = setTimeout(() => {
       setShowOfferDisclaimer(false)
       updateSession?.()
-        .then(() => router.push("/home"))
-        .catch(() => router.push("/home"))
+        .then(() => router.push(completionUrl))
+        .catch(() => router.push(completionUrl))
     }, 2000)
 
     return () => clearTimeout(timeout)
-  }, [showOfferDisclaimer, router, updateSession])
+  }, [showOfferDisclaimer, router, updateSession, completionUrl])
 
   // Load saved profile data on mount (without onboarding_status for now due to PostgREST cache issue)
   useEffect(() => {
@@ -840,6 +842,21 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         console.warn("Could not update onboarding_completed:", updateError)
       }
 
+      // Registra referral se presente
+      try {
+        const pendingCode = localStorage.getItem('pending_referral_code')
+        if (pendingCode && userId) {
+          await supabase.rpc('register_host_referral_with_points', {
+            referral_code_param: pendingCode.trim().toUpperCase(),
+            referred_host_id_param: userId
+          })
+          localStorage.removeItem('pending_referral_code')
+        }
+      } catch (referralError) {
+        console.warn("Could not register referral:", referralError)
+        // Non bloccare il flusso se il referral non viene registrato
+      }
+
       // Ottieni i dettagli del profilo per l'email
       const { data: profile } = await supabase
         .from("profiles")
@@ -911,6 +928,21 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         console.warn("Could not update onboarding_completed:", updateError)
       }
 
+      // Registra referral se presente
+      try {
+        const pendingCode = localStorage.getItem('pending_referral_code')
+        if (pendingCode && userId) {
+          await supabase.rpc('register_host_referral_with_points', {
+            referral_code_param: pendingCode.trim().toUpperCase(),
+            referred_host_id_param: userId
+          })
+          localStorage.removeItem('pending_referral_code')
+        }
+      } catch (referralError) {
+        console.warn("Could not register referral:", referralError)
+        // Non bloccare il flusso se il referral non viene registrato
+      }
+
       // Award onboarding points
       try {
         const { awardPoints } = await import("@/lib/points")
@@ -926,7 +958,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
         description: "Onboarding completato!",
       })
 
-      router.push("/home")
+      router.push(completionUrl)
     } catch (error: any) {
       toast({
         title: "Errore",
@@ -1641,7 +1673,7 @@ export default function HostOnboarding({ onComplete }: HostOnboardingProps) {
               <Button onClick={async () => {
                 setShowOfferDisclaimer(false)
                 await updateSession?.()
-                router.push("/home")
+                router.push(completionUrl)
               }}>
                 Vai alla Home
               </Button>
