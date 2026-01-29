@@ -47,6 +47,8 @@ import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
 import HostAvailabilityCalendar from "@/components/host-availability-calendar"
 import RequestServiceDialog from "@/components/request-service-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from "@/lib/i18n/context"
+import { usePropertiesTranslations } from "@/lib/hooks/use-properties-translations"
 
 interface Post {
   id: string
@@ -148,12 +150,19 @@ export default function PublicProfilePage() {
   })
   const [viewerRole, setViewerRole] = useState<string | null>(null)
   const { toast } = useToast()
+  const { locale } = useI18n()
+  // Carica traduzioni per proprietà del profilo e collaborazioni
+  const allProperties = [
+    ...(profile?.properties || []),
+    ...(profile?.collaborations?.map((c: any) => c.property).filter(Boolean) || [])
+  ]
+  const { getTranslatedProperty } = usePropertiesTranslations(allProperties.length > 0 ? allProperties : undefined)
 
   useEffect(() => {
     if (params.id) {
       loadProfile(params.id as string)
     }
-  }, [params.id])
+  }, [params.id, locale]) // Ricarica quando cambia la lingua
 
   useEffect(() => {
     if (!session?.user?.id) {
@@ -1323,24 +1332,31 @@ export default function PublicProfilePage() {
                       className="relative aspect-square group cursor-pointer"
                       onClick={() => router.push(`/properties/${collab.property_id}`)}
                     >
-                      {collab.property.images && collab.property.images.length > 0 ? (
-                        <Image
-                          src={collab.property.images[0]}
-                          alt={collab.property.title || collab.property.name}
-                          fill
-                          sizes="(max-width: 768px) 33vw, 200px"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center">
-                          <Users className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <p className="text-white text-sm font-semibold px-2 text-center">
-                          {collab.property.title || collab.property.name}
-                        </p>
-                      </div>
+                      {(() => {
+                        const translated = getTranslatedProperty(collab.property)
+                        return (
+                          <>
+                            {collab.property.images && collab.property.images.length > 0 ? (
+                              <Image
+                                src={collab.property.images[0]}
+                                alt={translated.title}
+                                fill
+                                sizes="(max-width: 768px) 33vw, 200px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-muted flex items-center justify-center">
+                                <Users className="w-8 h-8 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <p className="text-white text-sm font-semibold px-2 text-center">
+                                {translated.title}
+                              </p>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
                   ))}
                 </div>
