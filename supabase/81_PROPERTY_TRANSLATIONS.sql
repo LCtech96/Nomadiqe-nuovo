@@ -34,7 +34,7 @@ CREATE POLICY "Property owners can manage translations"
     EXISTS (
       SELECT 1 FROM public.properties p
       WHERE p.id = property_translations.property_id
-      AND (p.owner_id = auth.uid() OR p.host_id = auth.uid())
+      AND p.owner_id = auth.uid()
     )
   );
 

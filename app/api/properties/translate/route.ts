@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     // Verifica che l'utente sia il proprietario
     const { data: property, error: propError } = await supabase
       .from("properties")
-      .select("owner_id, host_id")
+      .select("owner_id")
       .eq("id", propertyId)
       .single()
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Proprietà non trovata" }, { status: 404 })
     }
 
-    if (property.owner_id !== session.user.id && property.host_id !== session.user.id) {
+    if (property.owner_id !== session.user.id) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 403 })
     }
 
