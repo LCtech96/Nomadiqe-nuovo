@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
@@ -27,16 +28,34 @@ interface Collaboration {
 
 export default function CreatorDashboard() {
   const { data: session } = useSession()
+  const router = useRouter()
   const supabase = createSupabaseClient()
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [socialAccounts, setSocialAccounts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (session?.user?.id) {
+    if (!session?.user?.id) return
+    const check = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, onboarding_completed")
+        .eq("id", session.user.id)
+        .maybeSingle()
+      if (profile?.role !== "creator") {
+        setLoading(false)
+        router.push("/onboarding")
+        return
+      }
+      if (profile && !profile.onboarding_completed) {
+        setLoading(false)
+        router.push("/onboarding")
+        return
+      }
       loadData()
     }
-  }, [session])
+    check()
+  }, [session?.user?.id, router, supabase])
 
   const loadData = async () => {
     try {

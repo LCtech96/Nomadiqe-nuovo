@@ -13,6 +13,7 @@ import { UserRole, Profile } from "@/types/user"
 import { useI18n } from "@/lib/i18n/context"
 import HostOnboarding from "@/components/onboarding/host-onboarding"
 import JollyOnboarding from "@/components/onboarding/jolly-onboarding"
+import CreatorOnboarding from "@/components/onboarding/creator-onboarding"
 
 type OnboardingStep = "role" | "role-specific"
 
@@ -111,22 +112,15 @@ export default function OnboardingPage() {
           if (data.role && data.full_name) {
             console.log("User has role:", data.role, "and profile - Starting role-specific onboarding")
             setSelectedRole(data.role)
-            if (data.role === "host") {
-              setStep("role-specific")
-            } else if (data.role === "jolly") {
+            if (data.role === "host" || data.role === "jolly" || data.role === "creator") {
               setStep("role-specific")
             } else {
-              // Per altri ruoli, per ora reindirizza alla home
-              // Qui si possono aggiungere step di onboarding specifici per ogni ruolo
               router.push("/home")
             }
           } else if (data.role && !data.full_name) {
-            // Se ha un ruolo ma non ha completato il profilo, mostra la selezione del ruolo
-            // per permettere di cambiarlo se necessario, oppure procedi con l'onboarding
             console.log("User has role but no profile - showing role selection or proceeding")
             setSelectedRole(data.role)
-            if (data.role === "host" || data.role === "jolly") {
-              // Procedi direttamente all'onboarding specifico
+            if (data.role === "host" || data.role === "jolly" || data.role === "creator") {
               setStep("role-specific")
             } else {
               setStep("role")
@@ -220,9 +214,8 @@ export default function OnboardingPage() {
           role: selectedRole,
         }
         
-        // IMPORTANTE: Per host e jolly, onboarding_completed deve essere FALSE
-        // Per gli altri ruoli, segna onboarding come completato
-        if (selectedRole === "host" || selectedRole === "jolly") {
+        // IMPORTANTE: host, jolly e creator hanno onboarding multi-step -> FALSE
+        if (selectedRole === "host" || selectedRole === "jolly" || selectedRole === "creator") {
           updateData.onboarding_completed = false
         } else {
           updateData.onboarding_completed = true
@@ -274,13 +267,9 @@ export default function OnboardingPage() {
         description: `Ruolo ${selectedRole} selezionato con successo!`,
       })
 
-      // If role is host or jolly, go to role-specific onboarding
-      if (selectedRole === "host" || selectedRole === "jolly") {
+      if (selectedRole === "host" || selectedRole === "jolly" || selectedRole === "creator") {
         setStep("role-specific")
       } else {
-        // For other roles, stay on onboarding to complete profile info
-        // L'utente continuerà con l'onboarding per completare le informazioni del profilo
-        // Per ora reindirizziamo alla home, ma qui si potrebbe aggiungere più onboarding
         router.push("/home")
       }
     } catch (error: any) {
@@ -426,6 +415,23 @@ export default function OnboardingPage() {
           </div>
         )}
         <JollyOnboarding redirectOnComplete="/dashboard/jolly" />
+      </div>
+    )
+  }
+
+  if (step === "role-specific" && selectedRole === "creator") {
+    return (
+      <div className="min-h-screen">
+        {profile?.role === "creator" && (
+          <div className="container mx-auto p-4 max-w-4xl">
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                ✓ Registrato come <strong>Creator</strong>. Completa l&apos;onboarding per iniziare.
+              </p>
+            </div>
+          </div>
+        )}
+        <CreatorOnboarding redirectOnComplete="/dashboard/creator" />
       </div>
     )
   }
