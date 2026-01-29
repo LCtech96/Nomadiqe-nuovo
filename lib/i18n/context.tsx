@@ -37,6 +37,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (typeof document !== 'undefined') {
       document.documentElement.lang = newLocale
     }
+    // Forza il re-render di tutti i componenti che usano le traduzioni
+    // Questo viene fatto automaticamente tramite il cambio di stato locale
   }
 
   const t = (key: string): string => {

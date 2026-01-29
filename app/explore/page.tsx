@@ -9,6 +9,9 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import Image from "next/image"
 import { Star, Users, MapPin, Map as MapIcon, List, Search, Filter, X, Calendar, Euro, Wifi, Car, Heart, RefreshCw } from "lucide-react"
+import { PropertyCard } from "@/components/property-card"
+import { useI18n } from "@/lib/i18n/context"
+import { usePropertyNameTranslation } from "@/lib/hooks/use-property-name-translation"
 
 // Dynamically import map to avoid SSR issues
 const MapComponent = dynamic(() => import("@/components/map"), { ssr: false })
@@ -32,6 +35,7 @@ interface Property {
 
 export default function ExplorePage() {
   const supabase = createSupabaseClient()
+  const { locale } = useI18n()
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -50,7 +54,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     loadProperties()
-  }, [])
+  }, [locale]) // Ricarica quando cambia la lingua
 
   // Ricarica le proprietà quando la pagina torna in focus (per aggiornare le coordinate)
   useEffect(() => {

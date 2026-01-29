@@ -98,6 +98,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Traduci e salva le traduzioni in background (non bloccare la creazione)
+    if (data?.id) {
+      // Salva prima la traduzione italiana
+      try {
+        await supabase
+          .from("property_translations")
+          .upsert({
+            property_id: data.id,
+            locale: "it",
+            name: name,
+            description: description || null,
+          }, {
+            onConflict: "property_id,locale",
+          })
+      } catch (err) {
+        console.warn("Could not save Italian translation:", err)
+      }
+
+      // Avvia traduzione automatica in background (non bloccare la risposta)
+      fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/properties/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyId: data.id,
+          name: name,
+          description: description || null,
+        }),
+      }).catch((err) => {
+        console.warn("Background translation failed:", err)
+      })
+    }
+
     return NextResponse.json({ data }, { status: 201 })
   } catch (error: any) {
     console.error("Error in POST /api/properties/create:", error)

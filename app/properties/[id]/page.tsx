@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { ArrowLeft, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { useI18n } from "@/lib/i18n/context"
+import { usePropertyTranslations } from "@/lib/hooks/use-property-translations"
 import {
   Dialog,
   DialogContent,
@@ -41,9 +42,10 @@ export default function PropertyDetailPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const { toast } = useToast()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const supabase = createSupabaseClient()
   const [property, setProperty] = useState<Property | null>(null)
+  const { translatedName, translatedDescription } = usePropertyTranslations(property)
   const [loading, setLoading] = useState(true)
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
@@ -55,7 +57,7 @@ export default function PropertyDetailPage() {
     if (params.id) {
       loadProperty()
     }
-  }, [params.id])
+  }, [params.id, locale]) // Ricarica quando cambia la lingua
 
   const loadProperty = async () => {
     try {
@@ -163,7 +165,7 @@ export default function PropertyDetailPage() {
         nights: nights,
       }
 
-      const messageContent = `Nuova richiesta di prenotazione per "${property.name}"
+      const messageContent = `Nuova richiesta di prenotazione per "${translatedName}"
 
 Check-in: ${new Date(checkIn).toLocaleDateString("it-IT")}
 Check-out: ${new Date(checkOut).toLocaleDateString("it-IT")}
@@ -286,7 +288,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                   >
                     <Image
                       src={img}
-                      alt={`${property.name} ${idx + 2}`}
+                      alt={`${translatedName} ${idx + 2}`}
                       width={400}
                       height={200}
                       className="w-full h-48 object-cover transition-transform group-hover:scale-105"
@@ -457,7 +459,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
               <div className="relative w-full h-full flex items-center justify-center">
                 <Image
                   src={property.images[selectedImageIndex]}
-                  alt={`${property.name} ${selectedImageIndex + 1}`}
+                  alt={`${translatedName} ${selectedImageIndex + 1}`}
                   fill
                   className="object-contain"
                   sizes="100vw"
