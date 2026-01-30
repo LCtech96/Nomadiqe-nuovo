@@ -43,6 +43,10 @@ interface CreatorProfile {
   bio: string | null
   role: string
   points: number
+  host_level?: string | null
+  creator_level?: string | null
+  structure_level?: number | null
+  created_at?: string | null
   social_accounts?: Array<{
     platform: string
     username: string
@@ -50,7 +54,9 @@ interface CreatorProfile {
     verified: boolean
   }>
   total_followers?: number
+  total_following?: number
   profile_views?: number
+  kol_bed_since?: string | null
 }
 
 interface CleaningRequest {
@@ -270,17 +276,47 @@ export default function KOLBedPage() {
         }
       }
 
+      // Per host: followers, following (da follows) e kol_bed_since (prima proprietà)
+      const followersMap: { [key: string]: number } = {}
+      const followingMap: { [key: string]: number } = {}
+      const kolBedSinceMap: { [key: string]: string | null } = {}
+
+      if (profileIds.length > 0 && isViewerCreator) {
+        const [followsData, viewsRows] = await Promise.all([
+          supabase.from("follows").select("follower_id, following_id"),
+          supabase.from("profile_views").select("profile_id"),
+        ])
+        profileIds.forEach((pid) => {
+          followersMap[pid] = (followsData.data || []).filter((f) => f.following_id === pid).length
+          followingMap[pid] = (followsData.data || []).filter((f) => f.follower_id === pid).length
+          viewsMap[pid] = (viewsRows.data || []).filter((v) => v.profile_id === pid).length
+        })
+        const { data: firstProps } = await supabase
+          .from("properties")
+          .select("owner_id, created_at")
+          .in("owner_id", profileIds)
+          .order("created_at", { ascending: true })
+        const byOwner = new Map<string, string>()
+        firstProps?.forEach((p) => {
+          if (!byOwner.has(p.owner_id)) byOwner.set(p.owner_id, p.created_at)
+        })
+        profileIds.forEach((pid) => {
+          kolBedSinceMap[pid] = byOwner.get(pid) ?? null
+        })
+      }
+
       const enrichedCreators = (creatorsData || []).map((profile) => {
         const socialAccounts = socialAccountsMap[profile.id] || []
-        const totalFollowers = socialAccounts.reduce(
-          (sum, acc) => sum + (acc.follower_count || 0),
-          0
-        )
+        const totalFollowers = isViewerCreator
+          ? (followersMap[profile.id] ?? 0)
+          : socialAccounts.reduce((sum, acc) => sum + (acc.follower_count || 0), 0)
         return {
           ...profile,
           social_accounts: socialAccounts,
           total_followers: totalFollowers,
-          profile_views: viewsMap[profile.id] || 0,
+          total_following: isViewerCreator ? (followingMap[profile.id] ?? 0) : undefined,
+          profile_views: viewsMap[profile.id] ?? 0,
+          kol_bed_since: isViewerCreator ? (kolBedSinceMap[profile.id] ?? profile.created_at ?? null) : undefined,
         }
       })
 
@@ -1123,9 +1159,50 @@ export default function KOLBedPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate text-foreground">
-                          {creator.full_name || creator.username || "Creator"}
-                        </h3>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg truncate text-foreground">
+                            {creator.full_name || creator.username || "Creator"}
+                          </h3>
+                          {creator.host_level && !isHost && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold shrink-0 ${
+                              creator.host_level === "Base" ? "bg-gray-200 dark:bg-gray-700" :
+                              creator.host_level === "Advanced" ? "bg-green-200 dark:bg-green-800" :
+                              creator.host_level === "Rubino" ? "bg-red-200 dark:bg-red-800" :
+                              creator.host_level === "Zaffiro" ? "bg-blue-200 dark:bg-blue-800" :
+                              creator.host_level === "Prime" ? "bg-yellow-200 dark:bg-yellow-800" :
+                              "bg-gray-200 dark:bg-gray-700"
+                            }`}>
+                              {creator.host_level}
+                            </span>
+                          )}
+                          {creator.creator_level && isHost && (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold shrink-0 ${
+                              creator.creator_level === "Starter" ? "bg-gray-200 dark:bg-gray-700" :
+                              creator.creator_level === "Rising" ? "bg-blue-200 dark:bg-blue-800" :
+                              creator.creator_level === "Influencer" ? "bg-purple-200 dark:bg-purple-800" :
+                              creator.creator_level === "Elite" ? "bg-indigo-200 dark:bg-indigo-800" :
+                              creator.creator_level === "Icon" ? "bg-gradient-to-r from-yellow-200 to-orange-200 dark:from-yellow-800 dark:to-orange-800" :
+                              "bg-gray-200 dark:bg-gray-700"
+                            }`}>
+                              {creator.creator_level}
+                            </span>
+                          )}
+                          {creator.structure_level != null && !isHost && (
+                            <span className="px-2 py-0.5 rounded text-xs font-bold shrink-0 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200">
+                              {creator.structure_level} level
+                            </span>
+                          )}
+                          {creator.kol_bed_since && !isHost && (() => {
+                            const since = new Date(creator.kol_bed_since)
+                            const days = Math.floor((Date.now() - since.getTime()) / (1000 * 60 * 60 * 24))
+                            const label = days < 30 ? `${days} gg` : days < 365 ? `${Math.floor(days / 30)} mesi` : `${Math.floor(days / 365)} anni`
+                            return (
+                              <span className="px-2 py-0.5 rounded text-xs font-medium shrink-0 bg-primary/10 text-primary">
+                                KOL&BED {label}
+                              </span>
+                            )
+                          })()}
+                        </div>
                         {creator.username && (
                           <p className="text-sm text-muted-foreground truncate">
                             @{creator.username}
@@ -1140,7 +1217,7 @@ export default function KOLBedPage() {
                       </p>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className={`grid gap-4 mb-4 ${!isHost && creator.total_following != null ? "grid-cols-3" : "grid-cols-2"}`}>
                       <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-2xl p-3 border border-blue-100/50 dark:border-blue-800/30">
                         <div className="flex items-center gap-2 mb-1">
                           <Users className="h-4 w-4 text-primary" />
@@ -1150,6 +1227,17 @@ export default function KOLBedPage() {
                           {(creator.total_followers || 0).toLocaleString()}
                         </p>
                       </div>
+                      {!isHost && creator.total_following != null && (
+                        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 rounded-2xl p-3 border border-cyan-100/50 dark:border-cyan-800/30">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Users className="h-4 w-4 text-primary" />
+                            <span className="text-xs text-muted-foreground">Seguiti</span>
+                          </div>
+                          <p className="text-lg font-bold text-foreground">
+                            {(creator.total_following || 0).toLocaleString()}
+                          </p>
+                        </div>
+                      )}
                       <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/30 dark:to-pink-900/30 rounded-2xl p-3 border border-purple-100/50 dark:border-purple-800/30">
                         <div className="flex items-center gap-2 mb-1">
                           <Eye className="h-4 w-4 text-primary" />

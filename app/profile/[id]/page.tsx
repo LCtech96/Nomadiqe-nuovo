@@ -108,6 +108,7 @@ interface PublicProfile {
   host_level?: string | null
   creator_level?: string | null
   creator_verified_at?: string | null
+  structure_level?: number | null
   social_accounts?: Array<{
     platform: string
     username: string
@@ -827,6 +828,11 @@ export default function PublicProfilePage() {
                     }`}>
                       {profile.host_level}
                     </span>
+                  )}
+                  {profile.role === "host" && profile.structure_level != null && (
+                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200">
+                      {profile.structure_level} level
+                    </Badge>
                   )}
                   {profile.role === "creator" && profile.creator_level && (
                     <span className={`px-3 py-1 rounded text-sm font-bold ${

@@ -19,6 +19,7 @@ interface HostProfile {
   bio: string | null
   role: string
   host_level?: string | null
+  structure_level?: number | null
   properties?: Array<{
     id: string
     name: string
@@ -198,6 +199,11 @@ export default function HostsListPage() {
                                 "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200"
                               }`}>
                                 {host.host_level}
+                              </span>
+                            )}
+                            {host.structure_level != null && (
+                              <span className="px-2 py-0.5 rounded text-xs font-bold shrink-0 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200">
+                                {host.structure_level} level
                               </span>
                             )}
                           </div>
