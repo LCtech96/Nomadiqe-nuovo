@@ -255,7 +255,7 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
         <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{property.name}</h1>
+              <h1 className="text-3xl font-bold mb-2">{translatedName || property.name}</h1>
               <p className="text-muted-foreground">
                 {property.city}, {property.country}
               </p>

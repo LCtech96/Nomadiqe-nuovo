@@ -15,6 +15,23 @@ interface Property {
   [key: string]: any
 }
 
+// Traduce un singolo testo via API Groq
+async function translateText(text: string, targetLanguage: string): Promise<string> {
+  if (!text?.trim() || targetLanguage === "it") return text
+  try {
+    const res = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, targetLanguage }),
+    })
+    if (!res.ok) return text
+    const data = await res.json()
+    return data.translatedText || text
+  } catch {
+    return text
+  }
+}
+
 export function usePropertyTranslations(property: Property | null) {
   const { locale } = useI18n()
   const [translation, setTranslation] = useState<PropertyTranslation | null>(null)
@@ -28,16 +45,15 @@ export function usePropertyTranslations(property: Property | null) {
     }
 
     // Se la lingua è 'it' (default), usa i valori originali
-    if (locale === 'it') {
+    if (locale === "it") {
       setTranslation({
-        locale: 'it',
+        locale: "it",
         name: property.name,
         description: property.description,
       })
       return
     }
 
-    // Carica la traduzione per la lingua corrente
     const loadTranslation = async () => {
       setLoading(true)
       try {
@@ -52,25 +68,31 @@ export function usePropertyTranslations(property: Property | null) {
           console.error("Error loading translation:", error)
         }
 
-        if (data) {
+        if (data?.name || data?.description) {
           setTranslation({
             locale: data.locale,
-            name: data.name || property.name, // Fallback al nome originale
-            description: data.description || property.description, // Fallback alla descrizione originale
+            name: data.name || property.name,
+            description: data.description ?? property.description,
           })
-        } else {
-          // Se non c'è traduzione, usa i valori originali
-          setTranslation({
-            locale: locale,
-            name: property.name,
-            description: property.description,
-          })
+          return
         }
+
+        // Nessuna traduzione in DB: traduce on-the-fly via API
+        const [translatedName, translatedDescription] = await Promise.all([
+          translateText(property.name || "", locale),
+          property.description
+            ? translateText(property.description, locale)
+            : Promise.resolve(null),
+        ])
+        setTranslation({
+          locale,
+          name: translatedName || property.name,
+          description: translatedDescription ?? property.description,
+        })
       } catch (error) {
         console.error("Error loading property translation:", error)
-        // Fallback ai valori originali in caso di errore
         setTranslation({
-          locale: locale,
+          locale,
           name: property.name,
           description: property.description,
         })
@@ -80,11 +102,11 @@ export function usePropertyTranslations(property: Property | null) {
     }
 
     loadTranslation()
-  }, [property?.id, locale])
+  }, [property?.id, property?.name, property?.description, locale])
 
   return {
     translatedName: translation?.name || property?.name || "",
-    translatedDescription: translation?.description || property?.description || null,
+    translatedDescription: translation?.description ?? property?.description ?? null,
     loading,
   }
 }
