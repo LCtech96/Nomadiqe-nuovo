@@ -83,6 +83,7 @@ interface Stats {
   postsCount: number
   profileViews?: number
   totalInteractions?: number
+  engagementRate?: number | null
 }
 
 interface JollyService {
@@ -534,8 +535,20 @@ export default function PublicProfilePage() {
         0
       )
 
+      // Calcola engagement: usa manuale se disponibile e show_engagement_rate, altrimenti calcola da interazioni/views
+      const profileViewsVal = manualAnalytics?.show_profile_views && manualAnalytics.profile_views !== null
+        ? manualAnalytics.profile_views
+        : (viewsCount || 0)
+      const totalInteractionsVal = manualAnalytics?.show_interactions && manualAnalytics.total_interactions !== null
+        ? manualAnalytics.total_interactions
+        : totalInteractions
+      const engagementRateVal = manualAnalytics?.show_engagement_rate && manualAnalytics.engagement_rate != null
+        ? Number(manualAnalytics.engagement_rate)
+        : (profileViewsVal > 0 && totalInteractionsVal != null
+          ? (totalInteractionsVal / profileViewsVal) * 100
+          : null)
+
       // Usa statistiche manuali se disponibili e se i flag di visibilità lo permettono
-      // Altrimenti usa le statistiche automatiche
       setStats({
         followers: manualAnalytics?.show_followers && manualAnalytics.total_followers !== null
           ? manualAnalytics.total_followers
@@ -546,12 +559,9 @@ export default function PublicProfilePage() {
         postsCount: manualAnalytics?.show_posts && manualAnalytics.total_posts !== null
           ? manualAnalytics.total_posts
           : (postsCount || 0),
-        profileViews: manualAnalytics?.show_profile_views && manualAnalytics.profile_views !== null
-          ? manualAnalytics.profile_views
-          : (viewsCount || 0),
-        totalInteractions: manualAnalytics?.show_interactions && manualAnalytics.total_interactions !== null
-          ? manualAnalytics.total_interactions
-          : totalInteractions,
+        profileViews: profileViewsVal,
+        totalInteractions: totalInteractionsVal,
+        engagementRate: engagementRateVal,
       })
     } catch (error) {
       console.error("Error loading stats:", error)
@@ -1214,9 +1224,11 @@ export default function PublicProfilePage() {
                     <div className="text-center p-4 bg-primary/5 rounded-lg">
                       <TrendingUp className="w-6 h-6 mx-auto mb-2 text-primary" />
                       <p className="text-2xl font-bold">
-                        {stats.totalInteractions && stats.profileViews 
-                          ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
-                          : 0}%
+                        {stats.engagementRate != null 
+                          ? stats.engagementRate.toFixed(1) 
+                          : stats.totalInteractions && stats.profileViews 
+                            ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
+                            : 0}%
                       </p>
                       <p className="text-sm text-muted-foreground">Engagement</p>
                     </div>
@@ -1293,9 +1305,11 @@ export default function PublicProfilePage() {
                       <div className="flex justify-between mb-2">
                         <span className="text-sm font-medium">Engagement Rate</span>
                         <span className="text-sm text-muted-foreground">
-                          {stats.totalInteractions && stats.profileViews 
-                            ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
-                            : 0}%
+                          {stats.engagementRate != null 
+                            ? stats.engagementRate.toFixed(1) 
+                            : stats.totalInteractions && stats.profileViews 
+                              ? ((stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100).toFixed(1) 
+                              : 0}%
                         </span>
                       </div>
                       <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
@@ -1303,9 +1317,11 @@ export default function PublicProfilePage() {
                           className="bg-primary h-full transition-all"
                           style={{ 
                             width: `${Math.min(
-                              stats.totalInteractions && stats.profileViews 
-                                ? (stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100 
-                                : 0, 
+                              stats.engagementRate != null 
+                                ? stats.engagementRate 
+                                : stats.totalInteractions && stats.profileViews 
+                                  ? (stats.totalInteractions / Math.max(stats.profileViews, 1)) * 100 
+                                  : 0, 
                               100
                             )}%` 
                           }}
