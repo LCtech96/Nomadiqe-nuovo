@@ -1,13 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { createSupabaseClient } from "@/lib/supabase/client"
+import { put } from "@vercel/blob"
 import Link from "next/link"
-import { Instagram, Youtube, TrendingUp } from "lucide-react"
+import Image from "next/image"
+import { useToast } from "@/hooks/use-toast"
+import { Instagram, Youtube, Upload, ImageIcon } from "lucide-react"
 
 interface Collaboration {
   id: string
@@ -32,7 +35,11 @@ export default function CreatorDashboard() {
   const supabase = createSupabaseClient()
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [socialAccounts, setSocialAccounts] = useState<any[]>([])
+  const [analyticsScreenshotUrls, setAnalyticsScreenshotUrls] = useState<string[]>([])
+  const [uploadingAnalytics, setUploadingAnalytics] = useState(false)
   const [loading, setLoading] = useState(true)
+  const analyticsInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -81,10 +88,72 @@ export default function CreatorDashboard() {
 
       if (socialError) throw socialError
       setSocialAccounts(socialData || [])
+
+      // Load creator onboarding (analytics screenshots)
+      const { data: onboarding } = await supabase
+        .from("creator_onboarding")
+        .select("analytics_screenshot_urls")
+        .eq("user_id", session!.user.id)
+        .maybeSingle()
+      setAnalyticsScreenshotUrls((onboarding?.analytics_screenshot_urls as string[]) || [])
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleUploadAnalyticsScreenshots = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length || !session?.user?.id) return
+    setUploadingAnalytics(true)
+    try {
+      const token =
+        process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN ||
+        process.env.NEW_BLOB_READ_WRITE_TOKEN ||
+        process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ||
+        process.env.BLOB_READ_WRITE_TOKEN
+      if (!token) {
+        toast({ title: "Errore", description: "Configurazione upload non disponibile.", variant: "destructive" })
+        return
+      }
+      const newUrls: string[] = []
+      const base = Date.now()
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i]
+        const ext = f.name.split(".").pop() || "jpg"
+        const blob = await put(`${session.user.id}/analytics-${base}-${i}.${ext}`, f, {
+          access: "public",
+          contentType: f.type,
+          token: token as string,
+        })
+        newUrls.push(blob.url)
+      }
+      const allUrls = [...analyticsScreenshotUrls, ...newUrls]
+
+      const { error } = await supabase
+        .from("creator_onboarding")
+        .upsert(
+          {
+            user_id: session.user.id,
+            analytics_screenshot_urls: allUrls,
+          },
+          { onConflict: "user_id" }
+        )
+
+      if (error) throw error
+      setAnalyticsScreenshotUrls(allUrls)
+      toast({ title: "Caricati", description: `${newUrls.length} screenshot delle analitiche caricati.` })
+      e.target.value = ""
+    } catch (err: unknown) {
+      console.error("Upload analytics:", err)
+      toast({
+        title: "Errore",
+        description: (err as Error)?.message || "Impossibile caricare gli screenshot.",
+        variant: "destructive",
+      })
+    } finally {
+      setUploadingAnalytics(false)
     }
   }
 
@@ -222,6 +291,54 @@ export default function CreatorDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ImageIcon className="w-5 h-5" />
+              Analitiche aggiornate
+            </CardTitle>
+            <CardDescription>
+              Carica nuovi screenshot delle analitiche del tuo profilo per mantenere aggiornate le statistiche visibili agli host. Solo l&apos;admin può visualizzarli per la verifica.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {analyticsScreenshotUrls.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">
+                {analyticsScreenshotUrls.map((url, i) => (
+                  <a
+                    key={i}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-video rounded-lg border overflow-hidden bg-muted hover:opacity-90 transition-opacity"
+                  >
+                    <img
+                      src={url}
+                      alt={`Analitica ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
+            <input
+              ref={analyticsInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleUploadAnalyticsScreenshots}
+            />
+            <Button
+              onClick={() => analyticsInputRef.current?.click()}
+              disabled={uploadingAnalytics}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {uploadingAnalytics ? "Caricamento..." : "Carica nuovi screenshot"}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
