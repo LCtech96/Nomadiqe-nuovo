@@ -26,7 +26,10 @@ type Creator = {
   creator_verified_by: string | null
   onboarding: {
     user_id: string
-    analytics_screenshot_urls: string[] | null
+    analytics_screenshot_urls?: string[] | null
+    analytics_90_days_urls?: string[] | null
+    analytics_30_days_urls?: string[] | null
+    analytics_7_days_urls?: string[] | null
     niche: string | null
     kol_bed_level: string | null
   } | null
@@ -196,26 +199,33 @@ export default function CreatorVerificationPanel() {
           </DialogHeader>
           {detail && (
             <div className="space-y-4">
-              <div>
-                <Label className="mb-2 block">Screenshot analitiche (solo admin)</Label>
-                {detail.onboarding?.analytics_screenshot_urls?.length ? (
-                  <div className="flex flex-wrap gap-2">
-                    {detail.onboarding.analytics_screenshot_urls.map((url, i) => (
-                      <a
-                        key={i}
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex h-24 w-24 shrink-0 overflow-hidden rounded border"
-                      >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
-                      </a>
-                    ))}
+              {(["90", "30", "7"] as const).map((period) => {
+                const col = period === "90" ? "analytics_90_days_urls" : period === "30" ? "analytics_30_days_urls" : "analytics_7_days_urls"
+                const urls = (detail.onboarding as any)?.[col] ?? (period === "90" ? detail.onboarding?.analytics_screenshot_urls : null) ?? []
+                const label = period === "90" ? "Ultimi 90 giorni" : period === "30" ? "Ultimo mese" : "Ultima settimana"
+                return (
+                  <div key={period}>
+                    <Label className="mb-2 block">Screenshot — {label}</Label>
+                    {urls?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {urls.map((url: string, i: number) => (
+                          <a
+                            key={i}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex h-24 w-24 shrink-0 overflow-hidden rounded border"
+                          >
+                            <img src={url} alt="" className="h-full w-full object-cover" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nessuno screenshot.</p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Nessuno screenshot caricato.</p>
-                )}
-              </div>
+                )
+              })}
               <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="pv">Profile views</Label>

@@ -52,6 +52,8 @@ const KOL_BED_LEVELS = [
   },
 ] as const
 
+type AnalyticsPeriod = "90" | "30" | "7"
+
 const PLATFORM_OPTS = [
   { value: "instagram" as const, label: "Instagram", Icon: Instagram },
   { value: "tiktok" as const, label: "TikTok", Icon: TrendingUp },
@@ -82,9 +84,9 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
   })
 
   const [socialData, setSocialData] = useState({
-    existingAnalyticsUrls: [] as string[],
-    analyticsScreenshots: [] as File[],
-    analyticsPreviewUrls: [] as string[],
+    analytics90: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
+    analytics30: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
+    analytics7: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
     niche: "",
     publishingStrategy: "",
     reelsPerWeek: "",
@@ -152,7 +154,9 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
             companionsAreCreators: !!co.companions_are_creators,
             companionsHaveIgOrTiktok: !!co.companions_have_ig_or_tiktok,
             acceptPromoteOnlyNomadiqe: !!co.accept_promote_only_nomadiqe,
-            existingAnalyticsUrls: (co.analytics_screenshot_urls as string[]) || [],
+            analytics90: { existingUrls: ((co as any).analytics_90_days_urls ?? (co.analytics_screenshot_urls as string[])) || [], files: [], previewUrls: [] },
+            analytics30: { existingUrls: ((co as any).analytics_30_days_urls as string[]) || [], files: [], previewUrls: [] },
+            analytics7: { existingUrls: ((co as any).analytics_7_days_urls as string[]) || [], files: [], previewUrls: [] },
           }))
         }
         const { data: accounts } = await supabase
@@ -309,40 +313,38 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
     })
   }
 
-  const handleAnalyticsFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAnalyticsFiles = (period: AnalyticsPeriod, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const valid = files.filter((f) => f.size <= 10 * 1024 * 1024)
     if (valid.length < files.length) {
       toast({ title: "Attenzione", description: "Alcuni file > 10MB ignorati." })
     }
-    const existing = socialData.existingAnalyticsUrls.length + socialData.analyticsScreenshots.length
+    const key = `analytics${period}` as const
+    const curr = socialData[key]
+    const existing = curr.existingUrls.length + curr.files.length
     const allowed = Math.max(0, 10 - existing)
     const toAdd = valid.slice(0, allowed)
-    const newFiles = [...socialData.analyticsScreenshots, ...toAdd]
+    const newFiles = [...curr.files, ...toAdd]
     const newPreviews = newFiles.map((f) => URL.createObjectURL(f))
     setSocialData({
       ...socialData,
-      analyticsScreenshots: newFiles,
-      analyticsPreviewUrls: newPreviews,
+      [key]: { ...curr, files: newFiles, previewUrls: newPreviews },
     })
     e.target.value = ""
   }
 
-  const removeAnalyticsFile = (idx: number) => {
-    const nextFiles = socialData.analyticsScreenshots.filter((_, i) => i !== idx)
+  const removeAnalyticsFile = (period: AnalyticsPeriod, idx: number) => {
+    const key = `analytics${period}` as const
+    const curr = socialData[key]
+    const nextFiles = curr.files.filter((_, i) => i !== idx)
     const nextPreviews = nextFiles.map((f) => URL.createObjectURL(f))
-    setSocialData({
-      ...socialData,
-      analyticsScreenshots: nextFiles,
-      analyticsPreviewUrls: nextPreviews,
-    })
+    setSocialData({ ...socialData, [key]: { ...curr, files: nextFiles, previewUrls: nextPreviews } })
   }
 
-  const removeExistingAnalyticsUrl = (idx: number) => {
-    setSocialData({
-      ...socialData,
-      existingAnalyticsUrls: socialData.existingAnalyticsUrls.filter((_, i) => i !== idx),
-    })
+  const removeExistingAnalyticsUrl = (period: AnalyticsPeriod, idx: number) => {
+    const key = `analytics${period}` as const
+    const curr = socialData[key]
+    setSocialData({ ...socialData, [key]: { ...curr, existingUrls: curr.existingUrls.filter((_, i) => i !== idx) } })
   }
 
   const handleSocialKolBedSubmit = async (e: React.FormEvent) => {
@@ -375,27 +377,39 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
     setLoading(true)
     try {
       setUploadingScreenshots(true)
-      const screenshotUrls: string[] = []
       const token =
         process.env.NEXT_PUBLIC_NEW_BLOB_READ_WRITE_TOKEN ||
         process.env.NEW_BLOB_READ_WRITE_TOKEN ||
         process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ||
         process.env.BLOB_READ_WRITE_TOKEN
-      for (let i = 0; i < socialData.analyticsScreenshots.length; i++) {
-        const f = socialData.analyticsScreenshots[i]
-        const ext = f.name.split(".").pop() || "jpg"
-        const blob = await put(`${userId}/analytics-${i}.${ext}`, f, {
-          access: "public",
-          contentType: f.type,
-          token: token as string,
-        })
-        screenshotUrls.push(blob.url)
+
+      const uploadFiles = async (files: File[], prefix: string) => {
+        const urls: string[] = []
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i]
+          const ext = f.name.split(".").pop() || "jpg"
+          const b = await put(`${userId}/${prefix}-${i}.${ext}`, f, {
+            access: "public",
+            contentType: f.type,
+            token: token as string,
+          })
+          urls.push(b.url)
+        }
+        return urls
       }
+
+      const [urls90, urls30, urls7] = await Promise.all([
+        uploadFiles(socialData.analytics90.files, "analytics-90d"),
+        uploadFiles(socialData.analytics30.files, "analytics-30d"),
+        uploadFiles(socialData.analytics7.files, "analytics-7d"),
+      ])
       setUploadingScreenshots(false)
 
       const onboardingPayload = {
         user_id: userId,
-        analytics_screenshot_urls: screenshotUrls,
+        analytics_90_days_urls: [...socialData.analytics90.existingUrls, ...urls90],
+        analytics_30_days_urls: [...socialData.analytics30.existingUrls, ...urls30],
+        analytics_7_days_urls: [...socialData.analytics7.existingUrls, ...urls7],
         niche: socialData.niche.trim() || null,
         publishing_strategy: socialData.publishingStrategy.trim() || null,
         reels_per_week: socialData.reelsPerWeek ? parseInt(socialData.reelsPerWeek, 10) : null,
@@ -543,45 +557,52 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSocialKolBedSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label>Screenshot analitiche profilo</Label>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleAnalyticsFiles}
-                  className="cursor-pointer"
-                />
-                <p className="text-xs text-muted-foreground">Carica screenshot delle analitiche dei tuoi profili (max 10, 10MB ciascuno).</p>
-                {(socialData.existingAnalyticsUrls.length > 0 || socialData.analyticsPreviewUrls.length > 0) && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {socialData.existingAnalyticsUrls.map((url, i) => (
-                      <div key={`ex-${i}`} className="relative">
-                        <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
-                        <button
-                          type="button"
-                          onClick={() => removeExistingAnalyticsUrl(i)}
-                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+              {(["90", "30", "7"] as const).map((period) => {
+                const key = `analytics${period}` as const
+                const data = socialData[key]
+                const label = period === "90" ? "Ultimi 90 giorni" : period === "30" ? "Ultimo mese" : "Ultima settimana"
+                return (
+                  <div key={key} className="space-y-2">
+                    <Label>Screenshot analitiche — {label}</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleAnalyticsFiles(period, e)}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground">Carica screenshot delle analitiche del periodo indicato (max 10, 10MB ciascuno).</p>
+                    {(data.existingUrls.length > 0 || data.previewUrls.length > 0) && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {data.existingUrls.map((url, i) => (
+                          <div key={`ex-${period}-${i}`} className="relative">
+                            <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                            <button
+                              type="button"
+                              onClick={() => removeExistingAnalyticsUrl(period, i)}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        {data.previewUrls.map((url, i) => (
+                          <div key={`new-${period}-${i}`} className="relative">
+                            <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                            <button
+                              type="button"
+                              onClick={() => removeAnalyticsFile(period, i)}
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                    {socialData.analyticsPreviewUrls.map((url, i) => (
-                      <div key={`new-${i}`} className="relative">
-                        <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
-                        <button
-                          type="button"
-                          onClick={() => removeAnalyticsFile(i)}
-                          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                    )}
                   </div>
-                )}
-              </div>
+                )
+              })}
 
               <div className="space-y-2">
                 <Label htmlFor="niche">Nicchia</Label>
