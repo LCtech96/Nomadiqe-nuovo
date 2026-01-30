@@ -18,11 +18,9 @@ export async function POST(request: NextRequest) {
   try {
     const { text, targetLanguage } = await request.json()
 
+    // Testo vuoto: ritorna subito senza chiamare Groq (evita risposte "fornisci il testo")
     if (!text || typeof text !== "string" || !text.trim()) {
-      return NextResponse.json(
-        { error: "Testo mancante o non valido" },
-        { status: 400 }
-      )
+      return NextResponse.json({ translatedText: "" })
     }
 
     if (!targetLanguage || !LANGUAGE_MAP[targetLanguage]) {
@@ -56,9 +54,22 @@ export async function POST(request: NextRequest) {
       max_tokens: 2000,
     })
 
-    const translatedText = completion.choices[0]?.message?.content?.trim() || text
+    let translatedText = completion.choices[0]?.message?.content?.trim() || text
 
-    // Cache della traduzione (opzionale, per performance)
+    // Groq a volte risponde con messaggi di aiuto invece di tradurre (es. testo vuoto). Scartali.
+    const metaPhrases = [
+      "non c'è testo",
+      "fornisci il testo",
+      "provide the text",
+      "provide the text you want",
+      "no text provided",
+      "sarò felice di aiutarti",
+      "happy to help",
+    ]
+    if (metaPhrases.some((p) => translatedText.toLowerCase().includes(p))) {
+      translatedText = text
+    }
+
     return NextResponse.json({ translatedText })
   } catch (error: any) {
     console.error("Translation error:", error)

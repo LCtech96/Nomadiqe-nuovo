@@ -15,20 +15,35 @@ interface Property {
   [key: string]: any
 }
 
-// Traduce un singolo testo via API Groq
+// Risposta "meta" di Groq quando riceve input vuoto - da scartare
+const META_RESPONSE_PATTERNS = [
+  "non c'è testo",
+  "fornisci il testo",
+  "provide the text",
+  "no text provided",
+  "sarò felice di aiutarti",
+]
+
+function isMetaResponse(str: string): boolean {
+  const s = (str || "").toLowerCase()
+  return META_RESPONSE_PATTERNS.some((p) => s.includes(p))
+}
+
 async function translateText(text: string, targetLanguage: string): Promise<string> {
-  if (!text?.trim() || targetLanguage === "it") return text
+  const trimmed = text?.trim()
+  if (!trimmed || targetLanguage === "it") return trimmed || ""
   try {
     const res = await fetch("/api/translate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, targetLanguage }),
+      body: JSON.stringify({ text: trimmed, targetLanguage }),
     })
-    if (!res.ok) return text
+    if (!res.ok) return trimmed
     const data = await res.json()
-    return data.translatedText || text
+    const result = data.translatedText || trimmed
+    return isMetaResponse(result) ? trimmed : result
   } catch {
-    return text
+    return trimmed
   }
 }
 
@@ -104,9 +119,23 @@ export function usePropertyTranslations(property: Property | null) {
     loadTranslation()
   }, [property?.id, property?.name, property?.description, locale])
 
+  // Filtra risposte "meta" di Groq (es. "Non c'è testo fornito...") e usa originale
+  const safeName = (v: string | null | undefined) =>
+    v && !isMetaResponse(v) ? v : null
+  let name = safeName(translation?.name) ?? safeName(property?.name) ?? property?.name ?? ""
+  if (isMetaResponse(name)) name = ""
+
+  let desc =
+    (translation?.description && !isMetaResponse(translation.description)
+      ? translation.description
+      : null) ?? property?.description ?? null
+  if (desc && isMetaResponse(desc)) desc = null
+
+  const safePropName = property?.name && !isMetaResponse(property.name) ? property.name : ""
+
   return {
-    translatedName: translation?.name || property?.name || "",
-    translatedDescription: translation?.description ?? property?.description ?? null,
+    translatedName: name || safePropName || "",
+    translatedDescription: desc ?? (property?.description && !isMetaResponse(property.description) ? property.description : null),
     loading,
   }
 }
