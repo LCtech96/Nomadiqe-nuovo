@@ -14,10 +14,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}))
-    const { period, urls } = body as { period?: "90" | "30" | "7"; urls?: string[] }
+    const VALID_PERIODS = ["90", "30", "7", "views_pie", "accounts_reached", "reels_content", "posts_content", "stories_content", "profile_activity", "profile_visits", "external_links", "audience_30", "audience_7"] as const
+    const { period, urls } = body as { period?: string; urls?: string[] }
 
-    if (!period || !["90", "30", "7"].includes(period)) {
-      return NextResponse.json({ error: "period richiesto: 90, 30 o 7" }, { status: 400 })
+    if (!period || !VALID_PERIODS.includes(period as typeof VALID_PERIODS[number])) {
+      return NextResponse.json({ error: "period richiesto: 90|30|7|views_pie|accounts_reached|reels_content|posts_content|stories_content|profile_activity|profile_visits|external_links|audience_30|audience_7" }, { status: 400 })
     }
     if (!Array.isArray(urls)) {
       return NextResponse.json({ error: "urls deve essere un array" }, { status: 400 })

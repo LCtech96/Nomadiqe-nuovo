@@ -13,6 +13,37 @@ import Image from "next/image"
 import { useToast } from "@/hooks/use-toast"
 import { Instagram, Youtube, Upload, ImageIcon } from "lucide-react"
 
+type AnalyticsCategory =
+  | "90"
+  | "30"
+  | "7"
+  | "views_pie"
+  | "accounts_reached"
+  | "reels_content"
+  | "posts_content"
+  | "stories_content"
+  | "profile_activity"
+  | "profile_visits"
+  | "external_links"
+  | "audience_30"
+  | "audience_7"
+
+const ANALYTICS_CATEGORIES: { key: AnalyticsCategory; label: string }[] = [
+  { key: "90", label: "Ultimi 90 giorni" },
+  { key: "30", label: "Ultimo mese" },
+  { key: "7", label: "Ultima settimana" },
+  { key: "views_pie", label: "Grafico a torta views (followers vs non-followers)" },
+  { key: "accounts_reached", label: "Accounts reached" },
+  { key: "reels_content", label: "By content type: Reels (% followers e non followers)" },
+  { key: "posts_content", label: "By content type: Posts" },
+  { key: "stories_content", label: "By content type: Stories" },
+  { key: "profile_activity", label: "% Profile activity" },
+  { key: "profile_visits", label: "Profile visits" },
+  { key: "external_links", label: "External links taps" },
+  { key: "audience_30", label: "Audience demographics (ultimi 30 giorni)" },
+  { key: "audience_7", label: "Audience demographics (ultimi 7 giorni)" },
+]
+
 interface Collaboration {
   id: string
   host_id: string
@@ -36,9 +67,9 @@ export default function CreatorDashboard() {
   const supabase = createSupabaseClient()
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [socialAccounts, setSocialAccounts] = useState<any[]>([])
-  const [analytics90, setAnalytics90] = useState<string[]>([])
-  const [analytics30, setAnalytics30] = useState<string[]>([])
-  const [analytics7, setAnalytics7] = useState<string[]>([])
+  const [analyticsByCategory, setAnalyticsByCategory] = useState<Record<AnalyticsCategory, string[]>>(() =>
+    Object.fromEntries(ANALYTICS_CATEGORIES.map((c) => [c.key, []])) as Record<AnalyticsCategory, string[]>
+  )
   const [uploadingAnalytics, setUploadingAnalytics] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -91,16 +122,52 @@ export default function CreatorDashboard() {
       if (socialError) throw socialError
       setSocialAccounts(socialData || [])
 
-      // Load creator onboarding (analytics screenshots by period)
+      // Load creator onboarding (analytics screenshots)
+      const cols = [
+        "analytics_90_days_urls",
+        "analytics_30_days_urls",
+        "analytics_7_days_urls",
+        "analytics_screenshot_urls",
+        "views_pie_chart_urls",
+        "accounts_reached_urls",
+        "reels_content_urls",
+        "posts_content_urls",
+        "stories_content_urls",
+        "profile_activity_urls",
+        "profile_visits_urls",
+        "external_links_taps_urls",
+        "audience_demographics_30_urls",
+        "audience_demographics_7_urls",
+      ]
       const { data: onboarding } = await supabase
         .from("creator_onboarding")
-        .select("analytics_90_days_urls, analytics_30_days_urls, analytics_7_days_urls, analytics_screenshot_urls")
+        .select(cols.join(", "))
         .eq("user_id", session!.user.id)
         .maybeSingle()
-      const o = onboarding as any
-      setAnalytics90((o?.analytics_90_days_urls ?? o?.analytics_screenshot_urls) || [])
-      setAnalytics30((o?.analytics_30_days_urls) || [])
-      setAnalytics7((o?.analytics_7_days_urls) || [])
+      const o = (onboarding || {}) as Record<string, string[] | null | undefined>
+      const colToKey: Record<string, AnalyticsCategory> = {
+        analytics_90_days_urls: "90",
+        analytics_30_days_urls: "30",
+        analytics_7_days_urls: "7",
+        views_pie_chart_urls: "views_pie",
+        accounts_reached_urls: "accounts_reached",
+        reels_content_urls: "reels_content",
+        posts_content_urls: "posts_content",
+        stories_content_urls: "stories_content",
+        profile_activity_urls: "profile_activity",
+        profile_visits_urls: "profile_visits",
+        external_links_taps_urls: "external_links",
+        audience_demographics_30_urls: "audience_30",
+        audience_demographics_7_urls: "audience_7",
+      }
+      const next: Record<AnalyticsCategory, string[]> = Object.fromEntries(
+        ANALYTICS_CATEGORIES.map((c) => [c.key, []])
+      ) as Record<AnalyticsCategory, string[]>
+      for (const [col, key] of Object.entries(colToKey)) {
+        const urls = o[col] ?? (col === "analytics_90_days_urls" ? o.analytics_screenshot_urls : null)
+        if (urls && Array.isArray(urls)) next[key] = urls
+      }
+      setAnalyticsByCategory(next)
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -108,8 +175,7 @@ export default function CreatorDashboard() {
     }
   }
 
-  type AnalyticsPeriod = "90" | "30" | "7"
-  const handleUploadAnalyticsScreenshots = async (period: AnalyticsPeriod, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadAnalyticsScreenshots = async (period: AnalyticsCategory, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length || !session?.user?.id) return
     setUploadingAnalytics(period)
@@ -128,29 +194,27 @@ export default function CreatorDashboard() {
       for (let i = 0; i < files.length; i++) {
         const f = files[i]
         const ext = f.name.split(".").pop() || "jpg"
-        const blob = await put(`${session.user.id}/analytics-${period}d-${base}-${i}.${ext}`, f, {
+        const blob = await put(`${session.user.id}/analytics-${period}-${base}-${i}.${ext}`, f, {
           access: "public",
           contentType: f.type,
           token: token as string,
         })
         newUrls.push(blob.url)
       }
-      const existing = period === "90" ? analytics90 : period === "30" ? analytics30 : analytics7
+      const existing = analyticsByCategory[period] || []
       const allUrls = [...existing, ...newUrls]
 
       const res = await fetch("/api/creator/analytics-screenshots", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // Necessario su mobile per inviare i cookie di sessione
+        credentials: "include",
         body: JSON.stringify({ period, urls: allUrls }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Errore nel salvataggio")
-      if (period === "90") setAnalytics90(allUrls)
-      else if (period === "30") setAnalytics30(allUrls)
-      else setAnalytics7(allUrls)
-      const label = period === "90" ? "90 giorni" : period === "30" ? "ultimo mese" : "ultima settimana"
-      toast({ title: "Caricati", description: `${newUrls.length} screenshot (${label}) caricati.` })
+      setAnalyticsByCategory((prev) => ({ ...prev, [period]: allUrls }))
+      const label = ANALYTICS_CATEGORIES.find((c) => c.key === period)?.label || period
+      toast({ title: "Caricati", description: `${newUrls.length} screenshot caricati.` })
       e.target.value = ""
     } catch (err: unknown) {
       console.error("Upload analytics:", err)
@@ -306,16 +370,15 @@ export default function CreatorDashboard() {
               Analitiche aggiornate
             </CardTitle>
             <CardDescription>
-              Carica screenshot delle analitiche per ultimi 90 giorni, ultimo mese e ultima settimana. Solo l&apos;admin può visualizzarli per la verifica.
+              Carica screenshot: grafico views (followers/non-followers), accounts reached, reels/posts/stories, profile activity, profile visits, external links, audience demographics (30d e 7d). Solo l&apos;admin può visualizzarli.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {(["90", "30", "7"] as const).map((period) => {
-              const urls = period === "90" ? analytics90 : period === "30" ? analytics30 : analytics7
-              const label = period === "90" ? "Ultimi 90 giorni" : period === "30" ? "Ultimo mese" : "Ultima settimana"
-              const inputId = `analytics-input-${period}`
+            {ANALYTICS_CATEGORIES.map(({ key, label }) => {
+              const urls = analyticsByCategory[key] || []
+              const inputId = `analytics-input-${key}`
               return (
-                <div key={period}>
+                <div key={key}>
                   <Label className="text-base font-medium">{label}</Label>
                   {urls.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-2 mb-2">
@@ -338,7 +401,7 @@ export default function CreatorDashboard() {
                     accept="image/*"
                     multiple
                     className="hidden"
-                    onChange={(e) => handleUploadAnalyticsScreenshots(period, e)}
+                    onChange={(e) => handleUploadAnalyticsScreenshots(key, e)}
                   />
                   <Button
                     type="button"
@@ -347,7 +410,7 @@ export default function CreatorDashboard() {
                     variant="outline"
                   >
                     <Upload className="w-4 h-4 mr-2" />
-                    {uploadingAnalytics === period ? "Caricamento..." : `Carica screenshot ${label.toLowerCase()}`}
+                    {uploadingAnalytics === key ? "Caricamento..." : `Carica ${label.toLowerCase()}`}
                   </Button>
                 </div>
               )

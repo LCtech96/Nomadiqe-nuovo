@@ -40,7 +40,7 @@ export async function GET() {
     const [onboardingRes, analyticsRes] = await Promise.all([
       supabase
         .from("creator_onboarding")
-        .select("user_id, analytics_screenshot_urls, analytics_90_days_urls, analytics_30_days_urls, analytics_7_days_urls, niche, kol_bed_level")
+        .select("user_id, analytics_screenshot_urls, analytics_90_days_urls, analytics_30_days_urls, analytics_7_days_urls, views_pie_chart_urls, accounts_reached_urls, reels_content_urls, posts_content_urls, stories_content_urls, profile_activity_urls, profile_visits_urls, external_links_taps_urls, audience_demographics_30_urls, audience_demographics_7_urls, niche, kol_bed_level")
         .in("user_id", ids),
       supabase
         .from("creator_manual_analytics")

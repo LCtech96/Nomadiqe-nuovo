@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Check, ChevronDown, ChevronUp, User } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, User, X } from "lucide-react"
 
 type Creator = {
   id: string
@@ -30,6 +30,16 @@ type Creator = {
     analytics_90_days_urls?: string[] | null
     analytics_30_days_urls?: string[] | null
     analytics_7_days_urls?: string[] | null
+    views_pie_chart_urls?: string[] | null
+    accounts_reached_urls?: string[] | null
+    reels_content_urls?: string[] | null
+    posts_content_urls?: string[] | null
+    stories_content_urls?: string[] | null
+    profile_activity_urls?: string[] | null
+    profile_visits_urls?: string[] | null
+    external_links_taps_urls?: string[] | null
+    audience_demographics_30_urls?: string[] | null
+    audience_demographics_7_urls?: string[] | null
     niche: string | null
     kol_bed_level: string | null
   } | null
@@ -47,6 +57,7 @@ export default function CreatorVerificationPanel() {
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
   const [form, setForm] = useState<{
     profile_views: string
     total_followers: string
@@ -187,6 +198,33 @@ export default function CreatorVerificationPanel() {
         </CardContent>
       </Card>
 
+      {fullscreenImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setFullscreenImage(null)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Escape" && setFullscreenImage(null)}
+          aria-label="Chiudi immagine"
+        >
+          <button
+            type="button"
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 z-10 flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Torna indietro"
+          >
+            <X className="w-5 h-5" />
+            <span>Torna indietro</span>
+          </button>
+          <img
+            src={fullscreenImage}
+            alt="Screenshot analitiche"
+            className="max-w-full max-h-[90vh] w-auto h-auto object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       <Dialog open={!!detail} onOpenChange={(open) => !open && setDetailId(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -199,25 +237,37 @@ export default function CreatorVerificationPanel() {
           </DialogHeader>
           {detail && (
             <div className="space-y-4">
-              {(["90", "30", "7"] as const).map((period) => {
-                const col = period === "90" ? "analytics_90_days_urls" : period === "30" ? "analytics_30_days_urls" : "analytics_7_days_urls"
-                const urls = (detail.onboarding as any)?.[col] ?? (period === "90" ? detail.onboarding?.analytics_screenshot_urls : null) ?? []
-                const label = period === "90" ? "Ultimi 90 giorni" : period === "30" ? "Ultimo mese" : "Ultima settimana"
+              {[
+                { col: "analytics_90_days_urls", label: "Ultimi 90 giorni", fallback: "analytics_screenshot_urls" },
+                { col: "analytics_30_days_urls", label: "Ultimo mese", fallback: null },
+                { col: "analytics_7_days_urls", label: "Ultima settimana", fallback: null },
+                { col: "views_pie_chart_urls", label: "Grafico views (followers vs non-followers)", fallback: null },
+                { col: "accounts_reached_urls", label: "Accounts reached", fallback: null },
+                { col: "reels_content_urls", label: "Reels (% followers/non-followers)", fallback: null },
+                { col: "posts_content_urls", label: "Posts", fallback: null },
+                { col: "stories_content_urls", label: "Stories", fallback: null },
+                { col: "profile_activity_urls", label: "% Profile activity", fallback: null },
+                { col: "profile_visits_urls", label: "Profile visits", fallback: null },
+                { col: "external_links_taps_urls", label: "External links taps", fallback: null },
+                { col: "audience_demographics_30_urls", label: "Audience demographics (30 giorni)", fallback: null },
+                { col: "audience_demographics_7_urls", label: "Audience demographics (7 giorni)", fallback: null },
+              ].map(({ col, label, fallback }) => {
+                const o = detail.onboarding as Record<string, unknown> | null
+                const urls = (o?.[col] ?? (fallback ? o?.[fallback] : null) ?? []) as string[]
                 return (
-                  <div key={period}>
+                  <div key={col}>
                     <Label className="mb-2 block">Screenshot — {label}</Label>
                     {urls?.length ? (
                       <div className="flex flex-wrap gap-2">
                         {urls.map((url: string, i: number) => (
-                          <a
+                          <button
                             key={i}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex h-24 w-24 shrink-0 overflow-hidden rounded border"
+                            type="button"
+                            onClick={() => setFullscreenImage(url)}
+                            className="flex h-24 w-24 shrink-0 overflow-hidden rounded border cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
                           >
-                            <img src={url} alt="" className="h-full w-full object-cover" />
-                          </a>
+                            <img src={url} alt="" className="h-full w-full object-cover pointer-events-none" />
+                          </button>
                         ))}
                       </div>
                     ) : (

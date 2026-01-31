@@ -53,6 +53,36 @@ const KOL_BED_LEVELS = [
 ] as const
 
 type AnalyticsPeriod = "90" | "30" | "7"
+type AnalyticsCategory =
+  | "90"
+  | "30"
+  | "7"
+  | "views_pie"
+  | "accounts_reached"
+  | "reels_content"
+  | "posts_content"
+  | "stories_content"
+  | "profile_activity"
+  | "profile_visits"
+  | "external_links"
+  | "audience_30"
+  | "audience_7"
+
+const ANALYTICS_CATEGORIES: { key: AnalyticsCategory; label: string }[] = [
+  { key: "90", label: "Ultimi 90 giorni" },
+  { key: "30", label: "Ultimo mese" },
+  { key: "7", label: "Ultima settimana" },
+  { key: "views_pie", label: "Grafico a torta views (followers vs non-followers)" },
+  { key: "accounts_reached", label: "Accounts reached" },
+  { key: "reels_content", label: "By content type: Reels (% followers e non followers)" },
+  { key: "posts_content", label: "By content type: Posts" },
+  { key: "stories_content", label: "By content type: Stories" },
+  { key: "profile_activity", label: "% Profile activity" },
+  { key: "profile_visits", label: "Profile visits" },
+  { key: "external_links", label: "External links taps" },
+  { key: "audience_30", label: "Audience demographics (ultimi 30 giorni)" },
+  { key: "audience_7", label: "Audience demographics (ultimi 7 giorni)" },
+]
 
 const PLATFORM_OPTS = [
   { value: "instagram" as const, label: "Instagram", Icon: Instagram },
@@ -83,10 +113,13 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
     avatarPreview: "",
   })
 
+  const initAnalytics = () =>
+    Object.fromEntries(
+      ANALYTICS_CATEGORIES.map((c) => [c.key, { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] }])
+    ) as Record<AnalyticsCategory, { existingUrls: string[]; files: File[]; previewUrls: string[] }>
+
   const [socialData, setSocialData] = useState({
-    analytics90: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
-    analytics30: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
-    analytics7: { existingUrls: [] as string[], files: [] as File[], previewUrls: [] as string[] },
+    analyticsByCategory: initAnalytics(),
     niche: "",
     publishingStrategy: "",
     reelsPerWeek: "",
@@ -139,6 +172,27 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
           .eq("user_id", userId)
           .maybeSingle()
         if (co) {
+          const c = co as any
+          const colToKey: Record<string, AnalyticsCategory> = {
+            analytics_90_days_urls: "90",
+            analytics_30_days_urls: "30",
+            analytics_7_days_urls: "7",
+            views_pie_chart_urls: "views_pie",
+            accounts_reached_urls: "accounts_reached",
+            reels_content_urls: "reels_content",
+            posts_content_urls: "posts_content",
+            stories_content_urls: "stories_content",
+            profile_activity_urls: "profile_activity",
+            profile_visits_urls: "profile_visits",
+            external_links_taps_urls: "external_links",
+            audience_demographics_30_urls: "audience_30",
+            audience_demographics_7_urls: "audience_7",
+          }
+          const analyticsByCategory = initAnalytics()
+          for (const [col, key] of Object.entries(colToKey)) {
+            let urls = c[col] ?? (col === "analytics_90_days_urls" ? c.analytics_screenshot_urls : null)
+            if (urls && Array.isArray(urls)) analyticsByCategory[key as AnalyticsCategory].existingUrls = urls
+          }
           setSocialData((s) => ({
             ...s,
             niche: co.niche || "",
@@ -154,9 +208,7 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
             companionsAreCreators: !!co.companions_are_creators,
             companionsHaveIgOrTiktok: !!co.companions_have_ig_or_tiktok,
             acceptPromoteOnlyNomadiqe: !!co.accept_promote_only_nomadiqe,
-            analytics90: { existingUrls: ((co as any).analytics_90_days_urls ?? (co.analytics_screenshot_urls as string[])) || [], files: [], previewUrls: [] },
-            analytics30: { existingUrls: ((co as any).analytics_30_days_urls as string[]) || [], files: [], previewUrls: [] },
-            analytics7: { existingUrls: ((co as any).analytics_7_days_urls as string[]) || [], files: [], previewUrls: [] },
+            analyticsByCategory,
           }))
         }
         const { data: accounts } = await supabase
@@ -313,14 +365,13 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
     })
   }
 
-  const handleAnalyticsFiles = (period: AnalyticsPeriod, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAnalyticsFiles = (key: AnalyticsCategory, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const valid = files.filter((f) => f.size <= 10 * 1024 * 1024)
     if (valid.length < files.length) {
       toast({ title: "Attenzione", description: "Alcuni file > 10MB ignorati." })
     }
-    const key = `analytics${period}` as const
-    const curr = socialData[key]
+    const curr = socialData.analyticsByCategory[key]
     const existing = curr.existingUrls.length + curr.files.length
     const allowed = Math.max(0, 10 - existing)
     const toAdd = valid.slice(0, allowed)
@@ -328,23 +379,27 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
     const newPreviews = newFiles.map((f) => URL.createObjectURL(f))
     setSocialData({
       ...socialData,
-      [key]: { ...curr, files: newFiles, previewUrls: newPreviews },
+      analyticsByCategory: { ...socialData.analyticsByCategory, [key]: { ...curr, files: newFiles, previewUrls: newPreviews } },
     })
     e.target.value = ""
   }
 
-  const removeAnalyticsFile = (period: AnalyticsPeriod, idx: number) => {
-    const key = `analytics${period}` as const
-    const curr = socialData[key]
+  const removeAnalyticsFile = (key: AnalyticsCategory, idx: number) => {
+    const curr = socialData.analyticsByCategory[key]
     const nextFiles = curr.files.filter((_, i) => i !== idx)
     const nextPreviews = nextFiles.map((f) => URL.createObjectURL(f))
-    setSocialData({ ...socialData, [key]: { ...curr, files: nextFiles, previewUrls: nextPreviews } })
+    setSocialData({
+      ...socialData,
+      analyticsByCategory: { ...socialData.analyticsByCategory, [key]: { ...curr, files: nextFiles, previewUrls: nextPreviews } },
+    })
   }
 
-  const removeExistingAnalyticsUrl = (period: AnalyticsPeriod, idx: number) => {
-    const key = `analytics${period}` as const
-    const curr = socialData[key]
-    setSocialData({ ...socialData, [key]: { ...curr, existingUrls: curr.existingUrls.filter((_, i) => i !== idx) } })
+  const removeExistingAnalyticsUrl = (key: AnalyticsCategory, idx: number) => {
+    const curr = socialData.analyticsByCategory[key]
+    setSocialData({
+      ...socialData,
+      analyticsByCategory: { ...socialData.analyticsByCategory, [key]: { ...curr, existingUrls: curr.existingUrls.filter((_, i) => i !== idx) } },
+    })
   }
 
   const handleSocialKolBedSubmit = async (e: React.FormEvent) => {
@@ -398,18 +453,40 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
         return urls
       }
 
-      const [urls90, urls30, urls7] = await Promise.all([
-        uploadFiles(socialData.analytics90.files, "analytics-90d"),
-        uploadFiles(socialData.analytics30.files, "analytics-30d"),
-        uploadFiles(socialData.analytics7.files, "analytics-7d"),
-      ])
+      const keyToCol: Record<AnalyticsCategory, string> = {
+        "90": "analytics_90_days_urls",
+        "30": "analytics_30_days_urls",
+        "7": "analytics_7_days_urls",
+        views_pie: "views_pie_chart_urls",
+        accounts_reached: "accounts_reached_urls",
+        reels_content: "reels_content_urls",
+        posts_content: "posts_content_urls",
+        stories_content: "stories_content_urls",
+        profile_activity: "profile_activity_urls",
+        profile_visits: "profile_visits_urls",
+        external_links: "external_links_taps_urls",
+        audience_30: "audience_demographics_30_urls",
+        audience_7: "audience_demographics_7_urls",
+      }
+
+      const uploads = ANALYTICS_CATEGORIES.map(({ key }) =>
+        uploadFiles(socialData.analyticsByCategory[key].files, `analytics-${key}`)
+      )
+      const uploadedArrays = await Promise.all(uploads)
       setUploadingScreenshots(false)
+
+      const analyticsPayload: Record<string, string[]> = {}
+      for (let i = 0; i < ANALYTICS_CATEGORIES.length; i++) {
+        const key = ANALYTICS_CATEGORIES[i].key
+        const col = keyToCol[key]
+        const existing = socialData.analyticsByCategory[key].existingUrls
+        const newUrls = uploadedArrays[i]
+        analyticsPayload[col] = [...existing, ...newUrls]
+      }
 
       const onboardingPayload = {
         user_id: userId,
-        analytics_90_days_urls: [...socialData.analytics90.existingUrls, ...urls90],
-        analytics_30_days_urls: [...socialData.analytics30.existingUrls, ...urls30],
-        analytics_7_days_urls: [...socialData.analytics7.existingUrls, ...urls7],
+        ...analyticsPayload,
         niche: socialData.niche.trim() || null,
         publishing_strategy: socialData.publishingStrategy.trim() || null,
         reels_per_week: socialData.reelsPerWeek ? parseInt(socialData.reelsPerWeek, 10) : null,
@@ -557,10 +634,8 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSocialKolBedSubmit} className="space-y-6">
-              {(["90", "30", "7"] as const).map((period) => {
-                const key = `analytics${period}` as const
-                const data = socialData[key]
-                const label = period === "90" ? "Ultimi 90 giorni" : period === "30" ? "Ultimo mese" : "Ultima settimana"
+              {ANALYTICS_CATEGORIES.map(({ key, label }) => {
+                const data = socialData.analyticsByCategory[key]
                 return (
                   <div key={key} className="space-y-2">
                     <Label>Screenshot analitiche — {label}</Label>
@@ -568,18 +643,18 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => handleAnalyticsFiles(period, e)}
+                      onChange={(e) => handleAnalyticsFiles(key, e)}
                       className="cursor-pointer"
                     />
-                    <p className="text-xs text-muted-foreground">Carica screenshot delle analitiche del periodo indicato (max 10, 10MB ciascuno).</p>
+                    <p className="text-xs text-muted-foreground">Carica screenshot (max 10, 10MB ciascuno).</p>
                     {(data.existingUrls.length > 0 || data.previewUrls.length > 0) && (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {data.existingUrls.map((url, i) => (
-                          <div key={`ex-${period}-${i}`} className="relative">
+                          <div key={`ex-${key}-${i}`} className="relative">
                             <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
                             <button
                               type="button"
-                              onClick={() => removeExistingAnalyticsUrl(period, i)}
+                              onClick={() => removeExistingAnalyticsUrl(key, i)}
                               className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
                             >
                               <X className="w-3 h-3" />
@@ -587,11 +662,11 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                           </div>
                         ))}
                         {data.previewUrls.map((url, i) => (
-                          <div key={`new-${period}-${i}`} className="relative">
+                          <div key={`new-${key}-${i}`} className="relative">
                             <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
                             <button
                               type="button"
-                              onClick={() => removeAnalyticsFile(period, i)}
+                              onClick={() => removeAnalyticsFile(key, i)}
                               className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
                             >
                               <X className="w-3 h-3" />
