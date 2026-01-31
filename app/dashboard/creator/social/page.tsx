@@ -41,7 +41,6 @@ export default function SocialAccountsPage() {
     username: "",
     follower_count: "",
     engagement_rate: "",
-    verified: false,
   })
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function SocialAccountsPage() {
         engagement_rate: formData.engagement_rate
           ? parseFloat(formData.engagement_rate)
           : null,
-        verified: formData.verified,
+        verified: false, // Solo l'admin può verificare gli account
       })
 
       if (error) throw error
@@ -256,17 +255,6 @@ export default function SocialAccountsPage() {
                       placeholder="0.00"
                     />
                   </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="verified"
-                    checked={formData.verified}
-                    onChange={(e) => setFormData({ ...formData, verified: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <Label htmlFor="verified">Account verificato</Label>
                 </div>
 
                 <div className="flex gap-4">

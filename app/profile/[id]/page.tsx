@@ -526,15 +526,17 @@ export default function PublicProfilePage() {
         .select("*", { count: "exact", head: true })
         .eq("profile_id", userId)
 
-      const { data: userPosts } = await supabase
+      let totalInteractions = 0
+      const { data: userPosts, error: postsErr } = await supabase
         .from("posts")
-        .select("id, likes_count, comments_count")
+        .select("id, like_count, comment_count")
         .eq("author_id", userId)
-
-      const totalInteractions = (userPosts || []).reduce(
-        (sum, post) => sum + (post.likes_count || 0) + (post.comments_count || 0),
-        0
-      )
+      if (!postsErr && userPosts) {
+        totalInteractions = userPosts.reduce(
+          (sum, p: any) => sum + (Number(p?.like_count) || 0) + (Number(p?.comment_count) || 0),
+          0
+        )
+      }
 
       // Calcola engagement: usa manuale se disponibile e show_engagement_rate, altrimenti calcola da interazioni/views
       const profileViewsVal = manualAnalytics?.show_profile_views && manualAnalytics.profile_views !== null

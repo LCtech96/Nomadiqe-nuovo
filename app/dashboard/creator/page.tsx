@@ -135,15 +135,17 @@ export default function CreatorDashboard() {
         })
         newUrls.push(blob.url)
       }
-      const col = period === "90" ? "analytics_90_days_urls" : period === "30" ? "analytics_30_days_urls" : "analytics_7_days_urls"
       const existing = period === "90" ? analytics90 : period === "30" ? analytics30 : analytics7
       const allUrls = [...existing, ...newUrls]
 
-      const { error } = await supabase
-        .from("creator_onboarding")
-        .upsert({ user_id: session.user.id, [col]: allUrls }, { onConflict: "user_id" })
-
-      if (error) throw error
+      const res = await fetch("/api/creator/analytics-screenshots", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", // Necessario su mobile per inviare i cookie di sessione
+        body: JSON.stringify({ period, urls: allUrls }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Errore nel salvataggio")
       if (period === "90") setAnalytics90(allUrls)
       else if (period === "30") setAnalytics30(allUrls)
       else setAnalytics7(allUrls)
