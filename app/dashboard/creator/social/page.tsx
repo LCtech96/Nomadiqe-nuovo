@@ -98,7 +98,6 @@ export default function SocialAccountsPage() {
         username: "",
         follower_count: "",
         engagement_rate: "",
-        verified: false,
       })
       setShowAddForm(false)
       loadAccounts()
