@@ -44,6 +44,14 @@ const ANALYTICS_CATEGORIES: { key: AnalyticsCategory; label: string }[] = [
   { key: "audience_7", label: "Audience demographics (ultimi 7 giorni)" },
 ]
 
+function createEmptyAnalyticsRecord(): Record<AnalyticsCategory, string[]> {
+  const r: Partial<Record<AnalyticsCategory, string[]>> = {}
+  for (const { key } of ANALYTICS_CATEGORIES) {
+    r[key] = []
+  }
+  return r as Record<AnalyticsCategory, string[]>
+}
+
 interface Collaboration {
   id: string
   host_id: string
@@ -67,9 +75,7 @@ export default function CreatorDashboard() {
   const supabase = createSupabaseClient()
   const [collaborations, setCollaborations] = useState<Collaboration[]>([])
   const [socialAccounts, setSocialAccounts] = useState<any[]>([])
-  const [analyticsByCategory, setAnalyticsByCategory] = useState<Record<AnalyticsCategory, string[]>>(() =>
-    Object.fromEntries(ANALYTICS_CATEGORIES.map((c) => [c.key, []])) as Record<AnalyticsCategory, string[]>
-  )
+  const [analyticsByCategory, setAnalyticsByCategory] = useState<Record<AnalyticsCategory, string[]>>(createEmptyAnalyticsRecord)
   const [uploadingAnalytics, setUploadingAnalytics] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
@@ -160,9 +166,7 @@ export default function CreatorDashboard() {
         audience_demographics_30_urls: "audience_30",
         audience_demographics_7_urls: "audience_7",
       }
-      const next: Record<AnalyticsCategory, string[]> = Object.fromEntries(
-        ANALYTICS_CATEGORIES.map((c) => [c.key, []])
-      ) as Record<AnalyticsCategory, string[]>
+      const next = createEmptyAnalyticsRecord()
       for (const [col, key] of Object.entries(colToKey)) {
         const urls = o[col] ?? (col === "analytics_90_days_urls" ? o.analytics_screenshot_urls : null)
         if (urls && Array.isArray(urls)) next[key] = urls
