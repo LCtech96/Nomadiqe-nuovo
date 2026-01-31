@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Select,
   SelectContent,
@@ -11,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { User } from "lucide-react"
+import { User, Mail } from "lucide-react"
 
 type UserRow = {
   id: string
@@ -30,6 +41,10 @@ export default function UsersPanel() {
   const [users, setUsers] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [emailTarget, setEmailTarget] = useState<UserRow | null>(null)
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailMessage, setEmailMessage] = useState("")
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -52,6 +67,40 @@ export default function UsersPanel() {
   useEffect(() => {
     load()
   }, [])
+
+  const openEmailDialog = (u: UserRow) => {
+    setEmailTarget(u)
+    setEmailSubject("")
+    setEmailMessage("")
+  }
+
+  const handleSendEmail = async () => {
+    if (!emailTarget?.id || !emailSubject.trim() || !emailMessage.trim()) return
+    setSendingEmail(true)
+    try {
+      const res = await fetch("/api/admin/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: emailTarget.id,
+          subject: emailSubject.trim(),
+          message: emailMessage.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Errore nell'invio")
+      setEmailTarget(null)
+      toast({ title: "Email inviata", description: `Messaggio inviato a ${emailTarget.email || "l'utente"}.` })
+    } catch (e: unknown) {
+      toast({
+        title: "Errore",
+        description: (e as Error)?.message || "Impossibile inviare l'email",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
 
   const handleStructureLevelChange = async (userId: string, value: string) => {
     setUpdatingId(userId)
@@ -92,7 +141,7 @@ export default function UsersPanel() {
       <CardHeader>
         <CardTitle>Utenti registrati</CardTitle>
         <CardDescription>
-          Lista utenti per ruolo. Per gli host puoi impostare il livello struttura (1-4).
+          Lista utenti per ruolo. Per gli host puoi impostare il livello struttura (1-4). Clicca &quot;Invia email&quot; per inviare un messaggio a un utente.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -141,6 +190,16 @@ export default function UsersPanel() {
                   </Select>
                 </div>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openEmailDialog(u)}
+                disabled={!u.email}
+                title={u.email ? "Invia email" : "Utente senza email"}
+              >
+                <Mail className="w-4 h-4 mr-1" />
+                Invia email
+              </Button>
             </div>
           ))}
         </div>
@@ -148,6 +207,48 @@ export default function UsersPanel() {
           <p className="text-center text-muted-foreground py-6">Nessun utente trovato.</p>
         )}
       </CardContent>
+
+      <Dialog open={!!emailTarget} onOpenChange={(open) => !open && setEmailTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invia email</DialogTitle>
+            <DialogDescription>
+              Scrivi un messaggio da inviare a {emailTarget?.full_name || emailTarget?.username || "l'utente"} ({emailTarget?.email}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="email-subject">Oggetto</Label>
+              <Input
+                id="email-subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Oggetto dell'email"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email-message">Messaggio</Label>
+              <Textarea
+                id="email-message"
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                placeholder="Scrivi il messaggio..."
+                rows={6}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailTarget(null)}>
+              Annulla
+            </Button>
+            <Button onClick={handleSendEmail} disabled={sendingEmail || !emailSubject.trim() || !emailMessage.trim()}>
+              {sendingEmail ? "Invio in corso..." : "Invia"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
