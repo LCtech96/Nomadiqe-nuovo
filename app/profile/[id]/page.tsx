@@ -576,58 +576,29 @@ export default function PublicProfilePage() {
 
     setFollowingLoading(true)
     try {
-      if (isFollowing) {
-        // Unfollow
-        const { error } = await supabase
-          .from("follows")
-          .delete()
-          .eq("follower_id", session.user.id)
-          .eq("following_id", profile.id)
+      const res = await fetch("/api/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          action: isFollowing ? "unfollow" : "follow",
+          followingId: profile.id,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
 
-        if (error) throw error
+      if (!res.ok) throw new Error(data?.error || "Errore")
+
+      if (data.following === false) {
         setIsFollowing(false)
-        
-        // Update local stats
         setStats(prev => ({ ...prev, followers: Math.max(0, prev.followers - 1) }))
-        
         toast({
           title: "Hai smesso di seguire",
           description: `Non segui più ${profile.username || profile.full_name || "questo utente"}`,
         })
       } else {
-        // Follow
-        const { error } = await supabase
-          .from("follows")
-          .insert({
-            follower_id: session.user.id,
-            following_id: profile.id,
-          })
-
-        if (error) throw error
         setIsFollowing(true)
-        
-        // Update local stats
         setStats(prev => ({ ...prev, followers: prev.followers + 1 }))
-
-        // Create notification for the followed user
-        const { data: followerProfile } = await supabase
-          .from("profiles")
-          .select("username, full_name")
-          .eq("id", session.user.id)
-          .single()
-
-        const followerName = followerProfile?.username || followerProfile?.full_name || "Un utente"
-
-        await supabase
-          .from("notifications")
-          .insert({
-            user_id: profile.id,
-            type: "new_follower",
-            title: "Nuovo follower",
-            message: `${followerName} ha iniziato a seguirti`,
-            related_id: session.user.id,
-          })
-
         toast({
           title: "Ora segui questo utente",
           description: `Stai seguendo ${profile.username || profile.full_name || "questo utente"}`,

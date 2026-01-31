@@ -145,6 +145,13 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Assicura che il profilo esista prima di qualsiasi operazione (fix FK)
+    try {
+      await fetch("/api/profile/ensure", { credentials: "include" })
+    } catch {
+      // Ignora errori, continuiamo
+    }
+
     const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
@@ -276,6 +283,9 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
     if (!session?.user?.id) return
 
     try {
+      // Assicura che il profilo esista (fix FK per utenti senza riga in profiles)
+      await fetch("/api/profile/ensure", { credentials: "include" })
+
       const supabase = createSupabaseClient()
       const { error } = await supabase.from("push_subscriptions").upsert(
         {
