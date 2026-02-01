@@ -23,6 +23,7 @@ import ImageCropper from "@/components/image-cropper"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AMENITIES_LIST } from "@/lib/constants/amenities"
+import PropertyPricingCalendar, { DEFAULT_PRICE } from "@/components/property-pricing-calendar"
 
 type HostOnboardingStep = "profile" | "property" | "kol-bed-program" | "website-offer"
 
@@ -77,7 +78,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     property_type: "apartment" as "apartment" | "house" | "b&b" | "hotel" | "villa" | "other",
     city: "",
     country: "",
-    price_per_night: "",
     max_guests: "",
     bedrooms: "",
     bathrooms: "",
@@ -85,6 +85,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     images: [] as File[],
     imagePreviews: [] as string[],
   })
+  const [calendarSelectedDates, setCalendarSelectedDates] = useState<string[]>([])
+  const [calendarDatePrices, setCalendarDatePrices] = useState<Record<string, number>>({})
   const [cinFile, setCinFile] = useState<File | null>(null)
   const [cirFile, setCirFile] = useState<File | null>(null)
   const [cinCirSkipped, setCinCirSkipped] = useState(false)
@@ -508,15 +510,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       return
     }
 
-    if (!propertyData.price_per_night || parseFloat(propertyData.price_per_night) <= 0) {
-      toast({
-        title: "Errore",
-        description: "Il prezzo per notte è obbligatorio e deve essere maggiore di 0.",
-        variant: "destructive",
-      })
-      return
-    }
-
     if (!propertyData.max_guests || parseInt(propertyData.max_guests) <= 0) {
       toast({
         title: "Errore",
@@ -624,7 +617,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
           country: propertyData.country,
           latitude: geocodeResult?.lat || null,
           longitude: geocodeResult?.lon || null,
-          price_per_night: parseFloat(propertyData.price_per_night),
+          price_per_night: DEFAULT_PRICE,
           max_guests: parseInt(propertyData.max_guests),
           bedrooms: propertyData.bedrooms ? parseInt(propertyData.bedrooms) : null,
           bathrooms: propertyData.bathrooms ? parseInt(propertyData.bathrooms) : null,
@@ -636,13 +629,26 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
       if (propertyError) throw propertyError
 
+      if (property && calendarSelectedDates.length > 0) {
+        for (const dateStr of calendarSelectedDates) {
+          const price = calendarDatePrices[dateStr] ?? DEFAULT_PRICE
+          await supabase.from("property_daily_pricing").upsert({
+            property_id: property.id,
+            date: dateStr,
+            status: "available",
+            price_cents: Math.round(price * 100),
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "property_id,date" })
+        }
+      }
+
       await saveOnboardingState("kol-bed-program", ["role", "profile", "property"], {
         name: propertyData.name,
         description: propertyData.description,
         property_type: propertyData.property_type,
         city: propertyData.city,
         country: propertyData.country,
-        price_per_night: propertyData.price_per_night,
+        price_per_night: DEFAULT_PRICE,
         max_guests: propertyData.max_guests,
         bedrooms: propertyData.bedrooms,
         bathrooms: propertyData.bathrooms,
@@ -1121,44 +1127,38 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="property_type">Tipo di struttura *</Label>
-                  <Select
-                    value={propertyData.property_type}
-                    onValueChange={(value: any) =>
-                      setPropertyData({ ...propertyData, property_type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="apartment">Appartamento</SelectItem>
-                      <SelectItem value="house">Casa</SelectItem>
-                      <SelectItem value="b&b">B&amp;B</SelectItem>
-                      <SelectItem value="hotel">Hotel</SelectItem>
-                      <SelectItem value="villa">Villa</SelectItem>
-                      <SelectItem value="other">Altro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="property_type">Tipo di struttura *</Label>
+                <Select
+                  value={propertyData.property_type}
+                  onValueChange={(value: any) =>
+                    setPropertyData({ ...propertyData, property_type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="apartment">Appartamento</SelectItem>
+                    <SelectItem value="house">Casa</SelectItem>
+                    <SelectItem value="b&b">B&amp;B</SelectItem>
+                    <SelectItem value="hotel">Hotel</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="other">Altro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_night">Prezzo per notte (€) *</Label>
-                  <Input
-                    id="price_per_night"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={propertyData.price_per_night}
-                    onChange={(e) =>
-                      setPropertyData({ ...propertyData, price_per_night: e.target.value })
-                    }
-                    required
-                    placeholder="100.00"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label>Prezzo e disponibilità (calendario)</Label>
+                <PropertyPricingCalendar
+                  selectedDates={calendarSelectedDates}
+                  onDatesChange={setCalendarSelectedDates}
+                  datePrices={calendarDatePrices}
+                  onDatePriceChange={(date, price) =>
+                    setCalendarDatePrices((prev: Record<string, number>) => ({ ...prev, [date]: price }))
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
