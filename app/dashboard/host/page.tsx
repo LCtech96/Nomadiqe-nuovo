@@ -13,7 +13,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import Image from "next/image"
-import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle, Trash2, MapPin } from "lucide-react"
+import { Plus, Home, Users, Settings, Save, MessageSquare, UserPlus, CheckCircle, Clock, XCircle, Trash2, MapPin, Calendar } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import HostAvailabilityCalendar from "@/components/host-availability-calendar"
 
 interface Property {
   id: string
@@ -588,6 +589,29 @@ export default function HostDashboard() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Calendario disponibilità */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Calendario disponibilità
+            </CardTitle>
+            <CardDescription>
+              Gestisci le date: clic singolo per aprire/chiudere, doppio clic per KOL&BED
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <HostAvailabilityCalendar
+              hostId={userId || ""}
+              propertyIds={properties.map((p) => ({
+                id: p.id,
+                name: p.name || p.title || "Struttura",
+              }))}
+              supabase={supabase}
+            />
           </CardContent>
         </Card>
 

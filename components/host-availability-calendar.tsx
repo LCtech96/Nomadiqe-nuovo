@@ -1,115 +1,81 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { createSupabaseClient } from "@/lib/supabase/client"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+type DateStatus = "available" | "closed" | "kolbed"
 
 interface HostAvailabilityCalendarProps {
   hostId: string
-  propertyId?: string
-  onClose?: () => void
+  propertyIds: { id: string; name: string }[]
+  supabase: any
+  onSave?: () => void
 }
+
+const monthNames = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+]
 
 export default function HostAvailabilityCalendar({
   hostId,
-  propertyId,
-  onClose,
+  propertyIds,
+  supabase,
+  onSave,
 }: HostAvailabilityCalendarProps) {
-  const supabase = createSupabaseClient()
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(
+    propertyIds[0]?.id ?? null
+  )
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [availability, setAvailability] = useState<any[]>([])
-  const [bookings, setBookings] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dateStatus, setDateStatus] = useState<Record<string, DateStatus>>({})
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    loadAvailability()
-    loadBookings()
-  }, [hostId, propertyId, currentMonth])
+    setSelectedPropertyId(propertyIds[0]?.id ?? null)
+  }, [propertyIds])
 
-  const loadAvailability = async () => {
+  useEffect(() => {
+    if (!selectedPropertyId) {
+      setDateStatus({})
+      return
+    }
+    loadDates()
+  }, [selectedPropertyId, currentMonth])
+
+  const loadDates = async () => {
+    if (!selectedPropertyId) return
+    setLoading(true)
     try {
-      let query = supabase
-        .from("host_availability")
-        .select("*")
-        .eq("host_id", hostId)
-        .eq("available_for_collab", true)
-
-      if (propertyId) {
-        query = query.eq("property_id", propertyId)
-      }
-
-      // Carica disponibilità per il mese corrente e i prossimi 2 mesi
-      const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-      const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 3, 0)
-
-      query = query
-        .gte("date", startDate.toISOString().split("T")[0])
-        .lte("date", endDate.toISOString().split("T")[0])
-
-      const { data, error } = await query
+      const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+      const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+      const { data, error } = await supabase
+        .from("property_daily_pricing")
+        .select("date, status")
+        .eq("property_id", selectedPropertyId)
+        .gte("date", start.toISOString().split("T")[0])
+        .lte("date", end.toISOString().split("T")[0])
 
       if (error) throw error
-      setAvailability(data || [])
-    } catch (error) {
-      console.error("Error loading availability:", error)
+
+      const map: Record<string, DateStatus> = {}
+      ;(data || []).forEach((r: { date: string; status: DateStatus }) => {
+        map[r.date] = r.status
+      })
+      setDateStatus(map)
+    } catch (e) {
+      console.error("Error loading dates:", e)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const loadBookings = async () => {
-    try {
-      // Carica prenotazioni per le proprietà dell'host
-      const { data: propertiesData } = await supabase
-        .from("properties")
-        .select("id")
-        .eq("owner_id", hostId)
-
-      if (!propertiesData || propertiesData.length === 0) {
-        setBookings([])
-        return
-      }
-
-      const propertyIds = propertyId
-        ? [propertyId]
-        : propertiesData.map((p) => p.id)
-
-      const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-      const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 3, 0)
-
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("id, property_id, check_in, check_out, status")
-        .in("property_id", propertyIds)
-        .in("status", ["pending", "confirmed", "completed"])
-        .lte("check_in", endDate.toISOString().split("T")[0])
-        .gte("check_out", startDate.toISOString().split("T")[0])
-
-      if (error) throw error
-
-      // Espandi le prenotazioni in giorni
-      const bookingDays: any[] = []
-      ;(data || []).forEach((booking) => {
-        const checkIn = new Date(booking.check_in)
-        const checkOut = new Date(booking.check_out)
-        const currentDate = new Date(checkIn)
-
-        while (currentDate < checkOut) {
-          bookingDays.push({
-            date: currentDate.toISOString().split("T")[0],
-            property_id: booking.property_id,
-            is_booking: true,
-          })
-          currentDate.setDate(currentDate.getDate() + 1)
-        }
-      })
-
-      setBookings(bookingDays)
-    } catch (error) {
-      console.error("Error loading bookings:", error)
     }
   }
 
@@ -120,148 +86,197 @@ export default function HostAvailabilityCalendar({
     const lastDay = new Date(year, month + 1, 0)
     const daysInMonth = lastDay.getDate()
     const startingDayOfWeek = firstDay.getDay()
-
-    const days = []
-    
-    // Aggiungi giorni vuoti all'inizio
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null)
-    }
-
-    // Aggiungi i giorni del mese
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i))
-    }
-
+    const days: (Date | null)[] = []
+    for (let i = 0; i < startingDayOfWeek; i++) days.push(null)
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i))
     return days
   }
 
-  const getDayStatus = (date: Date | null) => {
-    if (!date) return null
+  const formatDate = (d: Date) => d.toISOString().split("T")[0]
 
-    const dateStr = date.toISOString().split("T")[0]
-    const isBooking = bookings.some((b) => b.date === dateStr)
-    const isAvailable = availability.some((a) => a.date === dateStr)
+  const isPast = (date: Date) =>
+    date < new Date(new Date().setHours(0, 0, 0, 0))
 
-    if (isBooking) return "booked"
-    if (isAvailable) return "available"
-    return "unavailable"
+  const getStatus = (dateStr: string): DateStatus =>
+    dateStatus[dateStr] || "available"
+
+  const cycleStatus = (dateStr: string): DateStatus => {
+    const current = getStatus(dateStr)
+    if (current === "available") return "closed"
+    if (current === "closed") return "available"
+    return "available"
   }
 
-  const monthNames = [
-    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
-  ]
+  const applyStatusChange = (date: Date, isDouble: boolean) => {
+    if (isPast(date) || !selectedPropertyId) return
+    const dateStr = formatDate(date)
+    const current = getStatus(dateStr)
 
-  const prevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
+    let newStatus: DateStatus
+    if (isDouble) {
+      newStatus = current === "kolbed" ? "available" : "kolbed"
+    } else {
+      newStatus = current === "kolbed" ? "closed" : cycleStatus(dateStr)
+    }
+
+    setDateStatus((prev) => ({ ...prev, [dateStr]: newStatus }))
+    saveDate(dateStr, newStatus)
   }
 
-  const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
+  const handleDateClick = (date: Date) => {
+    if (isPast(date) || !selectedPropertyId) return
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current)
+      clickTimeoutRef.current = null
+      applyStatusChange(date, true)
+      return
+    }
+    clickTimeoutRef.current = setTimeout(() => {
+      clickTimeoutRef.current = null
+      applyStatusChange(date, false)
+    }, 250)
+  }
+
+  const saveDate = async (dateStr: string, status: DateStatus) => {
+    if (!selectedPropertyId) return
+    setSaving(true)
+    try {
+      await supabase.from("property_daily_pricing").upsert(
+        {
+          property_id: selectedPropertyId,
+          date: dateStr,
+          status,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "property_id,date" }
+      )
+      onSave?.()
+    } catch (e) {
+      console.error("Error saving date:", e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const days = getDaysInMonth(currentMonth)
 
-  if (loading) {
+  const btnClass = (status: DateStatus, past: boolean) => {
+    if (past) return "bg-muted text-muted-foreground cursor-not-allowed"
+    if (status === "closed") return "bg-red-600 text-white hover:bg-red-700"
+    if (status === "kolbed") return "bg-green-600 text-white hover:bg-green-700"
+    return "bg-primary/20 text-primary hover:bg-primary/30"
+  }
+
+  if (propertyIds.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">Caricamento calendario...</div>
-        </CardContent>
-      </Card>
+      <div className="text-center py-6 text-muted-foreground">
+        Crea una struttura per gestire il calendario
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Calendario Disponibilità
-            </CardTitle>
-            <CardDescription>
-              Visualizza le disponibilità e le prenotazioni esistenti
-            </CardDescription>
-          </div>
-          {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {/* Navigazione mese */}
-          <div className="flex items-center justify-between">
-            <Button variant="outline" size="sm" onClick={prevMonth}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <h3 className="text-lg font-semibold">
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </h3>
-            <Button variant="outline" size="sm" onClick={nextMonth}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Legenda */}
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 rounded"></div>
-              <span>Disponibile per collaborazioni</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded"></div>
-              <span>Prenotato</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded"></div>
-              <span>Non disponibile</span>
-            </div>
-          </div>
-
-          {/* Calendario */}
-          <div className="grid grid-cols-7 gap-1">
-            {/* Intestazioni giorni */}
-            {["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"].map((day) => (
-              <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
-                {day}
-              </div>
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium mb-2 block">Struttura</label>
+        <Select
+          value={selectedPropertyId ?? ""}
+          onValueChange={setSelectedPropertyId}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Seleziona struttura" />
+          </SelectTrigger>
+          <SelectContent>
+            {propertyIds.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name}
+              </SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-            {/* Giorni */}
-            {days.map((date, index) => {
-              const status = getDayStatus(date)
-              const isToday = date && date.toDateString() === new Date().toDateString()
+      <p className="text-xs text-muted-foreground">
+        <strong>Clic singolo:</strong> disponibile ↔ chiuso.{" "}
+        <strong>Doppio clic:</strong> programma KOL&BED.
+      </p>
 
-              return (
-                <div
-                  key={index}
-                  className={`
-                    aspect-square p-1 flex items-center justify-center text-sm
-                    ${!date ? "bg-transparent" : ""}
-                    ${status === "available" ? "bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700" : ""}
-                    ${status === "booked" ? "bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700" : ""}
-                    ${status === "unavailable" ? "bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700" : ""}
-                    ${isToday ? "ring-2 ring-blue-500" : ""}
-                    rounded
-                  `}
-                >
-                  {date && (
-                    <span className={isToday ? "font-bold text-blue-600 dark:text-blue-400" : ""}>
-                      {date.getDate()}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-primary/20" /> Disponibile viaggiatori
+        </span>
+        <span className="text-xs flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-red-600" /> Chiuso
+        </span>
+        <span className="text-xs flex items-center gap-1">
+          <span className="w-3 h-3 rounded bg-green-600" /> KOL&BED
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() =>
+            setCurrentMonth(
+              new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+            )
+          }
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="font-medium">
+          {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+        </span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() =>
+            setCurrentMonth(
+              new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+            )
+          }
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+        {["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"].map((d) => (
+          <div key={d} className="font-medium text-muted-foreground py-1">
+            {d}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        ))}
+        {days.map((date, i) => {
+          if (!date) return <div key={`e-${i}`} />
+          const dateStr = formatDate(date)
+          const status = getStatus(dateStr)
+          const past = isPast(date)
+
+          return (
+            <button
+              key={dateStr}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                handleDateClick(date)
+              }}
+              disabled={past}
+              className={`w-full py-2 rounded text-sm transition-colors ${btnClass(
+                status,
+                past
+              )}`}
+            >
+              {date.getDate()}
+            </button>
+          )
+        })}
+      </div>
+      {saving && (
+        <p className="text-xs text-muted-foreground">Salvataggio...</p>
+      )}
+    </div>
   )
 }

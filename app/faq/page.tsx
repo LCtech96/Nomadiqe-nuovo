@@ -6,11 +6,11 @@ import { ChevronDown } from "lucide-react"
 const faqs: { q: string; a: string }[] = [
   {
     q: "Costo per stare nell'app",
-    a: "Al momento i primi 100 host non avranno costi, anzi se contribuiscono alla crescita di Nomadiqe possono arrivare a 0 commissioni.",
+    a: "Il costo dipenderà dalla struttura che si ha e dal tipo di adesione al programma KOL&BED. Al momento i primi 100 host non avranno costi, anzi se contribuiscono alla crescita di Nomadiqe possono arrivare a 0 commissioni.",
   },
   {
     q: "Come host si pagano commissioni?",
-    a: "Come host le commissioni vanno dal 10% allo 0% se si contribuisce al programma KOL&BED.",
+    a: "Come host le commissioni vanno dal 10% allo 0% se si contribuisce al programma KOL&BED. Se non si aderisce al programma KOL&BED le commissioni possono essere più alte. Nomadiqe favorisce gli host attraverso le prenotazioni dirette inviate nel proprio sito web.",
   },
   {
     q: "La gente non influencer ci contatta attraverso le piattaforme degli influencers oppure in futuro le nostre strutture saranno visibili anche ai non influencers?",
@@ -22,7 +22,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "Le prenotazioni passano solo dalla piattaforma Nomadiqe.com o da un mio sito?",
-    a: "Le prenotazioni passano solo dalla piattaforma Nomadiqe.com e puoi finalizzarla solamente attraverso un sito che abbia un sistema di prenotazione integrato anche con Revolut stesso.",
+    a: "Le prenotazioni passano solo dalla piattaforma Nomadiqe.com e puoi finalizzarla solamente attraverso un sito che abbia un sistema di prenotazione integrato anche con Revolut stesso. Nomadiqe favorisce gli host attraverso le prenotazioni dirette inviate nel proprio sito web.",
   },
   {
     q: "Io avrò accesso al pannello prenotazioni?",
