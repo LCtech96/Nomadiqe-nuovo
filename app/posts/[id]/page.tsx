@@ -63,6 +63,18 @@ export default function PostPage() {
         return
       }
 
+      // Solo post approvati visibili (o l'autore può vedere i propri pending)
+      const isAuthor = session?.user?.id === postData.author_id
+      if (postData.approval_status !== "approved" && !isAuthor) {
+        toast({
+          title: "Post non disponibile",
+          description: "Questo post non è ancora stato approvato.",
+          variant: "destructive",
+        })
+        router.push("/home")
+        return
+      }
+
       setPost(postData)
 
       // Load author (include host_level for Prime link feature)

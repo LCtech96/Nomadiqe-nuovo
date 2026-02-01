@@ -318,35 +318,32 @@ export default function CreatePostDialog({
         return
       }
 
-      // Create post - usando le colonne corrette del database
-      // Il database usa author_id, images (array) e video_url
+      // Create post - in attesa di approvazione admin
       const { data, error } = await supabase
         .from("posts")
         .insert({
           author_id: session.user.id,
           content: content.trim() || null,
-          images: imageUrls.length > 0 ? imageUrls : null, // Array di immagini
-          video_url: videoUrl || null, // URL del video (solo per creator)
+          images: imageUrls.length > 0 ? imageUrls : null,
+          video_url: videoUrl || null,
+          approval_status: "pending",
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Award points for creating post
-      // Note: Database triggers may also award points, but we update the 'points' column here
-      // for frontend display consistency
+      // Punti assegnati solo dopo approvazione (opzionale: rimuovere awardPoints da qui)
       try {
         const { awardPoints } = await import("@/lib/points")
         await awardPoints(session.user.id, "post", "Post creato")
       } catch (pointsError) {
-        // Ignora errori se il sistema punti non è disponibile
         console.warn("Could not award points:", pointsError)
       }
 
       toast({
-        title: "Successo",
-        description: "Post creato con successo!",
+        title: "Inviato",
+        description: "Il post è stato inviato e sarà visibile nel feed dopo l'approvazione dell'admin.",
       })
 
       // Reset form
@@ -382,7 +379,7 @@ export default function CreatePostDialog({
         <DialogHeader>
           <DialogTitle>Crea un nuovo post</DialogTitle>
           <DialogDescription>
-            Condividi i tuoi momenti con la community. Il post sarà visibile a tutti gli utenti nel feed.
+            Condividi i tuoi momenti con la community. Il post sarà revisionato dall&apos;admin prima di essere pubblicato nel feed.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -53,6 +53,7 @@ export default function FeedPage() {
           *,
           author:profiles!posts_author_id_fkey(username, full_name, avatar_url, role, host_level)
         `)
+        .eq("approval_status", "approved")
         .order("created_at", { ascending: false })
         .limit(50)
 
@@ -101,17 +102,15 @@ export default function FeedPage() {
         .insert({
           author_id: session.user.id,
           content: newPostContent,
-          images: [], // images è un array TEXT[]
+          images: [],
           location: newPostLocation || null,
+          approval_status: "pending",
         })
         .select()
         .single()
 
       if (error) throw error
 
-      // Award points for creating post
-      // Note: Database triggers may also award points, but we update the 'points' column here
-      // for frontend display consistency
       try {
         const { awardPoints } = await import("@/lib/points")
         await awardPoints(session.user.id, "post", "Post creato")
@@ -120,8 +119,8 @@ export default function FeedPage() {
       }
 
       toast({
-        title: "Successo",
-        description: "Post creato con successo!",
+        title: "Inviato",
+        description: "Il post sarà visibile nel feed dopo l'approvazione dell'admin.",
       })
 
       setNewPostContent("")

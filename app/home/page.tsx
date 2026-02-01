@@ -254,10 +254,11 @@ export default function HomePage() {
 
   const loadPosts = async () => {
     try {
-      // Load posts first
+      // Load posts first (solo approvati)
       let query = supabase
         .from("posts")
         .select("*")
+        .eq("approval_status", "approved")
         .order("created_at", { ascending: false })
         .limit(50)
 

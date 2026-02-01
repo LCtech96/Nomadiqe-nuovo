@@ -359,11 +359,12 @@ export default function PublicProfilePage() {
       // Load stats
       await loadStats(profileId)
 
-      // Load posts
+      // Load posts (solo approvati, quando si vede il profilo di altri)
       const { data: postsData } = await supabase
         .from("posts")
         .select("*")
         .eq("author_id", profileId)
+        .eq("approval_status", "approved")
         .order("created_at", { ascending: false })
 
       if (data.role === "creator") {
@@ -520,6 +521,7 @@ export default function PublicProfilePage() {
         .from("posts")
         .select("*", { count: "exact", head: true })
         .eq("author_id", userId)
+        .eq("approval_status", "approved")
 
       const { count: viewsCount } = await supabase
         .from("profile_views")
@@ -531,6 +533,7 @@ export default function PublicProfilePage() {
         .from("posts")
         .select("id, like_count, comment_count")
         .eq("author_id", userId)
+        .eq("approval_status", "approved")
       if (!postsErr && userPosts) {
         totalInteractions = userPosts.reduce(
           (sum, p: any) => sum + (Number(p?.like_count) || 0) + (Number(p?.comment_count) || 0),
