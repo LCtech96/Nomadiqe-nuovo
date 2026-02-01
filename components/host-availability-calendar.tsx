@@ -18,6 +18,8 @@ interface HostAvailabilityCalendarProps {
   propertyIds: { id: string; name: string }[]
   supabase: any
   onSave?: () => void
+  onClose?: () => void
+  readOnly?: boolean
 }
 
 const monthNames = [
@@ -30,6 +32,8 @@ export default function HostAvailabilityCalendar({
   propertyIds,
   supabase,
   onSave,
+  onClose,
+  readOnly = false,
 }: HostAvailabilityCalendarProps) {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(
     propertyIds[0]?.id ?? null
@@ -124,7 +128,7 @@ export default function HostAvailabilityCalendar({
   }
 
   const handleDateClick = (date: Date) => {
-    if (isPast(date) || !selectedPropertyId) return
+    if (readOnly || isPast(date) || !selectedPropertyId) return
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current)
       clickTimeoutRef.current = null
@@ -177,6 +181,13 @@ export default function HostAvailabilityCalendar({
 
   return (
     <div className="space-y-4">
+      {onClose && (
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Chiudi
+          </Button>
+        </div>
+      )}
       <div>
         <label className="text-sm font-medium mb-2 block">Struttura</label>
         <Select
@@ -196,10 +207,12 @@ export default function HostAvailabilityCalendar({
         </Select>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        <strong>Clic singolo:</strong> disponibile ↔ chiuso.{" "}
-        <strong>Doppio clic:</strong> programma KOL&BED.
-      </p>
+      {!readOnly && (
+        <p className="text-xs text-muted-foreground">
+          <strong>Clic singolo:</strong> disponibile ↔ chiuso.{" "}
+          <strong>Doppio clic:</strong> programma KOL&BED.
+        </p>
+      )}
 
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xs flex items-center gap-1">

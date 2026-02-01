@@ -1060,7 +1060,13 @@ export default function PublicProfilePage() {
               {showAvailabilityCalendar && profile.id && (
                 <HostAvailabilityCalendar
                   hostId={profile.id}
+                  propertyIds={(profile.properties || []).map((p: Property) => ({
+                    id: p.id,
+                    name: p.title || p.name || "Struttura",
+                  }))}
+                  supabase={supabase}
                   onClose={() => setShowAvailabilityCalendar(false)}
+                  readOnly={session?.user?.id !== profile.id}
                 />
               )}
 
