@@ -80,7 +80,7 @@ export async function POST(
 
     const { data: req, error: reqErr } = await supabase
       .from("support_requests")
-      .select("id, status")
+      .select("id, status, user_id")
       .eq("id", id)
       .single()
 
