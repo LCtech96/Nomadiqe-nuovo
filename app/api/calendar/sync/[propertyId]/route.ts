@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createSupabaseAdminClient } from "@/lib/supabase/server"
-import ical from "node-ical"
+import { parseIcalToBlockedDates } from "@/lib/ical-parse"
 
 export const dynamic = "force-dynamic"
 
@@ -58,19 +58,8 @@ export async function POST(
         const res = await fetch(url, { next: { revalidate: 0 } })
         if (!res.ok) continue
         const text = await res.text()
-        const data = ical.parseICS(text)
-
-        for (const key in data) {
-          const ev = data[key]
-          if (ev.type !== "VEVENT" || !ev.start || !ev.end) continue
-          const start = new Date(ev.start)
-          const end = new Date(ev.end)
-          const current = new Date(start)
-          while (current < end) {
-            blockedDates.add(current.toISOString().split("T")[0])
-            current.setDate(current.getDate() + 1)
-          }
-        }
+        const dates = parseIcalToBlockedDates(text)
+        dates.forEach((d) => blockedDates.add(d))
       } catch (e) {
         console.warn("Error fetching iCal:", url, e)
       }

@@ -37,7 +37,6 @@
     "next": "14.2.35",
     "next-auth": "^4.24.5",
     "next-themes": "^0.2.1",
-    "node-ical": "^0.24.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-easy-crop": "^5.0.0",

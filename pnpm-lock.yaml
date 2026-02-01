@@ -92,9 +92,6 @@ importers:
       next-themes:
         specifier: ^0.2.1
         version: 0.2.1(next@14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      node-ical:
-        specifier: ^0.24.2
-        version: 0.24.2
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -468,10 +465,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
-
-  '@js-temporal/polyfill@0.5.1':
-    resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
-    engines: {node: '>=12'}
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -2316,9 +2309,6 @@ packages:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
     hasBin: true
 
-  jsbi@4.3.2:
-    resolution: {integrity: sha512-9fqMSQbhJykSeii05nxKl4m6Eqn2P6rOlYiS+C5Dr/HPIU/7yZxu5qzbs40tgaFORiw2Amd0mirjxatXYMkIew==}
-
   jsdom@20.0.3:
     resolution: {integrity: sha512-SYhBvTh89tTfCD/CRdSOm13mOBa42iTaTyfyEWBdKcGdPxPtLFBXuHR8XHb33YNYaP+lLbmSvBTsnoesCNJEsQ==}
     engines: {node: '>=14'}
@@ -2503,10 +2493,6 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
-
-  node-ical@0.24.2:
-    resolution: {integrity: sha512-2wJJZE/X3KKLTBtRHqgzJQkMVpTtvFrdQU2Kq02mCNI4QWshqKSuLRXZl5dPy1gF+7XzpFNxKtxHIwLL2q1BqQ==}
-    engines: {node: '>=18'}
 
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
@@ -2843,9 +2829,6 @@ packages:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
     deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
-
-  rrule-temporal@1.4.5:
-    resolution: {integrity: sha512-g0qDEx7Wk1eaOKyZvBSTAz/DAfPnS+7GZT3vRShue6zIGCjkHWJs6evnGb7Nx2SVGKxOyMDUtKBBI53HMaFDKQ==}
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -3780,10 +3763,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
-
-  '@js-temporal/polyfill@0.5.1':
-    dependencies:
-      jsbi: 4.3.2
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
@@ -5802,8 +5781,6 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  jsbi@4.3.2: {}
-
   jsdom@20.0.3:
     dependencies:
       abab: 2.0.6
@@ -5991,11 +5968,6 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
-
-  node-ical@0.24.2:
-    dependencies:
-      '@js-temporal/polyfill': 0.5.1
-      rrule-temporal: 1.4.5
 
   node-releases@2.0.27: {}
 
@@ -6327,10 +6299,6 @@ snapshots:
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
-
-  rrule-temporal@1.4.5:
-    dependencies:
-      '@js-temporal/polyfill': 0.5.1
 
   run-parallel@1.2.0:
     dependencies:
