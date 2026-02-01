@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, Link2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -10,12 +12,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 
 type DateStatus = "available" | "closed" | "kolbed"
+
+interface PropertyWithSync {
+  id: string
+  name: string
+  airbnb_ical_url?: string | null
+  booking_ical_url?: string | null
+}
 
 interface HostAvailabilityCalendarProps {
   hostId: string
   propertyIds: { id: string; name: string }[]
+  propertiesWithSync?: PropertyWithSync[]
   supabase: any
   onSave?: () => void
   onClose?: () => void
@@ -30,6 +41,7 @@ const monthNames = [
 export default function HostAvailabilityCalendar({
   hostId,
   propertyIds,
+  propertiesWithSync,
   supabase,
   onSave,
   onClose,
@@ -42,11 +54,26 @@ export default function HostAvailabilityCalendar({
   const [dateStatus, setDateStatus] = useState<Record<string, DateStatus>>({})
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [syncSectionOpen, setSyncSectionOpen] = useState(false)
+  const [airbnbUrl, setAirbnbUrl] = useState("")
+  const [bookingUrl, setBookingUrl] = useState("")
+  const [savingSync, setSavingSync] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const { toast } = useToast()
+
+  const selectedProp = propertiesWithSync?.find((p) => p.id === selectedPropertyId)
 
   useEffect(() => {
     setSelectedPropertyId(propertyIds[0]?.id ?? null)
   }, [propertyIds])
+
+  useEffect(() => {
+    if (selectedProp) {
+      setAirbnbUrl(selectedProp.airbnb_ical_url || "")
+      setBookingUrl(selectedProp.booking_ical_url || "")
+    }
+  }, [selectedProp])
 
   useEffect(() => {
     if (!selectedPropertyId) {
@@ -212,6 +239,128 @@ export default function HostAvailabilityCalendar({
           <strong>Clic singolo:</strong> disponibile ↔ chiuso.{" "}
           <strong>Doppio clic:</strong> programma KOL&BED.
         </p>
+      )}
+
+      {!readOnly && selectedPropertyId && (
+        <div className="border rounded-lg p-4 space-y-4">
+          <button
+            type="button"
+            onClick={() => setSyncSectionOpen(!syncSectionOpen)}
+            className="flex items-center gap-2 w-full text-left font-medium"
+          >
+            <Link2 className="h-4 w-4" />
+            Sincronizza con Airbnb e Booking.com
+            <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${syncSectionOpen ? "rotate-180" : ""}`} />
+          </button>
+          {syncSectionOpen && (
+            <div className="space-y-4 pt-2">
+              <p className="text-xs text-muted-foreground">
+                Importa le prenotazioni da Airbnb/Booking: le date occupate verranno bloccate automaticamente su Nomadiqe.
+                Esporta su Airbnb/Booking: le date chiuse o KOL&BED su Nomadiqe verranno bloccate sulle altre piattaforme.
+              </p>
+              <div>
+                <Label className="text-sm">URL calendario Airbnb (export)</Label>
+                <Input
+                  placeholder="https://www.airbnb.com/calendar/ical/..."
+                  value={airbnbUrl}
+                  onChange={(e) => setAirbnbUrl(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Da Airbnb: Modifica annuncio → Disponibilità → Esporta calendario
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm">URL calendario Booking.com (export)</Label>
+                <Input
+                  placeholder="https://admin.booking.com/..."
+                  value={bookingUrl}
+                  onChange={(e) => setBookingUrl(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Da Booking.com: Calendario → Sincronizza con calendari esterni
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={savingSync}
+                  onClick={async () => {
+                    setSavingSync(true)
+                    try {
+                      const res = await fetch(`/api/properties/${selectedPropertyId}/calendar-sync`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          airbnb_ical_url: airbnbUrl || null,
+                          booking_ical_url: bookingUrl || null,
+                        }),
+                      })
+                      if (!res.ok) throw new Error(await res.text())
+                      toast({ title: "Salvato", description: "URL calendario salvati" })
+                      onSave?.()
+                    } catch (e) {
+                      toast({ title: "Errore", description: (e as Error)?.message || "Salvataggio fallito", variant: "destructive" })
+                    } finally {
+                      setSavingSync(false)
+                    }
+                  }}
+                >
+                  {savingSync ? "Salvataggio..." : "Salva URL"}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={syncing}
+                  onClick={async () => {
+                    setSyncing(true)
+                    try {
+                      const res = await fetch(`/api/calendar/sync/${selectedPropertyId}`, {
+                        method: "POST",
+                      })
+                      const data = await res.json()
+                      if (!res.ok) throw new Error(data.error || "Errore")
+                      loadDates()
+                      onSave?.()
+                      toast({ title: "Sincronizzato", description: `${data.blockedCount || 0} date bloccate da Airbnb/Booking` })
+                    } catch (e) {
+                      toast({ title: "Errore sync", description: (e as Error)?.message || "Sincronizzazione fallita", variant: "destructive" })
+                    } finally {
+                      setSyncing(false)
+                    }
+                  }}
+                >
+                  {syncing ? "Sincronizzazione..." : "Sincronizza ora"}
+                </Button>
+              </div>
+              <div>
+                <Label className="text-sm">Link da aggiungere su Airbnb e Booking</Label>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Copia questo link e aggiungilo su Airbnb/Booking come &quot;Importa calendario&quot; per bloccare le tue date Nomadiqe
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={typeof window !== "undefined" ? `${window.location.origin}/api/calendar/ical/${selectedPropertyId}` : ""}
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const url = `${window.location.origin}/api/calendar/ical/${selectedPropertyId}`
+                      navigator.clipboard.writeText(url)
+                      toast({ title: "Copiato", description: "Link copiato negli appunti" })
+                    }}
+                  >
+                    Copia
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex items-center gap-2 mb-2">

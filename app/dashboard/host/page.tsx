@@ -472,7 +472,7 @@ export default function HostDashboard() {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader>
               <CardTitle>Strutture totali</CardTitle>
@@ -489,17 +489,6 @@ export default function HostDashboard() {
             <CardContent>
               <p className="text-3xl font-bold">
                 {properties.filter((p) => p.is_active).length}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Prenotazioni totali</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {properties.reduce((sum, p) => sum + p.booking_count, 0)}
               </p>
             </CardContent>
           </Card>
@@ -609,6 +598,12 @@ export default function HostDashboard() {
               propertyIds={properties.map((p) => ({
                 id: p.id,
                 name: p.name || p.title || "Struttura",
+              }))}
+              propertiesWithSync={properties.map((p) => ({
+                id: p.id,
+                name: p.name || p.title || "Struttura",
+                airbnb_ical_url: (p as any).airbnb_ical_url,
+                booking_ical_url: (p as any).booking_ical_url,
               }))}
               supabase={supabase}
             />
