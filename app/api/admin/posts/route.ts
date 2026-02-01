@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ posts: [] })
     }
 
-    const authorIds = [...new Set(data.map((p: any) => p.author_id).filter(Boolean))]
+    const authorIds = Array.from(new Set(data.map((p: any) => p.author_id).filter(Boolean)))
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, username, email, role")

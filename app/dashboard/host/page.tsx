@@ -68,6 +68,9 @@ export default function HostDashboard() {
   const [propertyToDelete, setPropertyToDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
+  const [hostCount, setHostCount] = useState<number | null>(null)
+  const [websiteOfferRequested, setWebsiteOfferRequested] = useState(false)
+  const [requestingWebsiteOffer, setRequestingWebsiteOffer] = useState(false)
 
   const loadPropertiesWithUserId = async (id: string) => {
     try {
@@ -249,6 +252,17 @@ export default function HostDashboard() {
         }
 
         setUserId(currentUserId)
+        const { count } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .eq("role", "host")
+        setHostCount(count || 0)
+        const { data: existingOffer } = await supabase
+          .from("website_offer_requests")
+          .select("id")
+          .eq("host_id", currentUserId)
+          .maybeSingle()
+        setWebsiteOfferRequested(!!existingOffer)
         await Promise.allSettled([
           loadPropertiesWithUserId(currentUserId),
           loadPreferencesWithUserId(currentUserId),
@@ -396,6 +410,41 @@ export default function HostDashboard() {
   const loadCollaborations = async () => {
     if (!userId) return
     return loadCollaborationsWithUserId(userId)
+  }
+
+  const handleWebsiteOfferRequest = async () => {
+    if (!userId) return
+    setRequestingWebsiteOffer(true)
+    try {
+      const isFirst100 = (hostCount || 0) < 100
+      const offerPrice = isFirst100 ? 299 : 799
+      const { error } = await supabase.from("website_offer_requests").insert({
+        host_id: userId,
+        status: "pending",
+        offer_price: offerPrice,
+        is_first_100: isFirst100,
+      })
+      if (error) throw error
+      const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", userId).maybeSingle()
+      await fetch("/api/website-offer/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hostId: userId,
+          hostEmail: profile?.email || session?.user?.email || "",
+          hostName: profile?.full_name || session?.user?.name || "",
+          offerPrice,
+          isFirst100,
+          role: "host",
+        }),
+      })
+      setWebsiteOfferRequested(true)
+      toast({ title: "Richiesta inviata", description: "Verrai contattato nei prossimi giorni." })
+    } catch (e: any) {
+      toast({ title: "Errore", description: e?.message || "Richiesta fallita", variant: "destructive" })
+    } finally {
+      setRequestingWebsiteOffer(false)
+    }
   }
 
   if (loading) {
@@ -619,6 +668,31 @@ export default function HostDashboard() {
                   </div>
                 ))}
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Offerta Sito Web */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Offerta Speciale Sito Web</CardTitle>
+            <CardDescription>
+              Annulla la dipendenza dalle piattaforme OTA con un sito personalizzato
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                Nomadiqe ti aiuta a realizzare un sito web su misura {(hostCount || 0) < 100 ? "ai primi 100 host" : ""} per{" "}
+                <span className="font-bold">{(hostCount || 0) < 100 ? "299€" : "799€"}</span> compreso dominio e hosting grazie a Facevoice.ai.
+              </p>
+            </div>
+            {websiteOfferRequested ? (
+              <p className="text-sm text-muted-foreground">Hai già richiesto l&apos;offerta. Verrai contattato a breve.</p>
+            ) : (
+              <Button onClick={handleWebsiteOfferRequest} disabled={requestingWebsiteOffer}>
+                {requestingWebsiteOffer ? "Invio..." : "Richiedi Offerta"}
+              </Button>
             )}
           </CardContent>
         </Card>

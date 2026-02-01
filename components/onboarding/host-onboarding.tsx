@@ -20,9 +20,9 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { geocodeAddress } from "@/lib/geocoding"
 import { put } from "@vercel/blob"
 import ImageCropper from "@/components/image-cropper"
-import KolBedCalendarSelector from "@/components/kol-bed-calendar-selector"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AMENITIES_LIST } from "@/lib/constants/amenities"
 
 type HostOnboardingStep = "profile" | "property" | "kol-bed-program" | "website-offer"
 
@@ -65,6 +65,9 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     bio: "",
     avatarFile: null as File | null,
     avatarPreview: "",
+    residenceAddress: "",
+    residenceCity: "",
+    residenceCountry: "",
   })
 
   // Property data
@@ -72,7 +75,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     name: "",
     description: "",
     property_type: "apartment" as "apartment" | "house" | "b&b" | "hotel" | "villa" | "other",
-    address: "",
     city: "",
     country: "",
     price_per_night: "",
@@ -83,12 +85,11 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     images: [] as File[],
     imagePreviews: [] as string[],
   })
-  const [currentAmenity, setCurrentAmenity] = useState("")
+  const [cinFile, setCinFile] = useState<File | null>(null)
+  const [cirFile, setCirFile] = useState<File | null>(null)
+  const [cinCirSkipped, setCinCirSkipped] = useState(false)
 
-  // KOL&BED Program data
   const [kolBedData, setKolBedData] = useState({
-    selectedDates: [] as string[],
-    influencer_type: "" as "" | "micro" | "macro" | "mega" | "any",
     preferred_niche: "",
     min_followers: "100",
     preferred_platforms: [] as string[],
@@ -98,7 +99,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     required_videos: "",
     required_posts: "",
     required_stories: "",
-    kol_bed_months: [] as number[], // Mesi 1-12
   })
 
   // Website offer data
@@ -135,10 +135,9 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       }
 
       try {
-        // Load only basic profile data (onboarding_status not in PostgREST cache yet)
         const { data: profile, error } = await supabase
           .from("profiles")
-          .select("full_name, username, avatar_url, bio")
+          .select("full_name, username, avatar_url, bio, residence_address, residence_city, residence_country")
           .eq("id", userId)
           .maybeSingle()
 
@@ -165,6 +164,9 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
               bio: profile.bio || "",
               avatarFile: null,
               avatarPreview: profile.avatar_url || "",
+              residenceAddress: (profile as any).residence_address || "",
+              residenceCity: (profile as any).residence_city || "",
+              residenceCountry: (profile as any).residence_country || "",
             })
           }
         }
@@ -270,11 +272,18 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       return
     }
 
-    // Validazione: Nome è obbligatorio
     if (!profileData.fullName || profileData.fullName.trim().length === 0) {
       toast({
         title: "Errore",
         description: "Il nome è obbligatorio. Inserisci il tuo nome completo.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (!profileData.residenceAddress?.trim() || !profileData.residenceCity?.trim() || !profileData.residenceCountry?.trim()) {
+      toast({
+        title: "Errore",
+        description: "L'indirizzo di residenza è obbligatorio.",
         variant: "destructive",
       })
       return
@@ -337,7 +346,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
         }
       }
 
-      // Update profile
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -345,6 +353,9 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
           username: profileData.username ? profileData.username.toLowerCase().trim() : null,
           avatar_url: avatarUrl || null,
           bio: profileData.bio.trim() || null,
+          residence_address: profileData.residenceAddress.trim() || null,
+          residence_city: profileData.residenceCity.trim() || null,
+          residence_country: profileData.residenceCountry.trim() || null,
         })
         .eq("id", userId)
 
@@ -370,21 +381,18 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     }
   }
 
-  const addAmenity = () => {
-    if (currentAmenity.trim() && !propertyData.amenities.includes(currentAmenity.trim())) {
+  const toggleAmenity = (amenity: string) => {
+    if (propertyData.amenities.includes(amenity)) {
       setPropertyData({
         ...propertyData,
-        amenities: [...propertyData.amenities, currentAmenity.trim()],
+        amenities: propertyData.amenities.filter((a) => a !== amenity),
       })
-      setCurrentAmenity("")
+    } else {
+      setPropertyData({
+        ...propertyData,
+        amenities: [...propertyData.amenities, amenity],
+      })
     }
-  }
-
-  const removeAmenity = (amenity: string) => {
-    setPropertyData({
-      ...propertyData,
-      amenities: propertyData.amenities.filter((a) => a !== amenity),
-    })
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -482,15 +490,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       return
     }
 
-    if (!propertyData.address || propertyData.address.trim().length === 0) {
-      toast({
-        title: "Errore",
-        description: "L'indirizzo è obbligatorio.",
-        variant: "destructive",
-      })
-      return
-    }
-
     if (!propertyData.city || propertyData.city.trim().length === 0) {
       toast({
         title: "Errore",
@@ -529,14 +528,12 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
     setLoading(true)
     try {
-      // Geocode address
-      const fullAddress = `${propertyData.address}, ${propertyData.city}, ${propertyData.country}`
+      const fullAddress = `${propertyData.city}, ${propertyData.country}`
       const geocodeResult = await geocodeAddress(fullAddress)
-
       if (!geocodeResult) {
         toast({
           title: "Attenzione",
-          description: "Impossibile geocodificare l'indirizzo. La proprietà verrà salvata senza coordinate.",
+          description: "Impossibile geocodificare. La proprietà verrà salvata senza coordinate.",
         })
       }
 
@@ -588,6 +585,33 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       }
 
       // Create property
+      if (!cinCirSkipped) {
+        let cinUrl = ""
+        let cirUrl = ""
+        if (cinFile && blobToken) {
+          try {
+            const b = await put(`${userId}/cin.${cinFile.name.split(".").pop() || "pdf"}`, cinFile, { access: "public", contentType: cinFile.type, token: blobToken })
+            cinUrl = b.url
+          } catch (e) {
+            console.warn("CIN upload failed:", e)
+          }
+        }
+        if (cirFile && blobToken) {
+          try {
+            const b = await put(`${userId}/cir.${cirFile.name.split(".").pop() || "pdf"}`, cirFile, { access: "public", contentType: cirFile.type, token: blobToken })
+            cirUrl = b.url
+          } catch (e) {
+            console.warn("CIR upload failed:", e)
+          }
+        }
+        if ((cinUrl || cirUrl) && userId) {
+          await supabase.from("profiles").update({
+            cin_url: cinUrl || undefined,
+            cir_url: cirUrl || undefined,
+          }).eq("id", userId)
+        }
+      }
+
       const { data: property, error: propertyError } = await supabase
         .from("properties")
         .insert({
@@ -595,7 +619,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
           name: propertyData.name,
           description: propertyData.description,
           property_type: propertyData.property_type,
-          address: propertyData.address,
+          address: propertyData.city + ", " + propertyData.country,
           city: propertyData.city,
           country: propertyData.country,
           latitude: geocodeResult?.lat || null,
@@ -612,12 +636,10 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
       if (propertyError) throw propertyError
 
-      // Save onboarding state after creating property
       await saveOnboardingState("kol-bed-program", ["role", "profile", "property"], {
         name: propertyData.name,
         description: propertyData.description,
         property_type: propertyData.property_type,
-        address: propertyData.address,
         city: propertyData.city,
         country: propertyData.country,
         price_per_night: propertyData.price_per_night,
@@ -644,44 +666,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       setLoading(false)
     }
   }
-
-  // Get property ID for calendar
-  const [propertyId, setPropertyId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadPropertyId = async () => {
-      // Carica propertyId quando si entra nello step kol-bed-program
-      if (step !== "kol-bed-program") {
-        setPropertyId(null)
-        return
-      }
-      
-      if (!userId) {
-        // Se non c'è userId, aspetta che venga caricato
-        return
-      }
-      
-      try {
-        const { data: property, error } = await supabase
-          .from("properties")
-          .select("id")
-          .eq("owner_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle()
-        
-        if (error && error.code !== "PGRST116") {
-          console.error("Error loading property ID:", error)
-        } else if (property) {
-          setPropertyId(property.id)
-        }
-      } catch (error) {
-        console.error("Error loading property ID:", error)
-      }
-    }
-    
-    loadPropertyId()
-  }, [userId, step, supabase])
 
   const handleKolBedProgramSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -742,29 +726,11 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
         throw new Error("Proprietà non trovata. Assicurati di aver creato almeno una struttura.")
       }
 
-      // Salva date disponibili per KOL&BED
-      if (kolBedData.selectedDates.length > 0) {
-        const availabilityRecords = kolBedData.selectedDates.map((date) => ({
-          host_id: userId,
-          property_id: property.id,
-          date,
-          available_for_collab: true,
-        }))
-
-        // Usa upsert per evitare duplicati
-        for (const record of availabilityRecords) {
-          await supabase
-            .from("host_availability")
-            .upsert(record, { onConflict: "host_id,property_id,date" })
-        }
-      }
-
-      // Salva preferenze KOL&BED - usa upsert con onConflict per evitare errori duplicate key
       const { error: preferencesError } = await supabase
         .from("host_kol_bed_preferences")
         .upsert({
           host_id: userId,
-          influencer_type: kolBedData.influencer_type || null,
+          influencer_type: null,
           preferred_niche: kolBedData.preferred_niche || null,
           min_followers: kolBedData.min_followers ? parseInt(kolBedData.min_followers) : 100,
           preferred_platforms: kolBedData.preferred_platforms,
@@ -774,7 +740,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
           required_videos: kolBedData.required_videos ? parseInt(kolBedData.required_videos) : 0,
           required_posts: kolBedData.required_posts ? parseInt(kolBedData.required_posts) : 0,
           required_stories: kolBedData.required_stories ? parseInt(kolBedData.required_stories) : 0,
-          kol_bed_months: kolBedData.kol_bed_months.length > 0 ? kolBedData.kol_bed_months : [],
+          kol_bed_months: [],
           updated_at: new Date().toISOString(),
         }, {
           onConflict: "host_id"
@@ -1063,6 +1029,39 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="residence_address">Indirizzo di residenza *</Label>
+                <Input
+                  id="residence_address"
+                  value={profileData.residenceAddress}
+                  onChange={(e) => setProfileData({ ...profileData, residenceAddress: e.target.value })}
+                  required
+                  placeholder="Via Roma 123"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="residence_city">Città di residenza *</Label>
+                  <Input
+                    id="residence_city"
+                    value={profileData.residenceCity}
+                    onChange={(e) => setProfileData({ ...profileData, residenceCity: e.target.value })}
+                    required
+                    placeholder="Roma"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="residence_country">Paese di residenza *</Label>
+                  <Input
+                    id="residence_country"
+                    value={profileData.residenceCountry}
+                    onChange={(e) => setProfileData({ ...profileData, residenceCountry: e.target.value })}
+                    required
+                    placeholder="Italia"
+                  />
+                </div>
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full" 
@@ -1162,17 +1161,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Indirizzo *</Label>
-                <Input
-                  id="address"
-                  value={propertyData.address}
-                  onChange={(e) => setPropertyData({ ...propertyData, address: e.target.value })}
-                  required
-                  placeholder="Via Roma 123"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">Città *</Label>
@@ -1242,40 +1230,59 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
               <div className="space-y-2">
                 <Label>Servizi/Amenities</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={currentAmenity}
-                    onChange={(e) => setCurrentAmenity(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addAmenity()
-                      }
-                    }}
-                    placeholder="WiFi, Piscina, Parcheggio..."
-                  />
-                  <Button type="button" onClick={addAmenity}>
-                    Aggiungi
-                  </Button>
-                </div>
-                {propertyData.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {propertyData.amenities.map((amenity, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
-                      >
+                <p className="text-xs text-muted-foreground">Seleziona i servizi disponibili nella struttura</p>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
+                  {AMENITIES_LIST.map((amenity) => (
+                    <div key={amenity} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`amenity-${amenity}`}
+                        checked={propertyData.amenities.includes(amenity)}
+                        onCheckedChange={() => toggleAmenity(amenity)}
+                      />
+                      <Label htmlFor={`amenity-${amenity}`} className="font-normal text-sm cursor-pointer">
                         {amenity}
-                        <button
-                          type="button"
-                          onClick={() => removeAmenity(amenity)}
-                          className="hover:text-destructive"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Documenti CIN e CIR (opzionale, puoi caricarli anche dopo)</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="cin" className="text-sm">Codice Identificativo Nazionale (CIN)</Label>
+                    <Input
+                      id="cin"
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setCinFile(e.target.files?.[0] || null)}
+                    />
+                    {cinFile && <p className="text-xs text-muted-foreground">{cinFile.name}</p>}
                   </div>
+                  <div>
+                    <Label htmlFor="cir" className="text-sm">Codice Identificativo Regionale (CIR)</Label>
+                    <Input
+                      id="cir"
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setCirFile(e.target.files?.[0] || null)}
+                    />
+                    {cirFile && <p className="text-xs text-muted-foreground">{cirFile.name}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="cin_cir_skip"
+                    checked={cinCirSkipped}
+                    onCheckedChange={(c) => setCinCirSkipped(!!c)}
+                  />
+                  <Label htmlFor="cin_cir_skip" className="font-normal text-sm">Salta per ora, caricherò dopo</Label>
+                </div>
+                {cinCirSkipped && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+                    Sarà obbligatorio dimostrare di essere in possesso di tali documenti per poter utilizzare la propria struttura per l&apos;affitto a breve termine.
+                  </p>
                 )}
               </div>
 
@@ -1288,7 +1295,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                   multiple
                   onChange={handleImageChange}
                 />
-                <p className="text-xs text-muted-foreground dark:text-gray-400">Max 10MB per immagine (ritaglio disponibile)</p>
+                <p className="text-xs text-muted-foreground dark:text-gray-400">Puoi selezionare e caricare fino a 10 foto in un&apos;unica operazione. Max 10MB per immagine (ritaglio disponibile).</p>
                 {propertyData.imagePreviews.length > 0 && (
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     {propertyData.imagePreviews.map((preview, index) => (
@@ -1360,44 +1367,12 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
             <div className="space-y-6 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
               <h3 className="font-semibold text-blue-900 dark:text-blue-100">Programma KOL&BED</h3>
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                Per guadagnare il 100% dalle tue prenotazioni e arrivare a non pagare neppure l'1% di commissione sulle prenotazioni, 
-                devi aderire al programma KOL&BED. Avrai la possibilità di mettere a disposizione per un certo numero 
-                di giorni, nei periodi scelti da te stesso, la tua struttura ricettiva in cambio di visibilità, pubblicità, 
-                video e book fotografico da influencer con già una certa popolarità sui social come Instagram, Facebook, 
-                TikTok o altre piattaforme a scelta.
+                In qualità di Host, devi aderire al programma KOL&BED e mettere a disposizione la tua struttura ad influencer per almeno 7 notti l&apos;anno. 
+                Potrai modificare le date dalla dashboard tramite il calendario. Dal calendario potrai: aprire le date (disponibile per viaggiatori), 
+                chiuderle con un click (rosso = non disponibile), selezionarle per KOL&BED con doppio click (verde = disponibile per influencer).
               </p>
             </div>
             <form onSubmit={handleKolBedProgramSubmit} className="space-y-6">
-              {/* Calendario per selezionare date disponibili */}
-              {/* Il calendario viene sempre mostrato se userId esiste, anche se propertyId non è ancora caricato */}
-              {userId && (
-                <KolBedCalendarSelector
-                  hostId={userId}
-                  propertyId={propertyId || undefined}
-                  selectedDates={kolBedData.selectedDates}
-                  onDatesChange={(dates) => setKolBedData({ ...kolBedData, selectedDates: dates })}
-                />
-              )}
-
-              {/* Tipo di influencer */}
-              <div className="space-y-2">
-                <Label htmlFor="influencer_type">Tipo di influencer preferito</Label>
-                <Select
-                  value={kolBedData.influencer_type}
-                  onValueChange={(value: any) => setKolBedData({ ...kolBedData, influencer_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona tipo di influencer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="micro">Micro (1K-100K follower)</SelectItem>
-                    <SelectItem value="macro">Macro (100K-1M follower)</SelectItem>
-                    <SelectItem value="mega">Mega (1M+ follower)</SelectItem>
-                    <SelectItem value="any">Qualsiasi</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Nicchia preferita */}
               <div className="space-y-2">
                 <Label htmlFor="preferred_niche">Nicchia di riferimento</Label>
@@ -1541,42 +1516,6 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                 </div>
               </div>
 
-              {/* Mesi disponibili */}
-              <div className="space-y-2">
-                <Label>Mesi in cui aderisci al programma KOL&BED</Label>
-                <div className="grid grid-cols-6 gap-2">
-                  {[
-                    { num: 1, name: "Gen" },
-                    { num: 2, name: "Feb" },
-                    { num: 3, name: "Mar" },
-                    { num: 4, name: "Apr" },
-                    { num: 5, name: "Mag" },
-                    { num: 6, name: "Giu" },
-                    { num: 7, name: "Lug" },
-                    { num: 8, name: "Ago" },
-                    { num: 9, name: "Set" },
-                    { num: 10, name: "Ott" },
-                    { num: 11, name: "Nov" },
-                    { num: 12, name: "Dic" },
-                  ].map((month) => (
-                    <Button
-                      key={month.num}
-                      type="button"
-                      variant={kolBedData.kol_bed_months.includes(month.num) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        const months = kolBedData.kol_bed_months.includes(month.num)
-                          ? kolBedData.kol_bed_months.filter((m) => m !== month.num)
-                          : [...kolBedData.kol_bed_months, month.num]
-                        setKolBedData({ ...kolBedData, kol_bed_months: months })
-                      }}
-                    >
-                      {month.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -1597,14 +1536,18 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     )
   }
 
-  // Step 4: Website Offer
   if (step === "website-offer") {
     const isFirst100 = (hostCount || 0) < 100
     const offerPrice = isFirst100 ? 299 : 799
+    const position = hostCount ?? 0
+    const maxPos = 100
 
     return (
       <>
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827]">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-[#111827] dark:to-[#111827] relative">
+          <p className="absolute bottom-4 right-4 text-xs text-muted-foreground">
+            {position}/{maxPos}
+          </p>
           <Card className="w-full max-w-2xl">
             <CardHeader>
               <CardTitle>Offerta Speciale Sito Web</CardTitle>

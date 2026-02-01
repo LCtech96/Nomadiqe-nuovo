@@ -1,0 +1,32 @@
+/** Lista predefinita di servizi/amenities per le strutture */
+export const AMENITIES_LIST = [
+  "WiFi",
+  "Aria condizionata",
+  "Riscaldamento",
+  "Piscina",
+  "Parcheggio",
+  "Cucina",
+  "Lavatrice",
+  "Asciugatrice",
+  "TV",
+  "Balcone",
+  "Giardino",
+  "Terrazza",
+  "Palestra",
+  "Sauna",
+  "Idromassaggio",
+  "Spiaggia privata",
+  "Reception 24h",
+  "Colazione inclusa",
+  "Animali ammessi",
+  "Ascensore",
+  "Accesso disabili",
+  "Vista mare",
+  "Vista montagna",
+  "Caminetto",
+  "Barbecue",
+  "Bici disponibili",
+  "Noleggio attrezzatura sportiva",
+] as const
+
+export type Amenity = (typeof AMENITIES_LIST)[number]
