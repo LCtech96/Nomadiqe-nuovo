@@ -76,7 +76,7 @@ export async function POST(
       }
     }
 
-    for (const dateStr of blockedDates) {
+    for (const dateStr of Array.from(blockedDates)) {
       await supabase.from("property_daily_pricing").upsert(
         {
           property_id: propertyId,
