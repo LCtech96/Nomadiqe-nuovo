@@ -7,6 +7,7 @@ import { I18nProvider } from "@/lib/i18n/context";
 import { Toaster } from "@/components/ui/toaster";
 import Navbar from "@/components/navbar";
 import BottomNav from "@/components/bottom-nav";
+import SupportButton from "@/components/support-button";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
               <Navbar />
               <main className="pb-16 md:pb-0">{children}</main>
               <BottomNav />
+              <SupportButton />
               <Toaster />
               <Analytics />
               <SpeedInsights />

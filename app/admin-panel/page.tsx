@@ -6,6 +6,7 @@ import WaitlistAdminPanel from "@/components/admin/waitlist-admin-panel"
 import CleanerApprovalsPanel from "@/components/admin/cleaner-approvals-panel"
 import CreatorVerificationPanel from "@/components/admin/creator-verification-panel"
 import UsersPanel from "@/components/admin/users-panel"
+import SupportPanel from "@/components/admin/support-panel"
 
 export default async function AdminPanelPage() {
   const session = await getServerSession(authOptions)
@@ -25,6 +26,11 @@ export default async function AdminPanelPage() {
               Gestisci waitlist, richieste Cleaner e verifica creator.
             </p>
           </div>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Richieste assistenza</h2>
+            <SupportPanel />
+          </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-4">Utenti</h2>
