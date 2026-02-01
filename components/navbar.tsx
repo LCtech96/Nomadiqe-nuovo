@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "next-themes"
-import { Moon, Sun, Menu, ChevronDown, Trash2, Bell, Mail, LayoutDashboard, BellRing, Users } from "lucide-react"
+import { Moon, Sun, Menu, ChevronDown, Trash2, Bell, Mail, LayoutDashboard, BellRing, Users, HelpCircle } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
@@ -764,6 +764,16 @@ export default function Navbar() {
                   )}
                 </div>
                 <div className="border-t pt-4 space-y-2">
+                  {profile?.role === "host" && (
+                    <Link
+                      href="/faq"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 w-full py-2 text-base hover:bg-accent rounded-md px-2"
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                      FAQ&apos;s
+                    </Link>
+                  )}
                   <div className="space-y-1">
                     <button
                       onClick={() => setSettingsOpen(!settingsOpen)}
