@@ -51,7 +51,7 @@ export default function SupportPanel() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Errore")
       setRequests(data.requests || [])
-      const ids = [...new Set((data.requests || []).map((r: Request) => r.user_id))]
+      const ids = Array.from(new Set((data.requests || []).map((r: Request) => r.user_id)))
       if (ids.length > 0) {
         const profRes = await fetch(
           `/api/admin/support/profiles?ids=${encodeURIComponent(JSON.stringify(ids))}`,
