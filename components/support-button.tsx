@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { put } from "@vercel/blob"
-import { HelpCircle, Send, Upload } from "lucide-react"
+import { HelpCircle, Send, Upload, RefreshCw } from "lucide-react"
 
 const ALLOWED_ROLES = ["host", "creator", "jolly"]
 
@@ -32,6 +32,9 @@ export default function SupportButton() {
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([])
   const [replyText, setReplyText] = useState("")
   const [sending, setSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.id) return
@@ -53,11 +56,29 @@ export default function SupportButton() {
     if (open && session?.user?.id) loadRequests()
   }, [open, session?.user?.id])
 
+  // Auto-refresh messaggi quando si visualizza una richiesta (per vedere risposte admin)
+  useEffect(() => {
+    if (!viewingId || !session?.user?.id) return
+    const interval = setInterval(() => {
+      fetch(`/api/support/requests/${viewingId}`, { credentials: "include" })
+        .then((r) => r.json())
+        .then((d) => {
+          setRequestDetail(d)
+          setTimeout(scrollToBottom, 100)
+        })
+        .catch(() => {})
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [viewingId, session?.user?.id])
+
   const loadDetail = (id: string) => {
     setViewingId(id)
     fetch(`/api/support/requests/${id}`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => setRequestDetail(d))
+      .then((d) => {
+        setRequestDetail(d)
+        setTimeout(scrollToBottom, 150)
+      })
       .catch(() => setRequestDetail(null))
     setReplyText("")
   }
@@ -186,9 +207,20 @@ export default function SupportButton() {
 
           {viewingId ? (
             <div className="space-y-4">
-              <Button variant="ghost" size="sm" onClick={() => { setViewingId(null); setRequestDetail(null) }}>
-                ← Indietro
-              </Button>
+              <div className="flex items-center justify-between">
+                <Button variant="ghost" size="sm" onClick={() => { setViewingId(null); setRequestDetail(null) }}>
+                  ← Indietro
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => viewingId && loadDetail(viewingId)}
+                  title="Aggiorna messaggi"
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Aggiorna
+                </Button>
+              </div>
               {requestDetail && (
                 <>
                   <div className="rounded border p-3 bg-muted/50">
@@ -199,7 +231,7 @@ export default function SupportButton() {
                         new Date(requestDetail.request.created_at).toLocaleDateString("it-IT")}
                     </p>
                   </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-56 overflow-y-auto" id="support-messages">
                     {requestDetail.messages?.map((m: any) => (
                       <div
                         key={m.id}
@@ -229,6 +261,7 @@ export default function SupportButton() {
                         </p>
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
                   {requestDetail.request?.status !== "closed" && (
                     <form onSubmit={handleReply} className="space-y-2">
