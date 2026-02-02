@@ -8,6 +8,7 @@ import CreatorVerificationPanel from "@/components/admin/creator-verification-pa
 import UsersPanel from "@/components/admin/users-panel"
 import SupportPanel from "@/components/admin/support-panel"
 import PostApprovalPanel from "@/components/admin/post-approval-panel"
+import BioLinkApprovalPanel from "@/components/admin/bio-link-approval-panel"
 
 export default async function AdminPanelPage() {
   const session = await getServerSession(authOptions)
@@ -31,6 +32,11 @@ export default async function AdminPanelPage() {
           <section>
             <h2 className="text-xl font-semibold mb-4">Approvazione post</h2>
             <PostApprovalPanel />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Link nella bio host</h2>
+            <BioLinkApprovalPanel />
           </section>
 
           <section>

@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useI18n } from "@/lib/i18n/context"
 
 type DateStatus = "available" | "closed" | "kolbed"
 
@@ -61,6 +62,7 @@ export default function HostAvailabilityCalendar({
   const [syncing, setSyncing] = useState(false)
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
+  const { t } = useI18n()
 
   const selectedProp = propertiesWithSync?.find((p) => p.id === selectedPropertyId)
 
@@ -201,7 +203,7 @@ export default function HostAvailabilityCalendar({
   if (propertyIds.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground">
-        Crea una struttura per gestire il calendario
+        {t("calendar.createProperty")}
       </div>
     )
   }
@@ -216,13 +218,13 @@ export default function HostAvailabilityCalendar({
         </div>
       )}
       <div>
-        <label className="text-sm font-medium mb-2 block">Struttura</label>
+        <label className="text-sm font-medium mb-2 block">{t("calendar.property")}</label>
         <Select
           value={selectedPropertyId ?? ""}
           onValueChange={setSelectedPropertyId}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Seleziona struttura" />
+            <SelectValue placeholder={t("calendar.selectProperty")} />
           </SelectTrigger>
           <SelectContent>
             {propertyIds.map((p) => (
@@ -249,17 +251,16 @@ export default function HostAvailabilityCalendar({
             className="flex items-center gap-2 w-full text-left font-medium"
           >
             <Link2 className="h-4 w-4" />
-            Sincronizza con Airbnb e Booking.com
+            {t("calendar.sync.title")}
             <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${syncSectionOpen ? "rotate-180" : ""}`} />
           </button>
           {syncSectionOpen && (
             <div className="space-y-4 pt-2">
               <p className="text-xs text-muted-foreground">
-                Importa le prenotazioni da Airbnb/Booking: le date occupate verranno bloccate automaticamente su Nomadiqe.
-                Esporta su Airbnb/Booking: le date chiuse o KOL&BED su Nomadiqe verranno bloccate sulle altre piattaforme.
+                {t("calendar.sync.importDesc")}
               </p>
               <div>
-                <Label className="text-sm">URL calendario Airbnb (export)</Label>
+                <Label className="text-sm">{t("calendar.sync.airbnbUrl")}</Label>
                 <Input
                   placeholder="https://www.airbnb.com/calendar/ical/..."
                   value={airbnbUrl}
@@ -279,7 +280,7 @@ export default function HostAvailabilityCalendar({
                   className="mt-1"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Da Booking.com: Calendario → Sincronizza con calendari esterni
+                  {t("calendar.sync.bookingHint")}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -302,13 +303,13 @@ export default function HostAvailabilityCalendar({
                       toast({ title: "Salvato", description: "URL calendario salvati" })
                       onSave?.()
                     } catch (e) {
-                      toast({ title: "Errore", description: (e as Error)?.message || "Salvataggio fallito", variant: "destructive" })
+                      toast({ title: t("dashboard.host.error"), description: (e as Error)?.message, variant: "destructive" })
                     } finally {
                       setSavingSync(false)
                     }
                   }}
                 >
-                  {savingSync ? "Salvataggio..." : "Salva URL"}
+                  {savingSync ? t("general.saving") : t("calendar.sync.saveUrls")}
                 </Button>
                 <Button
                   size="sm"
@@ -323,7 +324,7 @@ export default function HostAvailabilityCalendar({
                       if (!res.ok) throw new Error(data.error || "Errore")
                       loadDates()
                       onSave?.()
-                      toast({ title: "Sincronizzato", description: `${data.blockedCount || 0} date bloccate da Airbnb/Booking` })
+                      toast({ title: t("calendar.sync.synced"), description: t("calendar.sync.blockedDates").replace("{n}", String(data.blockedCount || 0)) })
                     } catch (e) {
                       toast({ title: "Errore sync", description: (e as Error)?.message || "Sincronizzazione fallita", variant: "destructive" })
                     } finally {
@@ -335,9 +336,9 @@ export default function HostAvailabilityCalendar({
                 </Button>
               </div>
               <div>
-                <Label className="text-sm">Link da aggiungere su Airbnb e Booking</Label>
+                <Label className="text-sm">{t("calendar.sync.exportLink")}</Label>
                 <p className="text-xs text-muted-foreground mb-1">
-                  Copia questo link e aggiungilo su Airbnb/Booking come &quot;Importa calendario&quot; per bloccare le tue date Nomadiqe
+                  {t("calendar.sync.exportHint")}
                 </p>
                 <div className="flex gap-2">
                   <Input
@@ -354,7 +355,7 @@ export default function HostAvailabilityCalendar({
                       toast({ title: "Copiato", description: "Link copiato negli appunti" })
                     }}
                   >
-                    Copia
+                    {t("calendar.sync.copy")}
                   </Button>
                 </div>
               </div>
@@ -437,7 +438,7 @@ export default function HostAvailabilityCalendar({
         })}
       </div>
       {saving && (
-        <p className="text-xs text-muted-foreground">Salvataggio...</p>
+        <p className="text-xs text-muted-foreground">{t("general.saving")}</p>
       )}
     </div>
   )

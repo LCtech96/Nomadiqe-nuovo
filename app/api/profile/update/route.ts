@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createSupabaseAdminClient } from "@/lib/supabase/server"
+import { extractLinksFromText } from "@/lib/bio-links"
+import { ADMIN_EMAILS } from "@/lib/admin"
 
 /**
  * POST /api/profile/update
  * Aggiorna il profilo dell'utente autenticato.
- * Usa il service role Supabase per evitare problemi con auth.uid() quando
- * l'utente fa login con NextAuth (es. Google) senza sessione Supabase.
+ * Per host: se la bio contiene link (https://, http://, www.), crea richieste di approvazione e notifica admin.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +39,60 @@ export async function POST(request: NextRequest) {
     if (presentation_video_url !== undefined) updatePayload.presentation_video_url = presentation_video_url ?? null
 
     const supabase = createSupabaseAdminClient()
+
+    if (bio !== undefined) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("id", session.user.id)
+        .single()
+
+      if (profile?.role === "host" && bio?.trim()) {
+        const links = extractLinksFromText(bio)
+        let hasNewPending = false
+        for (const linkUrl of links) {
+          const { data: existing } = await supabase
+            .from("bio_link_approvals")
+            .select("id, status")
+            .eq("user_id", session.user.id)
+            .eq("link_url", linkUrl)
+            .maybeSingle()
+
+          if (!existing || existing.status === "rejected") {
+            hasNewPending = true
+            const bioSnippet = bio.length > 100 ? bio.slice(0, 100) + "..." : bio
+            await supabase.from("bio_link_approvals").upsert(
+              {
+                user_id: session.user.id,
+                link_url: linkUrl,
+                status: "pending",
+                bio_snippet: bioSnippet,
+              },
+              { onConflict: "user_id,link_url" }
+            )
+          }
+        }
+
+        if (hasNewPending) {
+            const { data: adminProfiles } = await supabase
+              .from("profiles")
+              .select("id")
+              .in("email", ADMIN_EMAILS)
+
+            const adminIds = (adminProfiles || []).map((p: any) => p.id).filter(Boolean)
+          for (const adminId of adminIds) {
+            await supabase.from("notifications").insert({
+              user_id: adminId,
+              type: "bio_link_pending",
+              title: "Nuovo link nella bio host in attesa di approvazione",
+              message: `Un host ha inserito un link nella bio. Approva o rifiuta dall'admin panel.`,
+              related_id: session.user.id,
+            })
+          }
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update(updatePayload)

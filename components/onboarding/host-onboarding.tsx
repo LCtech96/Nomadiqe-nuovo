@@ -363,6 +363,14 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
       if (error) throw error
 
+      if (profileData.bio?.trim()) {
+        await fetch("/api/profile/check-bio-links", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bio: profileData.bio.trim() }),
+        })
+      }
+
       // Save onboarding state
       await saveOnboardingState("property", ["role", "profile"], {
         full_name: profileData.fullName,

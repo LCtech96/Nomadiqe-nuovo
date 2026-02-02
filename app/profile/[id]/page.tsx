@@ -46,6 +46,7 @@ import SendMessageDialog from "@/components/send-message-dialog"
 import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
 import HostAvailabilityCalendar from "@/components/host-availability-calendar"
 import RequestServiceDialog from "@/components/request-service-dialog"
+import ProfileBioDisplay from "@/components/profile-bio-display"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
 import { usePropertiesTranslations } from "@/lib/hooks/use-properties-translations"
@@ -832,7 +833,12 @@ export default function PublicProfilePage() {
                   <p className="text-muted-foreground mb-2">@{profile.username}</p>
                 )}
                 {profile.bio && (
-                  <p className="text-muted-foreground mb-4">{profile.bio}</p>
+                  <ProfileBioDisplay
+                    bio={profile.bio}
+                    userId={profile.id}
+                    isHost={profile.role === "host"}
+                    className="text-muted-foreground mb-4"
+                  />
                 )}
                 
                 {/* Stats */}

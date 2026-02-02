@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import HostAvailabilityCalendar from "@/components/host-availability-calendar"
+import { useI18n } from "@/lib/i18n/context"
 
 interface Property {
   id: string
@@ -48,6 +49,7 @@ export default function HostDashboard() {
   const router = useRouter()
   const supabase = createSupabaseClient()
   const { toast } = useToast()
+  const { t } = useI18n()
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [checkingOnboarding, setCheckingOnboarding] = useState(true)
@@ -440,9 +442,9 @@ export default function HostDashboard() {
         }),
       })
       setWebsiteOfferRequested(true)
-      toast({ title: "Richiesta inviata", description: "Verrai contattato nei prossimi giorni." })
+      toast({ title: t("dashboard.host.requestSent"), description: t("dashboard.host.requestSentDesc") })
     } catch (e: any) {
-      toast({ title: "Errore", description: e?.message || "Richiesta fallita", variant: "destructive" })
+      toast({ title: t("dashboard.host.error"), description: e?.message || t("dashboard.host.requestFailed"), variant: "destructive" })
     } finally {
       setRequestingWebsiteOffer(false)
     }
@@ -451,7 +453,7 @@ export default function HostDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
-        <div>Caricamento...</div>
+        <div>{t("general.loading")}</div>
       </div>
     )
   }
@@ -462,12 +464,12 @@ export default function HostDashboard() {
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold mb-2">Dashboard Host</h1>
-            <p className="text-muted-foreground">Gestisci le tue strutture</p>
+            <p className="text-muted-foreground">{t("dashboard.host.yourPropertiesDesc")}</p>
           </div>
           <Button asChild>
             <Link href="/dashboard/host/properties/new">
               <Plus className="w-4 h-4 mr-2" />
-              Nuova struttura
+              {t("dashboard.host.newProperty")}
             </Link>
           </Button>
         </div>
@@ -484,7 +486,7 @@ export default function HostDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Strutture attive</CardTitle>
+              <CardTitle>{t("dashboard.host.activeProperties")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
@@ -495,7 +497,7 @@ export default function HostDashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Host invitati attivi</CardTitle>
+              <CardTitle>{t("dashboard.host.activeReferrals")}</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{activeReferralsCount}</p>
@@ -541,7 +543,7 @@ export default function HostDashboard() {
                         </div>
                       )}
                       <div className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded text-sm font-bold">
-                        €{property.price_per_night}/notte
+                        €{property.price_per_night} {t("property.pricePerNight")}
                       </div>
                     </div>
                     <CardHeader className="pb-2">
@@ -558,7 +560,7 @@ export default function HostDashboard() {
                       <div className="flex gap-2">
                         <Button asChild variant="outline" className="flex-1" size="sm">
                           <Link href={`/dashboard/host/properties/${property.id}`}>
-                            Modifica
+                            {t("general.edit")}
                           </Link>
                         </Button>
                         <Button asChild variant="outline" className="flex-1" size="sm">
@@ -586,10 +588,10 @@ export default function HostDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Calendario disponibilità
+              {t("dashboard.host.calendar")}
             </CardTitle>
             <CardDescription>
-              Gestisci le date: clic singolo per aprire/chiudere, doppio clic per KOL&BED
+              {t("dashboard.host.calendarDesc")}
             </CardDescription>
           </CardHeader>
           <CardContent>

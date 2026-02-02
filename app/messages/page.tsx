@@ -13,6 +13,8 @@ import { MessageCircle, Send, User, ArrowLeft } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { it } from "date-fns/locale"
 import { BookingRequestActions } from "@/components/booking-request-actions"
+import { TranslatedMessageContent } from "@/components/translated-message-content"
+import { useI18n } from "@/lib/i18n/context"
 
 interface Message {
   id: string
@@ -63,6 +65,7 @@ export default function MessagesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
@@ -421,8 +424,8 @@ export default function MessagesPage() {
     } catch (error) {
       console.error("Error loading conversations:", error)
       toast({
-        title: "Errore",
-        description: "Impossibile caricare le conversazioni",
+        title: t("general.error"),
+        description: t("messages.loadError"),
         variant: "destructive",
       })
     } finally {
@@ -794,64 +797,52 @@ export default function MessagesPage() {
                               </div>
                             )}
                             <div className="text-sm whitespace-pre-wrap break-words">
-                              {msg.content.split(/(https?:\/\/[^\s]+)/g).map((part, index) => {
-                                if (part.match(/^https?:\/\//)) {
-                                  // È un link, rendilo copiabile
-                                  return (
-                                    <div key={index} className="my-2">
-                                      <div className="flex items-center gap-2 p-2 bg-muted rounded-lg border">
-                                        <span className="flex-1 text-xs break-all font-mono">{part}</span>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="shrink-0 h-8 px-3 text-xs"
-                                          onClick={async () => {
-                                            try {
-                                              if (navigator.clipboard && navigator.clipboard.writeText) {
-                                                await navigator.clipboard.writeText(part)
-                                                toast({
-                                                  title: "✅ Link copiato!",
-                                                  description: "Il link è stato copiato negli appunti. Puoi incollarlo su WhatsApp o altre piattaforme.",
-                                                  duration: 3000,
-                                                })
-                                              } else {
-                                                // Fallback per browser più vecchi
-                                                const textArea = document.createElement("textarea")
-                                                textArea.value = part
-                                                textArea.style.position = "fixed"
-                                                textArea.style.top = "0"
-                                                textArea.style.left = "0"
-                                                textArea.style.opacity = "0"
-                                                document.body.appendChild(textArea)
-                                                textArea.focus()
-                                                textArea.select()
-                                                document.execCommand("copy")
-                                                document.body.removeChild(textArea)
-                                                toast({
-                                                  title: "✅ Link copiato!",
-                                                  description: "Il link è stato copiato negli appunti.",
-                                                  duration: 3000,
-                                                })
-                                              }
-                                            } catch (err) {
-                                              console.error("Error copying link:", err)
+                              <TranslatedMessageContent
+                                content={msg.content}
+                                className="contents"
+                                renderLink={(url, index) => (
+                                  <div key={index} className="my-2">
+                                    <div className="flex items-center gap-2 p-2 bg-muted rounded-lg border">
+                                      <span className="flex-1 text-xs break-all font-mono">{url}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="shrink-0 h-8 px-3 text-xs"
+                                        onClick={async () => {
+                                          try {
+                                            if (navigator.clipboard?.writeText) {
+                                              await navigator.clipboard.writeText(url)
                                               toast({
-                                                title: "Errore",
-                                                description: "Impossibile copiare il link",
-                                                variant: "destructive",
+                                                title: `✅ ${t("messages.linkCopied")}`,
+                                                description: t("messages.linkCopiedDesc"),
+                                                duration: 3000,
                                               })
+                                            } else {
+                                              const textArea = document.createElement("textarea")
+                                              textArea.value = url
+                                              textArea.style.position = "fixed"
+                                              textArea.style.opacity = "0"
+                                              document.body.appendChild(textArea)
+                                              textArea.select()
+                                              document.execCommand("copy")
+                                              document.body.removeChild(textArea)
+                                              toast({ title: `✅ ${t("messages.linkCopied")}`, duration: 3000 })
                                             }
-                                          }}
-                                        >
-                                          📋 Copia
-                                        </Button>
-                                      </div>
+                                          } catch {
+                                            toast({
+                                              title: t("general.error"),
+                                              description: "Impossibile copiare il link",
+                                              variant: "destructive",
+                                            })
+                                          }
+                                        }}
+                                      >
+                                        📋 {t("messages.copy")}
+                                      </Button>
                                     </div>
-                                  )
-                                }
-                                // Testo normale
-                                return <span key={index}>{part}</span>
-                              })}
+                                  </div>
+                                )}
+                              />
                             </div>
                             {/* Mostra bottoni accetta/rifiuta per richieste di prenotazione in attesa ricevute dall'host */}
                             {!isOwn && msg.booking_request_data && msg.booking_request_status === "pending" && (

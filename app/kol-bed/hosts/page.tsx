@@ -10,6 +10,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import Image from "next/image"
 import Link from "next/link"
 import { Search, Building2, MapPin, ArrowLeft, User } from "lucide-react"
+import { BioWithApprovedLinks } from "@/components/bio-with-approved-links"
 
 interface HostProfile {
   id: string
@@ -34,6 +35,7 @@ export default function HostsListPage() {
   const router = useRouter()
   const supabase = createSupabaseClient()
   const [hosts, setHosts] = useState<HostProfile[]>([])
+  const [approvedLinksByHost, setApprovedLinksByHost] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
 
@@ -76,6 +78,21 @@ export default function HostsListPage() {
       )
 
       setHosts(hostsWithProperties)
+
+      // Carica link approvati per ogni host (per bio cliccabili)
+      const linksMap: Record<string, string[]> = {}
+      await Promise.all(
+        (hostsWithProperties || []).map(async (host) => {
+          try {
+            const res = await fetch(`/api/profile/${host.id}/approved-bio-links`)
+            const data = await res.json()
+            if (data?.urls?.length) linksMap[host.id] = data.urls
+          } catch {
+            /* ignore */
+          }
+        })
+      )
+      setApprovedLinksByHost(linksMap)
     } catch (error) {
       console.error("Error loading hosts:", error)
     } finally {
@@ -213,9 +230,11 @@ export default function HostsListPage() {
                             </p>
                           )}
                           {host.bio && (
-                            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                              {host.bio}
-                            </p>
+                            <BioWithApprovedLinks
+                              bio={host.bio}
+                              approvedUrls={approvedLinksByHost[host.id] || []}
+                              className="text-sm text-muted-foreground mt-1 line-clamp-2"
+                            />
                           )}
                         </div>
                       </div>

@@ -147,6 +147,8 @@ export default function Navbar() {
         router.push(`/profile/${notification.related_id}`)
       } else if (notification.type === "message") {
         router.push("/messages")
+      } else if (notification.type === "bio_link_pending") {
+        router.push("/admin-panel")
       }
     } else if (notification.type === "message") {
       router.push("/messages")
@@ -229,8 +231,8 @@ export default function Navbar() {
     } catch (error: any) {
       console.error("Error deleting profile:", error)
       toast({
-        title: "Errore",
-        description: error.message || "Si è verificato un errore durante l'eliminazione del profilo.",
+        title: t("general.error"),
+        description: error.message || t("toast.deleteError"),
         variant: "destructive",
       })
     } finally {
@@ -268,8 +270,8 @@ export default function Navbar() {
       if (success) {
         const roleLabel = profile?.role === "host" ? "host" : "creator"
         toast({
-          title: "✅ Link di invito inviato!",
-          description: `Il link è stato inviato nella chat con l'assistente Nomadiqe. Apri i messaggi per copiarlo e condividerlo!`,
+          title: `✅ ${t("toast.inviteSent")}`,
+          description: t("toast.inviteSentDesc"),
           duration: 5000,
         })
 
@@ -292,8 +294,8 @@ export default function Navbar() {
   const handleEnablePushNotifications = async () => {
     if (!session?.user?.id) {
       toast({
-        title: "Errore",
-        description: "Devi essere autenticato per attivare le notifiche",
+        title: t("general.error"),
+        description: t("toast.authRequired"),
         variant: "destructive",
       })
       return
@@ -466,10 +468,10 @@ export default function Navbar() {
             {session && (
               <div className="hidden md:flex items-center gap-4">
                 <Link href="/explore" className="text-sm font-medium hover:text-primary">
-                  Esplora
+                  {t('nav.explore')}
                 </Link>
                 <Link href="/home" className="text-sm font-medium hover:text-primary">
-                  Home
+                  {t('nav.home')}
                 </Link>
                 <Link
                   href={getDashboardUrl(profile?.role)}
@@ -480,7 +482,7 @@ export default function Navbar() {
                 </Link>
                 {profile?.role !== "traveler" && (
                   <Link href="/kol-bed" className="text-sm font-medium hover:text-primary">
-                    KOL&BED
+                    {t('nav.kolBed')}
                   </Link>
                 )}
               </div>
@@ -597,7 +599,7 @@ export default function Navbar() {
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">Profilo</Link>
+                    <Link href="/profile">{t('nav.profile')}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   {/* Temporaneamente nascosto - Elimina profilo */}
@@ -610,7 +612,7 @@ export default function Navbar() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator /> */}
                   <DropdownMenuItem onClick={() => signOut()}>
-                    Esci
+                    {t('nav.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -771,7 +773,7 @@ export default function Navbar() {
                       className="flex items-center gap-2 w-full py-2 text-base hover:bg-accent rounded-md px-2"
                     >
                       <HelpCircle className="h-4 w-4" />
-                      FAQ&apos;s
+                      {t('nav.faq')}
                     </Link>
                   )}
                   <div className="space-y-1">
