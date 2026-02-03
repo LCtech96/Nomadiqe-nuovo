@@ -85,15 +85,15 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
     "translation",
   ] as const
   const SERVICE_TYPE_LABELS: Record<string, string> = {
-    cleaning: "Pulizie",
-    property_management: "Gestione proprietà",
-    photography: "Fotografia",
-    videography: "Video",
-    maintenance: "Manutenzione",
-    concierge: "Concierge",
-    cooking: "Cucina",
-    driver: "Autista",
-    translation: "Traduzione",
+    cleaning: t("jolly.serviceType.cleaning"),
+    property_management: t("jolly.serviceType.property_management"),
+    photography: t("jolly.serviceType.photography"),
+    videography: t("jolly.serviceType.videography"),
+    maintenance: t("jolly.serviceType.maintenance"),
+    concierge: t("jolly.serviceType.concierge"),
+    cooking: t("jolly.serviceType.cooking"),
+    driver: t("jolly.serviceType.driver"),
+    translation: t("jolly.serviceType.translation"),
   }
 
   const CURRENCIES = [
@@ -206,8 +206,8 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
       // Allow larger files (up to 10MB) since we'll crop and compress
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: "File troppo grande",
-          description: "L'immagine deve essere inferiore a 10MB",
+          title: t("general.error"),
+          description: t("onboarding.errorAvatarSize"),
           variant: "destructive",
         })
         return
@@ -247,8 +247,8 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
 
     if (!profileData.username.trim()) {
       toast({
-        title: "Campo obbligatorio",
-        description: "Inserisci un username",
+        title: t("general.error"),
+        description: t("onboarding.errorUsernameRequired"),
         variant: "destructive",
       })
       return
@@ -264,10 +264,10 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
     }
 
     if (usernameAvailable === null && checkingUsername) {
-      toast({
-        title: "Attendere",
-        description: "Verifica username in corso...",
-      })
+        toast({
+          title: t("onboarding.errorWait"),
+          description: t("onboarding.errorUsernameChecking"),
+        })
       return
     }
 
@@ -314,8 +314,8 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
       if (error) throw error
 
       toast({
-        title: "Profilo completato!",
-        description: "Aggiungi il tipo di servizio che vuoi offrire.",
+        title: t("general.success"),
+        description: t("jolly.servicesYouOfferDesc"),
       })
 
       setStep("services")
@@ -381,7 +381,7 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
 
       if (error) throw error
 
-      toast({ title: "Servizio aggiunto!", description: "Passo all'offerta sito web." })
+      toast({ title: t("general.success"), description: t("jolly.servicesYouOfferDesc") })
       setStep("website-offer")
     } catch (err: any) {
       toast({
@@ -475,7 +475,7 @@ export default function JollyOnboarding({ redirectOnComplete }: JollyOnboardingP
       if (error) console.warn("onboarding_completed update:", error)
 
       await updateSession?.()
-      toast({ title: "Onboarding completato", description: "Redirect alla Home." })
+      toast({ title: t("onboarding.completed"), description: t("onboarding.preparingDashboard") })
       router.push(completionUrl)
     } catch (err: any) {
       toast({

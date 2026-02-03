@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from "@/components/ui/checkbox"
 import { AMENITIES_LIST } from "@/lib/constants/amenities"
 import PropertyPricingCalendar, { DEFAULT_PRICE } from "@/components/property-pricing-calendar"
+import { useI18n } from "@/lib/i18n/context"
 
 type HostOnboardingStep = "profile" | "property" | "kol-bed-program" | "website-offer"
 
@@ -37,6 +38,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
   const { data: session, update: updateSession } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [step, setStep] = useState<HostOnboardingStep>("profile")
   const [loading, setLoading] = useState(false)
@@ -237,8 +239,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       // Allow larger files (up to 10MB) since we'll crop and compress
       if (file.size > 10 * 1024 * 1024) {
         toast({
-          title: "Errore",
-          description: "L'immagine deve essere inferiore a 10MB",
+          title: t("general.error"),
+          description: t("onboarding.errorAvatarSize"),
           variant: "destructive",
         })
         return
@@ -266,8 +268,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     
     if (!userId) {
       toast({
-        title: "Errore",
-        description: "Sessione non valida. Per favore fai login.",
+        title: t("general.error"),
+        description: t("onboarding.errorInvalidSession"),
         variant: "destructive",
       })
       router.push("/auth/signin")
@@ -276,16 +278,16 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
 
     if (!profileData.fullName || profileData.fullName.trim().length === 0) {
       toast({
-        title: "Errore",
-        description: "Il nome è obbligatorio. Inserisci il tuo nome completo.",
+        title: t("general.error"),
+        description: t("onboarding.errorNameRequired"),
         variant: "destructive",
       })
       return
     }
     if (!profileData.residenceAddress?.trim() || !profileData.residenceCity?.trim() || !profileData.residenceCountry?.trim()) {
       toast({
-        title: "Errore",
-        description: "L'indirizzo di residenza è obbligatorio.",
+        title: t("general.error"),
+        description: t("onboarding.errorResidenceRequired"),
         variant: "destructive",
       })
       return
@@ -295,16 +297,16 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     if (profileData.username && profileData.username.trim().length > 0) {
       if (usernameAvailable === false) {
         toast({
-          title: "Errore",
-          description: "Username non disponibile. Scegline un altro.",
+          title: t("general.error"),
+          description: t("onboarding.errorUsernameTaken"),
           variant: "destructive",
         })
         return
       }
       if (usernameAvailable === null && checkingUsername) {
         toast({
-          title: "Attendere",
-          description: "Verifica username in corso...",
+          title: t("onboarding.errorWait"),
+          description: t("onboarding.errorUsernameChecking"),
         })
         return
       }
@@ -409,8 +411,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
     const files = Array.from(e.target.files || [])
     if (files.length + propertyData.images.length > 10) {
       toast({
-        title: "Errore",
-        description: "Puoi caricare massimo 10 immagini",
+        title: t("general.error"),
+        description: t("onboarding.errorImageMax"),
         variant: "destructive",
       })
       return
@@ -665,8 +667,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       })
 
       toast({
-        title: "Successo",
-        description: "Struttura creata con successo!",
+        title: t("general.success"),
+        description: t("onboarding.propertyCreated"),
       })
 
       setStep("kol-bed-program")
@@ -868,8 +870,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       setShowOfferDisclaimer(true)
 
       toast({
-        title: "Richiesta inviata",
-        description: "Verrai contattato nei prossimi giorni. Continua a creare il tuo profilo!",
+        title: t("onboarding.requestSent"),
+        description: t("onboarding.requestSentDesc"),
       })
 
     } catch (error: any) {
@@ -954,7 +956,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
   if (loadingSavedState) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
-        <div>Caricamento stato onboarding...</div>
+        <div>{t("onboarding.loadingState")}</div>
       </div>
     )
   }
@@ -966,8 +968,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Completa il tuo profilo Host</CardTitle>
-            <CardDescription>Passo 1 di 4 - Informazioni base</CardDescription>
+            <CardTitle>{t("onboarding.profileHostTitle")}</CardTitle>
+            <CardDescription>{t("onboarding.profileHostStep")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProfileSubmit} className="space-y-4">
@@ -993,11 +995,11 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                     className="flex-1"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground dark:text-gray-400">Max 10MB, formato JPG/PNG (ritaglio disponibile)</p>
+                <p className="text-xs text-muted-foreground dark:text-gray-400">{t("onboarding.avatarMaxHint")}</p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="fullName">Nome completo *</Label>
+                <Label htmlFor="fullName">{t("onboarding.fullName")}</Label>
                 <Input
                   id="fullName"
                   value={profileData.fullName}
@@ -1016,16 +1018,16 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                   placeholder="mariorossi"
                 />
                 {checkingUsername && profileData.username && (
-                  <p className="text-xs text-muted-foreground">Verifica in corso...</p>
+                  <p className="text-xs text-muted-foreground">{t("onboarding.usernameCheck")}</p>
                 )}
                 {usernameAvailable === false && profileData.username && (
-                  <p className="text-xs text-destructive">✗ Username non disponibile</p>
+                  <p className="text-xs text-destructive">{t("onboarding.usernameTaken")}</p>
                 )}
                 {usernameAvailable === true && profileData.username && (
-                  <p className="text-xs text-green-600">✓ Username disponibile</p>
+                  <p className="text-xs text-green-600">{t("onboarding.usernameAvailable")}</p>
                 )}
                 <p className="text-xs text-muted-foreground dark:text-gray-400">
-                  Lo username deve essere univoco. Se lasciato vuoto, verrà generato automaticamente.
+                  {t("onboarding.usernameHint")}
                 </p>
               </div>
 
@@ -1055,7 +1057,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="residence_city">Città di residenza *</Label>
+                  <Label htmlFor="residence_city">{t("onboarding.residenceCity")}</Label>
                   <Input
                     id="residence_city"
                     value={profileData.residenceCity}
@@ -1081,7 +1083,7 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                 className="w-full" 
                 disabled={loading || (profileData.username && usernameAvailable === false) || checkingUsername}
               >
-                {loading ? "Salvataggio..." : "Continua"}
+                {loading ? t("onboarding.saving") : t("general.continue")}
               </Button>
             </form>
           </CardContent>
@@ -1107,8 +1109,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
-            <CardTitle>Crea la tua prima struttura</CardTitle>
-            <CardDescription>Passo 2 di 4 - Informazioni sulla proprietà</CardDescription>
+            <CardTitle>{t("onboarding.createProperty")}</CardTitle>
+            <CardDescription>{t("onboarding.propertyStep")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePropertySubmit} className="space-y-4">
@@ -1333,10 +1335,10 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                   onClick={() => setStep("profile")}
                   className="flex-1"
                 >
-                  Indietro
+                  {t("general.back")}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? "Salvataggio..." : "Continua"}
+                  {loading ? t("onboarding.saving") : t("general.continue")}
                 </Button>
               </div>
             </form>
@@ -1368,8 +1370,8 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <CardHeader>
-            <CardTitle>Programma KOL&BED</CardTitle>
-            <CardDescription>Passo 3 di 4 - Configura il programma per guadagnare il 100% dalle prenotazioni</CardDescription>
+            <CardTitle>{t("onboarding.kolBedProgram")}</CardTitle>
+            <CardDescription>{t("onboarding.kolBedStep")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6 mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
@@ -1531,10 +1533,10 @@ export default function HostOnboarding({ redirectOnComplete }: HostOnboardingPro
                   onClick={() => setStep("property")}
                   className="flex-1"
                 >
-                  Indietro
+                  {t("general.back")}
                 </Button>
                 <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? "Salvataggio..." : "Continua"}
+                  {loading ? t("onboarding.saving") : t("general.continue")}
                 </Button>
               </div>
             </form>

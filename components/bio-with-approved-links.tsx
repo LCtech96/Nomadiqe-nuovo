@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { normalizeUrlForComparison } from "@/lib/bio-links"
+import { LINK_REGEX, normalizeUrlForComparison, toFullUrl } from "@/lib/bio-links"
 
 interface BioWithApprovedLinksProps {
   bio: string | null
@@ -24,18 +24,16 @@ export function BioWithApprovedLinks({
     const approvedSet = new Set(
       approvedUrls.map((u) => normalizeUrlForComparison(u)).filter(Boolean)
     )
-    const urlRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)/gi
     const parts: { type: "text" | "link"; content: string; url?: string }[] = []
     let lastIndex = 0
     let match
 
-    const regex = new RegExp(urlRegex.source, "gi")
+    const regex = new RegExp(LINK_REGEX.source, "gi")
     while ((match = regex.exec(bio)) !== null) {
       if (match.index > lastIndex) {
         parts.push({ type: "text", content: bio.slice(lastIndex, match.index) })
       }
-      let url = match[0].trim().replace(/[.,;:!?)]+$/, "")
-      if (/^www\./i.test(url)) url = "https://" + url
+      const url = toFullUrl(match[0])
       const isApproved = approvedSet.has(normalizeUrlForComparison(url))
       parts.push({
         type: "link",

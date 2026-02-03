@@ -21,6 +21,7 @@ import { createSupabaseClient } from "@/lib/supabase/client"
 import { put } from "@vercel/blob"
 import ImageCropper from "@/components/image-cropper"
 import { Instagram, Youtube, TrendingUp, Plus, X } from "lucide-react"
+import { useI18n } from "@/lib/i18n/context"
 
 type CreatorOnboardingStep = "profile" | "social-kolbed"
 
@@ -95,6 +96,7 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { t } = useI18n()
   const supabase = createSupabaseClient()
   const [step, setStep] = useState<CreatorOnboardingStep>("profile")
   const [loading, setLoading] = useState(false)
@@ -549,8 +551,8 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-black">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle>Profilo Creator</CardTitle>
-              <CardDescription>Passo 1 di 2 — Immagine, nome, username e bio</CardDescription>
+              <CardTitle>{t("creator.onboarding.profileTitle")}</CardTitle>
+              <CardDescription>{t("creator.onboarding.profileStep")}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleProfileSubmit} className="space-y-4">
@@ -605,7 +607,7 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={loading || usernameAvailable === false || checkingUsername}>
-                  {loading ? "Salvataggio..." : "Continua"}
+                  {loading ? t("onboarding.saving") : t("general.continue")}
                 </Button>
               </form>
             </CardContent>
@@ -629,8 +631,8 @@ export default function CreatorOnboarding({ redirectOnComplete }: CreatorOnboard
       <div className="max-w-2xl mx-auto min-w-0">
         <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Analytics, social e KOL&BED</CardTitle>
-            <CardDescription>Passo 2 di 2 — Screenshot analytics, nicchia, strategia, profili social, livello KOL&BED e termini</CardDescription>
+            <CardTitle>{t("creator.onboarding.socialTitle")}</CardTitle>
+            <CardDescription>{t("creator.onboarding.socialStep")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSocialKolBedSubmit} className="space-y-6">

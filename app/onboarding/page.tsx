@@ -159,7 +159,7 @@ export default function OnboardingPage() {
     
     if (!userId || !selectedRole) {
       toast({
-        title: t("common.error"),
+        title: t("general.error"),
         description: t("onboarding.invalidSession"),
         variant: "destructive",
       })
@@ -263,8 +263,8 @@ export default function OnboardingPage() {
 
       // Mostra un messaggio di successo
       toast({
-        title: "Successo",
-        description: `Ruolo ${selectedRole} selezionato con successo!`,
+        title: t("general.success"),
+        description: t("onboarding.roleSelectedSuccess").replace("{role}", t(`role.${selectedRole}`)),
       })
 
       if (selectedRole === "host" || selectedRole === "jolly" || selectedRole === "creator") {
@@ -275,7 +275,7 @@ export default function OnboardingPage() {
     } catch (error: any) {
       console.error("Error in handleRoleSubmit:", error)
       toast({
-        title: t("common.error"),
+        title: t("general.error"),
         description: error.message || t("onboarding.saveError"),
         variant: "destructive",
       })
@@ -426,7 +426,7 @@ export default function OnboardingPage() {
           <div className="container mx-auto p-4 max-w-4xl">
             <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                ✓ Registrato come <strong>Creator</strong>. Completa l&apos;onboarding per iniziare.
+                ✓ {t("onboarding.alreadyRegistered")} <strong>{t("role.creator")}</strong>. {t("onboarding.completeCreator")}
               </p>
             </div>
           </div>
