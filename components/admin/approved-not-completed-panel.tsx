@@ -11,8 +11,26 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { Mail } from "lucide-react"
+
+type EmailLocale = "it" | "en" | "ru" | "fr" | "de"
+
+const LOCALE_OPTIONS: { value: EmailLocale; label: string }[] = [
+  { value: "it", label: "🇮🇹 Italiano" },
+  { value: "en", label: "🇬🇧 English" },
+  { value: "ru", label: "🇷🇺 Русский" },
+  { value: "fr", label: "🇫🇷 Français" },
+  { value: "de", label: "🇩🇪 Deutsch" },
+]
 
 type ApprovedNotCompletedUser = {
   id: string
@@ -56,6 +74,7 @@ export default function ApprovedNotCompletedPanel() {
   const [users, setUsers] = useState<ApprovedNotCompletedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const [emailLocale, setEmailLocale] = useState<EmailLocale>("it")
 
   const loadUsers = async () => {
     setLoading(true)
@@ -87,7 +106,7 @@ export default function ApprovedNotCompletedPanel() {
       const response = await fetch("/api/admin/send-onboarding-reminder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, language: emailLocale }),
       })
 
       if (!response.ok) {
@@ -128,6 +147,27 @@ export default function ApprovedNotCompletedPanel() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-4 pb-2">
+        <Label htmlFor="email-locale">Lingua email</Label>
+        <Select
+          value={emailLocale}
+          onValueChange={(v) => setEmailLocale(v as EmailLocale)}
+        >
+          <SelectTrigger id="email-locale" className="w-[200px]">
+            <SelectValue placeholder="Seleziona lingua" />
+          </SelectTrigger>
+          <SelectContent>
+            {LOCALE_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground">
+          Le email di sollecito verranno inviate in questa lingua
+        </span>
+      </div>
       <Table>
         <TableHeader>
           <TableRow>
