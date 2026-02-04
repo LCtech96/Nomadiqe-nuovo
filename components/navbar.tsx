@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast"
 import { getMessaging, getToken, isSupported } from "firebase/messaging"
 import { VAPID_KEY } from "@/lib/firebase/config"
 import { useI18n } from "@/lib/i18n/context"
-import { Globe } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +55,7 @@ const getDashboardUrl = (role: string | null | undefined): string => {
 export default function Navbar() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
-  const { locale, setLocale, t, localeNames, availableLocales } = useI18n()
+  const { locale, setLocale, t, localeNames, localeFlags, availableLocales } = useI18n()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -492,8 +491,8 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-foreground">
-                  <Globe className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="text-foreground text-xl">
+                  {localeFlags[locale]}
                   <span className="sr-only">{t('language.select')}</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -506,6 +505,7 @@ export default function Navbar() {
                     onSelect={() => setLocale(loc)}
                     className={locale === loc ? "bg-accent" : ""}
                   >
+                    <span className="mr-2 text-lg">{localeFlags[loc]}</span>
                     {localeNames[loc]}
                   </DropdownMenuItem>
                 ))}
@@ -675,8 +675,8 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-foreground">
-                    <Globe className="h-5 w-5" />
+                  <Button variant="ghost" size="icon" className="text-foreground text-xl">
+                    {localeFlags[locale]}
                     <span className="sr-only">{t('language.select')}</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -689,6 +689,7 @@ export default function Navbar() {
                       onSelect={() => setLocale(loc)}
                       className={locale === loc ? "bg-accent" : ""}
                     >
+                      <span className="mr-2 text-lg">{localeFlags[loc]}</span>
                       {localeNames[loc]}
                     </DropdownMenuItem>
                   ))}

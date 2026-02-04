@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createSupabaseClient } from "@/lib/supabase/client"
-import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles, Globe } from "lucide-react"
+import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
 import {
@@ -32,7 +32,7 @@ import {
 function HomePageContent() {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const { t, locale, setLocale, localeNames, availableLocales } = useI18n()
+  const { t, locale, setLocale, localeNames, localeFlags, availableLocales } = useI18n()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [profile, setProfile] = useState<any>(null)
@@ -213,8 +213,8 @@ function HomePageContent() {
         <div className="fixed top-4 right-4 z-50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="bg-gray-950/50 backdrop-blur-sm border-gray-800 text-white hover:bg-gray-900">
-                <Globe className="h-5 w-5" />
+              <Button variant="outline" size="icon" className="bg-gray-950/50 backdrop-blur-sm border-gray-800 text-white hover:bg-gray-900 text-xl">
+                {localeFlags[locale]}
                 <span className="sr-only">{t('language.select')}</span>
               </Button>
             </DropdownMenuTrigger>
@@ -227,6 +227,7 @@ function HomePageContent() {
                   onClick={() => setLocale(loc)}
                   className={locale === loc ? "bg-gray-800 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"}
                 >
+                  <span className="mr-2 text-lg">{localeFlags[loc]}</span>
                   {localeNames[loc]}
                 </DropdownMenuItem>
               ))}

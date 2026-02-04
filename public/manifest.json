@@ -1,0 +1,25 @@
+{
+  "name": "Nomadiqe",
+  "short_name": "Nomadiqe",
+  "description": "Piattaforma di viaggio che connette Traveler, Host, Creator e Jolly. KOL&BED: collaborazioni autentiche tra influencer e strutture.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/publicicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/publicicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "lifestyle", "social"]
+}

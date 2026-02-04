@@ -10,22 +10,63 @@ import BottomNav from "@/components/bottom-nav";
 import SupportButton from "@/components/support-button";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: SITE_NAME,
+  url: SITE_URL,
+  description: SITE_DESCRIPTION,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/explore?search={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export const metadata: Metadata = {
-  title: "Nomadiqe BETA - Soggiorni Più Equi, Connessioni Più Profonde",
-  description: "Piattaforma di viaggio che connette Traveler, Host, Creator e Jolly",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} BETA - Soggiorni Più Equi, Connessioni Più Profonde`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: SITE_KEYWORDS,
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  formatDetection: { email: false, address: false, telephone: false },
+  openGraph: {
+    type: "website",
+    locale: "it_IT",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} - Soggiorni Più Equi, Connessioni Più Profonde`,
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/publicicon.png", width: 512, height: 512, alt: SITE_NAME }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} - Soggiorni Più Equi, Connessioni Più Profonde`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
   icons: {
     icon: [
       { url: "/publicicon.png", type: "image/png" },
-      { url: "/icon.png", type: "image/png" },
-      { url: "/favicon.ico" },
+      { url: "/favicon.ico", sizes: "any" },
     ],
-    apple: [
-      { url: "/publicicon.png", type: "image/png" },
-    ],
+    apple: [{ url: "/publicicon.png", type: "image/png" }],
   },
+  manifest: "/manifest.json",
+  alternates: { canonical: SITE_URL },
 };
 
 export default function RootLayout({
@@ -36,6 +77,10 @@ export default function RootLayout({
   return (
     <html lang="it" suppressHydrationWarning className="scroll-smooth">
       <body className={`${inter.className} scroll-smooth`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers
           attribute="class"
           defaultTheme="system"

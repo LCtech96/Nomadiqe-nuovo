@@ -10,6 +10,14 @@ export const localeNames: Record<Locale, string> = {
   de: 'Deutsch',
 }
 
+export const localeFlags: Record<Locale, string> = {
+  it: '🇮🇹',
+  en: '🇬🇧',
+  ru: '🇷🇺',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+}
+
 export const translations: Record<Locale, Record<string, string>> = {
   it: {
     // Navigation
