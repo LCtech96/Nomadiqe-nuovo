@@ -283,15 +283,15 @@ Clicca su "Accetta" o "Rifiuta" per rispondere alla richiesta.`
                 {property.images.slice(1, 3).map((img, idx) => (
                   <div
                     key={idx}
-                    className="cursor-pointer relative group"
+                    className="cursor-pointer relative group aspect-square min-h-[120px]"
                     onClick={() => openImageViewer(idx + 1)}
                   >
                     <Image
                       src={img}
                       alt={`${translatedName} ${idx + 2}`}
-                      width={400}
-                      height={200}
-                      className="w-full h-48 object-cover transition-transform group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                      className="object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
                   </div>

@@ -42,10 +42,12 @@ import {
   Calendar,
   Edit
 } from "lucide-react"
-import SendMessageDialog from "@/components/send-message-dialog"
-import SupplierCatalogDialog from "@/components/supplier-catalog-dialog"
-import HostAvailabilityCalendar from "@/components/host-availability-calendar"
-import RequestServiceDialog from "@/components/request-service-dialog"
+import dynamic from "next/dynamic"
+
+const SendMessageDialog = dynamic(() => import("@/components/send-message-dialog"), { ssr: false })
+const SupplierCatalogDialog = dynamic(() => import("@/components/supplier-catalog-dialog"), { ssr: false })
+const HostAvailabilityCalendar = dynamic(() => import("@/components/host-availability-calendar"), { ssr: false })
+const RequestServiceDialog = dynamic(() => import("@/components/request-service-dialog"), { ssr: false })
 import { ProfileBioDisplay } from "@/components/profile-bio-display"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
@@ -488,9 +490,6 @@ export default function PublicProfilePage() {
         
         setIsFollowing(!!followData)
       }
-      
-      // Load stats using profileId
-      await loadStats(profileId)
     } catch (error) {
       console.error("Error loading profile:", error)
     } finally {

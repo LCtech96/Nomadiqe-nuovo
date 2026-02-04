@@ -11,8 +11,10 @@ import { Profile } from "@/types/user"
 import Image from "next/image"
 import { Users, Euro, Heart, MessageCircle, Share2, User, MoreVertical, Edit, Trash2, MapPin } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import SharePostDialog from "@/components/share-post-dialog"
-import EditPostDialog from "@/components/edit-post-dialog"
+import dynamic from "next/dynamic"
+
+const SharePostDialog = dynamic(() => import("@/components/share-post-dialog"), { ssr: false })
+const EditPostDialog = dynamic(() => import("@/components/edit-post-dialog"), { ssr: false })
 import UserSearch from "@/components/user-search"
 import { renderLinkContent } from "@/lib/render-link-content"
 import { TranslatedComment } from "@/components/translated-comment"
@@ -469,7 +471,7 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => (
+            {posts.map((post, idx) => (
               <Card key={post.id} className="overflow-hidden border border-gray-200/60 shadow-xl shadow-gray-200/50 bg-white/98 backdrop-blur-sm rounded-3xl transition-all duration-300 hover:shadow-2xl hover:shadow-purple-200/40 hover:scale-[1.02] hover:-translate-y-1">
                 <CardContent className="p-0">
                   <div className="px-5 pt-5 pb-3">
@@ -552,7 +554,7 @@ export default function HomePage() {
                           fill
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           className="object-cover hover:scale-105 transition-transform duration-500"
-                          priority={false}
+                          priority={idx < 2}
                         />
                       </div>
                     </Link>

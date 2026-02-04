@@ -161,12 +161,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let wasInserted = false
     const insertResult = await supabase
       .from("waitlist_requests")
       .insert(insertData)
       .select()
 
-    if (insertResult.error) {
+    if (!insertResult.error) {
+      wasInserted = true
+    } else if (insertResult.error) {
       console.error("Error inserting waitlist request:", insertResult.error)
 
       if (
@@ -198,6 +201,7 @@ export async function POST(request: NextRequest) {
         }
       } else if (insertResult.error.code === "23505") {
         isDuplicate = true
+        wasInserted = false
       } else {
         return NextResponse.json(
           { error: `Errore nel salvataggio: ${insertResult.error.message || "Errore sconosciuto"}` },
@@ -312,6 +316,39 @@ export async function POST(request: NextRequest) {
       } catch (referralEmailError) {
         console.error("Error sending referral email to creator:", referralEmailError)
         // Non bloccare la registrazione se l'email al creator fallisce
+      }
+    }
+
+    // Notifica luca@facevoice.ai per ogni nuovo iscritto
+    if (wasInserted) {
+      const adminNotifyHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 24px;">
+          <h2 style="color: #111827;">Nuovo iscritto alla waitlist Nomadiqe</h2>
+          <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            <p style="margin: 0 0 8px;"><strong>Email:</strong> ${normalizedEmail}</p>
+            <p style="margin: 0 0 8px;"><strong>Telefono:</strong> ${phone_number}</p>
+            <p style="margin: 0 0 8px;"><strong>Ruolo:</strong> ${role}</p>
+            <p style="margin: 0;"><strong>Paese:</strong> ${country || "-"}</p>
+          </div>
+          <p style="color: #6b7280; font-size: 14px;">Ricevuto automaticamente dal sistema.</p>
+        </div>
+      `
+      try {
+        await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: fromEmail,
+            to: "luca@facevoice.ai",
+            subject: `Nomadiqe — Nuovo iscritto waitlist: ${normalizedEmail} (${role})`,
+            html: adminNotifyHtml,
+          }),
+        })
+      } catch (adminNotifyErr) {
+        console.error("Error sending admin notification:", adminNotifyErr)
       }
     }
 

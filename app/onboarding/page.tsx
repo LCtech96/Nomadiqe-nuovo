@@ -11,9 +11,11 @@ import { useToast } from "@/hooks/use-toast"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { UserRole, Profile } from "@/types/user"
 import { useI18n } from "@/lib/i18n/context"
-import HostOnboarding from "@/components/onboarding/host-onboarding"
-import JollyOnboarding from "@/components/onboarding/jolly-onboarding"
-import CreatorOnboarding from "@/components/onboarding/creator-onboarding"
+import dynamic from "next/dynamic"
+
+const HostOnboarding = dynamic(() => import("@/components/onboarding/host-onboarding"), { ssr: false })
+const JollyOnboarding = dynamic(() => import("@/components/onboarding/jolly-onboarding"), { ssr: false })
+const CreatorOnboarding = dynamic(() => import("@/components/onboarding/creator-onboarding"), { ssr: false })
 
 type OnboardingStep = "role" | "role-specific"
 
