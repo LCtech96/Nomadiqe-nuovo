@@ -114,11 +114,6 @@ export default function KOLBedPage() {
   const isHost = profile?.role === "host"
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
-      return
-    }
-
     if (status === "authenticated" && session?.user?.id) {
       loadProfile()
     }
@@ -551,7 +546,45 @@ export default function KOLBedPage() {
     )
   }
 
-  if (!session) return null
+  if (!session || status === "unauthenticated") {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-16 max-w-4xl">
+          <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
+            KOL&BED
+          </h1>
+          <p className="text-xl text-center text-muted-foreground mb-2">
+            Trova l&apos;influencer più adatto a promuovere la tua struttura
+          </p>
+          <p className="text-lg text-center text-muted-foreground mb-8">
+            O l&apos;host e la struttura ideali per le tue collaborazioni. Marketplace di servizi: pulizie, fotografia, trasferimenti, delivery.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/kol-bed/hosts">
+              <Button size="lg" className="w-full sm:w-auto">
+                <Building2 className="mr-2 h-5 w-5" />
+                Scopri gli Host
+              </Button>
+            </Link>
+            <Link href="/kol-bed/creators">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                <Users className="mr-2 h-5 w-5" />
+                Scopri i Creator
+              </Button>
+            </Link>
+          </div>
+          <div className="mt-12 flex justify-center gap-4">
+            <Link href="/auth/signin">
+              <Button variant="ghost">Accedi</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button>Registrati</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const formatDate = (iso: string | null) => {
     if (!iso) return "—"

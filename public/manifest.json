@@ -1,7 +1,7 @@
 {
   "name": "Nomadiqe",
   "short_name": "Nomadiqe",
-  "description": "Piattaforma di viaggio che connette Traveler, Host, Creator e Jolly. KOL&BED: collaborazioni autentiche tra influencer e strutture.",
+  "description": "Connette strutture ricettive con influencer per promozioni (KOL&BED) e offre marketplace servizi: pulizie, fotografia, trasferimenti, delivery.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

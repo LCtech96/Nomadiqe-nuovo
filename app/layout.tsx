@@ -10,11 +10,18 @@ import BottomNav from "@/components/bottom-nav";
 import SupportButton from "@/components/support-button";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_KEYWORDS } from "@/lib/seo";
+import {
+  SITE_URL,
+  SITE_NAME,
+  SITE_DESCRIPTION,
+  SITE_DESCRIPTION_LONG,
+  SITE_SOCIAL_LINKS,
+  SITE_KEYWORDS,
+} from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
 
-const jsonLd = {
+const jsonLdWebSite = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: SITE_NAME,
@@ -27,10 +34,25 @@ const jsonLd = {
   },
 };
 
+const jsonLdOrganization = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: SITE_NAME,
+  url: SITE_URL,
+  logo: `${SITE_URL}/publicicon.png`,
+  description: SITE_DESCRIPTION_LONG,
+  sameAs: SITE_SOCIAL_LINKS,
+  contactPoint: {
+    "@type": "ContactPoint",
+    url: SITE_URL,
+    contactType: "customer service",
+  },
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} BETA - Soggiorni Più Equi, Connessioni Più Profonde`,
+    default: `${SITE_NAME} BETA - Influencer per Strutture, KOL&BED e Servizi`,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -44,13 +66,13 @@ export const metadata: Metadata = {
     locale: "it_IT",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: `${SITE_NAME} - Soggiorni Più Equi, Connessioni Più Profonde`,
+    title: `${SITE_NAME} - Influencer per Strutture, KOL&BED e Servizi`,
     description: SITE_DESCRIPTION,
     images: [{ url: "/publicicon.png", width: 512, height: 512, alt: SITE_NAME }],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} - Soggiorni Più Equi, Connessioni Più Profonde`,
+    title: `${SITE_NAME} - Influencer per Strutture, KOL&BED e Servizi`,
     description: SITE_DESCRIPTION,
   },
   robots: {
@@ -79,7 +101,11 @@ export default function RootLayout({
       <body className={`${inter.className} scroll-smooth`}>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdWebSite) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrganization) }}
         />
         <Providers
           attribute="class"
