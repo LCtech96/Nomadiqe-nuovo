@@ -219,7 +219,9 @@ export async function POST(request: NextRequest) {
     }
 
     const fromEmail =
-      process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "noreply@nomadiqe.com"
+      process.env.EMAIL_FROM ||
+      process.env.RESEND_FROM_EMAIL ||
+      "Nomadiqe <noreply@nomadiqe.com>"
 
     // Always try to send email, but don't fail the request if it fails
     let emailSent = false

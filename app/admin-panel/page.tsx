@@ -70,6 +70,9 @@ export default async function AdminPanelPage() {
 
           <section>
             <h2 className="text-xl font-semibold mb-4">Waitlist (in attesa di approvazione)</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Nuovi iscritti alla waitlist. Puoi inviare un&apos;email personalizzata (oggetto e corpo) a ciascun utente o approvare la richiesta.
+            </p>
             <WaitlistAdminPanel />
           </section>
         </div>

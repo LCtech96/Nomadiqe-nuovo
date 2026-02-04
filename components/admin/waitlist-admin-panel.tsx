@@ -198,7 +198,7 @@ export default function WaitlistAdminPanel() {
                   onClick={() => openEmailDialog(request)}
                 >
                   <Mail className="w-4 h-4 mr-1" />
-                  Email
+                  Email personalizzata
                 </Button>
                 <Button
                   size="sm"
