@@ -369,7 +369,7 @@ export default function Navbar() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({ token, sendTestNotification: true }),
           })
 
           if (!res.ok) {
@@ -386,38 +386,6 @@ export default function Navbar() {
               description: "Riceverai notifiche push quando qualcuno ti invia un messaggio o interagisce con i tuoi contenuti.",
             })
             setMobileMenuOpen(false)
-            
-            // Invia una notifica test immediata
-            try {
-              // Crea una notifica test nel database
-              const { error: notifError } = await supabase
-                .from("pending_notifications")
-                .insert({
-                  user_id: session.user.id,
-                  notification_type: "message",
-                  title: "🔔 Notifiche push attivate!",
-                  message: "Questa è una notifica di test. Le notifiche push sono ora attive sul tuo dispositivo.",
-                  url: "/profile",
-                  data: {
-                    type: "push_test",
-                  },
-                })
-
-              if (notifError) {
-                console.error("Error creating test notification:", notifError)
-              } else {
-                // Processa immediatamente la notifica per inviarla via FCM
-                await fetch("/api/notifications/process-fcm", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                })
-              }
-            } catch (testNotifError) {
-              console.error("Error sending test notification:", testNotifError)
-              // Non bloccare il flusso se la notifica test fallisce
-            }
           }
         } else {
           toast({

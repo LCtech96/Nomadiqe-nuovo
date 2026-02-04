@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}))
     const token = (body.token as string)?.trim()
+    const sendTestNotification = body.sendTestNotification === true
     if (!token) {
       return NextResponse.json({ error: "Token FCM mancante" }, { status: 400 })
     }
@@ -39,6 +40,26 @@ export async function POST(request: NextRequest) {
         { error: "Errore nel salvare il token" },
         { status: 500 }
       )
+    }
+
+    if (sendTestNotification) {
+      const { error: notifError } = await supabase.from("pending_notifications").insert({
+        user_id: session.user.id,
+        notification_type: "message",
+        title: "🔔 Notifiche push attivate!",
+        message: "Questa è una notifica di test. Le notifiche push sono ora attive sul tuo dispositivo.",
+        url: "/profile",
+        data: { type: "push_test" },
+      })
+      if (!notifError) {
+        try {
+          const base = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || "https://www.nomadiqe.com"
+          const url = base.startsWith("http") ? base : `https://${base}`
+          await fetch(`${url}/api/notifications/process-fcm`, { method: "POST", headers: { "Content-Type": "application/json" } })
+        } catch {
+          // ignore
+        }
+      }
     }
 
     return NextResponse.json({ success: true })

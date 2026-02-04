@@ -291,7 +291,7 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, sendTestNotification: true }),
       })
 
       if (!res.ok) {
