@@ -26,32 +26,24 @@ const investmentLevels = [
   {
     id: "rock",
     name: "Rock",
-    min: 100,
-    max: 500,
     color: "from-gray-500 to-gray-700",
     description: "Perfetto per iniziare il tuo percorso di investimento"
   },
   {
     id: "emerald",
     name: "Emerald",
-    min: 1000,
-    max: 5000,
     color: "from-green-500 to-emerald-600",
     description: "Un investimento più sostanzioso con maggiori vantaggi"
   },
   {
     id: "diamond",
     name: "Diamond",
-    min: 10000,
-    max: 50000,
     color: "from-cyan-400 to-blue-600",
     description: "Per investitori seri che credono nel futuro di Nomadiqe BETA"
   },
   {
     id: "vibranium",
     name: "Vibranium",
-    min: 100000,
-    max: null,
     color: "from-purple-500 to-pink-600",
     description: "Il livello più alto per partner strategici"
   }
@@ -134,8 +126,7 @@ export default function InvestiPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold mb-4">
-                  {level.min.toLocaleString()}€
-                  {level.max ? ` - ${level.max.toLocaleString()}€` : "+"}
+                  Contattaci
                 </div>
                 <Alert className="bg-white/20 border-white/30 text-white">
                   <Info className="h-4 w-4" />
