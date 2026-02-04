@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 
 const FCM_SERVER_KEY = process.env.FCM_SERVER_KEY || ""
 
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       return fail("Parametri mancanti")
     }
 
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
     const { data: subscription, error: subError } = await supabase
       .from("push_subscriptions")
       .select("fcm_token")

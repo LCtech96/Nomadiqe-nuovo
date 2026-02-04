@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 
 // Firebase Admin SDK (per inviare notifiche)
 // Nota: Per FCM, useremo l'API REST HTTP v1 invece di Admin SDK per semplicità
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   }
 
   // Altrimenti restituisci solo lo stato
-  const supabase = createSupabaseServerClient()
+  const supabase = createSupabaseAdminClient()
   const { count, error } = await supabase
     .from("pending_notifications")
     .select("*", { count: "exact", head: true })
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
 async function processNotifications() {
   try {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // Ottieni notifiche pending (max 50 alla volta)
     const { data: pendingNotifications, error: fetchError } = await supabase
