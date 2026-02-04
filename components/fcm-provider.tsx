@@ -286,24 +286,19 @@ export function FCMProvider({ children }: { children: React.ReactNode }) {
       // Assicura che il profilo esista (fix FK per utenti senza riga in profiles)
       await fetch("/api/profile/ensure", { credentials: "include" })
 
-      const supabase = createSupabaseClient()
-      const { error } = await supabase.from("push_subscriptions").upsert(
-        {
-          user_id: session.user.id,
-          fcm_token: token,
-          onesignal_player_id: null, // Esplicitamente null per FCM-only
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "user_id",
-        }
-      )
+      // Usa API dedicata per bypassare RLS (il client non ha JWT Supabase)
+      const res = await fetch("/api/notifications/register-fcm-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token }),
+      })
 
-      if (error) {
-        console.error("❌ FCM: Errore nel salvare il token:", error)
-      } else {
-        console.log("💾 FCM: Token salvato in Supabase")
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || `HTTP ${res.status}`)
       }
+      console.log("💾 FCM: Token salvato in Supabase")
     } catch (error) {
       console.error("❌ FCM: Errore nel salvare il token:", error)
     }

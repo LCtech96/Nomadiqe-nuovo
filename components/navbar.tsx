@@ -364,24 +364,20 @@ export default function Navbar() {
         const token = await getToken(messaging, { vapidKey: VAPID_KEY })
 
         if (token) {
-          // Salva il token in Supabase
-          const { error } = await supabase.from("push_subscriptions").upsert(
-            {
-              user_id: session.user.id,
-              fcm_token: token,
-              onesignal_player_id: null,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "user_id",
-            }
-          )
+          // Usa API dedicata per bypassare RLS (il client non ha JWT Supabase)
+          const res = await fetch("/api/notifications/register-fcm-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ token }),
+          })
 
-          if (error) {
-            console.error("Error saving FCM token:", error)
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            console.error("Error saving FCM token:", err)
             toast({
               title: "Errore",
-              description: "Errore durante il salvataggio del token",
+              description: err?.error || "Errore durante il salvataggio del token",
               variant: "destructive",
             })
           } else {
