@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { createSupabaseClient } from "@/lib/supabase/client"
-import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles, Languages } from "lucide-react"
+import { Briefcase, TrendingUp, Users, Zap, Shield, Sparkles, Globe } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useI18n } from "@/lib/i18n/context"
 import {
@@ -214,7 +214,7 @@ function HomePageContent() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" className="bg-gray-950/50 backdrop-blur-sm border-gray-800 text-white hover:bg-gray-900">
-                <Languages className="h-5 w-5" />
+                <Globe className="h-5 w-5" />
                 <span className="sr-only">{t('language.select')}</span>
               </Button>
             </DropdownMenuTrigger>

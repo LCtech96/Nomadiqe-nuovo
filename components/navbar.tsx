@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getMessaging, getToken, isSupported } from "firebase/messaging"
 import { VAPID_KEY } from "@/lib/firebase/config"
 import { useI18n } from "@/lib/i18n/context"
-import { Languages } from "lucide-react"
+import { Globe } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -493,7 +493,7 @@ export default function Navbar() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-foreground">
-                  <Languages className="h-5 w-5" />
+                  <Globe className="h-5 w-5" />
                   <span className="sr-only">{t('language.select')}</span>
                 </Button>
               </DropdownMenuTrigger>
@@ -676,7 +676,7 @@ export default function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="text-foreground">
-                    <Languages className="h-5 w-5" />
+                    <Globe className="h-5 w-5" />
                     <span className="sr-only">{t('language.select')}</span>
                   </Button>
                 </DropdownMenuTrigger>
