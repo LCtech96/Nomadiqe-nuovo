@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import WaitlistAdminPanel from "@/components/admin/waitlist-admin-panel"
+import ApprovedNotCompletedPanel from "@/components/admin/approved-not-completed-panel"
 import CleanerApprovalsPanel from "@/components/admin/cleaner-approvals-panel"
 import CreatorVerificationPanel from "@/components/admin/creator-verification-panel"
 import UsersPanel from "@/components/admin/users-panel"
@@ -60,7 +61,15 @@ export default async function AdminPanelPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold mb-4">Waitlist</h2>
+            <h2 className="text-xl font-semibold mb-4">Approvati - Onboarding da completare</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Utenti approvati che non hanno ancora completato la registrazione o l&apos;onboarding. Puoi inviare un&apos;email di sollecito.
+            </p>
+            <ApprovedNotCompletedPanel />
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Waitlist (in attesa di approvazione)</h2>
             <WaitlistAdminPanel />
           </section>
         </div>
