@@ -25,6 +25,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function HomePage() {
   const { data: session, status } = useSession()
@@ -406,63 +413,26 @@ export default function HomePage() {
             <UserSearch userRole={profile?.role || null} />
           </div>
 
-          {/* Role Filter Buttons */}
-          <div className="flex gap-2 mb-4 md:mb-6 flex-wrap">
-            <Button
-              variant={filterRole === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setFilterRole(null)
-                loadPosts()
+          {/* Filtro ruolo: menù a tendina */}
+          <div className="mb-4 md:mb-6 w-full max-w-[200px]">
+            <Select
+              value={filterRole ?? "all"}
+              onValueChange={(value) => {
+                const role = value === "all" ? null : value
+                setFilterRole(role)
               }}
-              className="text-xs md:text-sm"
             >
-              Tutti
-            </Button>
-            <Button
-              variant={filterRole === "host" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setFilterRole("host")
-                loadPosts()
-              }}
-              className="text-xs md:text-sm"
-            >
-              Host
-            </Button>
-            <Button
-              variant={filterRole === "creator" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setFilterRole("creator")
-                loadPosts()
-              }}
-              className="text-xs md:text-sm"
-            >
-              Creator
-            </Button>
-            <Button
-              variant={filterRole === "traveler" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setFilterRole("traveler")
-                loadPosts()
-              }}
-              className="text-xs md:text-sm"
-            >
-              Traveler
-            </Button>
-            <Button
-              variant={filterRole === "jolly" ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setFilterRole("jolly")
-                loadPosts()
-              }}
-              className="text-xs md:text-sm"
-            >
-              Jolly
-            </Button>
+              <SelectTrigger className="w-full text-xs md:text-sm">
+                <SelectValue placeholder="Filtra per ruolo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="host">Host</SelectItem>
+                <SelectItem value="creator">Creator</SelectItem>
+                <SelectItem value="traveler">Traveler</SelectItem>
+                <SelectItem value="jolly">Jolly</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         {posts.length === 0 ? (
